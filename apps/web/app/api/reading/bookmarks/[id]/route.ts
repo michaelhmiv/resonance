@@ -1,5 +1,5 @@
 /**
- * DELETE /api/reading/bookmarks/[id] — remove a bookmark.
+ * DELETE /api/reading/bookmarks/[id] — remove a bookmark by id
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -7,7 +7,7 @@ import { getDb } from '../../../../../lib/db';
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -15,6 +15,6 @@ export async function DELETE(
     db.prepare('DELETE FROM bookmarks WHERE id = ?').run(id);
     return NextResponse.json({ ok: true });
   } catch {
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

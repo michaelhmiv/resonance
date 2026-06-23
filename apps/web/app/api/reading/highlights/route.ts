@@ -1,40 +1,71 @@
 /**
- * GET /api/reading/highlights — list highlights (optionally filtered by verseRef prefix).
- * POST /api/reading/highlights — create a highlight.
+ * GET  /api/reading/highlights          — list all highlights (newest first)
+ * GET  /api/reading/highlights?verseRef=Genesis+1  — filter by verse ref
+ * POST /api/reading/highlights          — create a highlight { verseRef, color }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '../../../../lib/db';
+import { getDb, generateId } from '../../../../lib/db';
+
+type HighlightRow = {
+  id: string;
+  verse_ref: string;
+  color: string;
+  created_at: number;
+};
 
 export async function GET(req: NextRequest) {
   try {
     const verseRef = req.nextUrl.searchParams.get('verseRef');
     const db = getDb();
-    let highlights;
-    if (verseRef) {
-      highlights = db.prepare('SELECT id, verse_ref, color, created_at FROM highlights WHERE verse_ref LIKE ?').all(verseRef + '%');
-    } else {
-      highlights = db.prepare('SELECT id, verse_ref, color, created_at FROM highlights').all();
-    }
+
+    const highlights = verseRef
+      ? db
+          .prepare<unknown[], HighlightRow>(
+            'SELECT id, verse_ref, color, created_at FROM highlights WHERE verse_ref = ? ORDER BY created_at DESC',
+          )
+          .all(verseRef)
+      : db
+          .prepare<unknown[], HighlightRow>(
+            'SELECT id, verse_ref, color, created_at FROM highlights ORDER BY created_at DESC',
+          )
+          .all();
+
     return NextResponse.json({ highlights });
   } catch {
-    return NextResponse.json({ highlights: [] });
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { verseRef, color } = await req.json();
-    if (!verseRef || !color) {
-      return NextResponse.json({ error: 'verseRef and color required' }, { status: 400 });
+    const { verseRef, color } = (await req.json()) as {
+      verseRef: string;
+      color: string;
+    };
+
+    if (!verseRef || verseRef.trim().length === 0) {
+      return NextResponse.json({ error: 'verseRef is required' }, { status: 400 });
     }
+    if (!color || color.trim().length === 0) {
+      return NextResponse.json({ error: 'color is required' }, { status: 400 });
+    }
+
     const db = getDb();
-    // Remove existing highlight for this verse_ref first
-    db.prepare('DELETE FROM highlights WHERE verse_ref = ?').run(verseRef);
-    const result = db.prepare('INSERT INTO highlights (verse_ref, color) VALUES (?, ?)').run(verseRef, color);
-    const highlight = db.prepare('SELECT id, verse_ref, color, created_at FROM highlights WHERE id = ?').get(result.lastInsertRowid);
-    return NextResponse.json(highlight, { status: 201 });
+    const id = generateId();
+    const createdAt = Math.floor(Date.now() / 1000);
+
+    db.prepare(
+      'INSERT INTO highlights (id, verse_ref, color, created_at) VALUES (?, ?, ?, ?)',
+    ).run(id, verseRef, color, createdAt);
+
+    return NextResponse.json({
+      id,
+      verse_ref: verseRef,
+      color,
+      created_at: createdAt,
+    });
   } catch {
-    return NextResponse.json({ error: 'Failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

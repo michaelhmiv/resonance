@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // better-sqlite3 is a native addon (.node); keep it external to webpack so
+  // it loads from node_modules at runtime instead of being bundled.
+  serverExternalPackages: ['better-sqlite3'],
   transpilePackages: [
     'react-native-web',
     '@resonance/core',
