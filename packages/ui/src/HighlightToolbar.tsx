@@ -12,7 +12,7 @@
 
 import { type ReactNode } from 'react';
 import { Pressable, Text, View, StyleSheet } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { TrashIcon, EditIcon, XIcon } from './icons';
 
 import { colors, fontFamilies, radii, spacing } from '@resonance/theme';
 import { highlightPalette } from '@resonance/theme';
@@ -75,7 +75,7 @@ export function HighlightToolbar({
           accessibilityRole="button"
           accessibilityLabel="Remove highlight"
         >
-          <Feather name="trash-2" size={16} color={colors.textSecondary} />
+          <TrashIcon size={16} color={colors.textSecondary} />
         </Pressable>
 
         <Pressable
@@ -85,7 +85,7 @@ export function HighlightToolbar({
           accessibilityRole="button"
           accessibilityLabel="Add margin note"
         >
-          <Feather name="edit-3" size={16} color={colors.textSecondary} />
+          <EditIcon size={16} color={colors.textSecondary} />
         </Pressable>
       </View>
 
@@ -96,7 +96,7 @@ export function HighlightToolbar({
         accessibilityRole="button"
         accessibilityLabel="Close"
       >
-        <Feather name="x" size={16} color={colors.textTertiary} />
+        <XIcon size={16} color={colors.textTertiary} />
       </Pressable>
     </View>
   );

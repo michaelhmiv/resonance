@@ -1,5 +1,3 @@
-import { TextStyle } from 'react-native';
-
 /**
  * Resonance typography.
  *
@@ -9,9 +7,13 @@ import { TextStyle } from 'react-native';
  *
  * See design spec §2.2.
  *
- * Font families are loaded centrally in `App.tsx` via `@expo-google-fonts`.
+ * Font families are loaded centrally in `App.tsx` via `@expo-google-fonts`
+ * (mobile) or via Google Fonts `<link>` in layout.tsx (web).
  * These tokens reference the family names so styles stay declarative.
  */
+
+/** TextStyle — plain object type, works on both react-native and react-native-web. */
+type TextStyle = Record<string, any>;
 
 export const fontFamilies = {
   serif: 'CormorantGaramond_400Regular',

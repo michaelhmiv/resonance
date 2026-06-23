@@ -11,7 +11,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { Modal, Pressable, Text, View, StyleSheet } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { ChevronDownIcon, CheckIcon } from './icons';
 
 import { colors, fontFamilies, radii, spacing } from '@resonance/theme';
 import { TRANSLATIONS } from '@resonance/core';
@@ -41,7 +41,7 @@ export function TranslationSelector({
         accessibilityLabel={`Translation: ${value}. Tap to change.`}
       >
         <Text style={[styles.label, { color: tint }]}>{value}</Text>
-        <Feather name="chevron-down" size={14} color={tint} />
+        <ChevronDownIcon size={14} color={tint} />
       </Pressable>
 
       <Modal
@@ -82,7 +82,7 @@ export function TranslationSelector({
                   {t}
                 </Text>
                 {selected ? (
-                  <Feather name="check" size={16} color={colors.accent} />
+                  <CheckIcon size={16} color={colors.accent} />
                 ) : null}
               </Pressable>
             );

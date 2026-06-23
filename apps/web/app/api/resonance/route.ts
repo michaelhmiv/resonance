@@ -3,13 +3,12 @@
  * for a given journal text vector.
  *
  * Loads pre-computed library vectors (388MB binary) + passage metadata
- * into memory once at module level, then serves cosine similarity
- * queries against all 265K passages.
+ * asynchronously at module level, then serves cosine similarity queries.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { readFile } from 'fs/promises';
+import { existsSync } from 'fs';
 
 const VECTORS_PATH = '/data/resonance/build/output/seeded_library/vectors_gte-small.bin';
 const BIBLE_PASSAGES_PATH = '/data/resonance/build/output/seeded_library/bible_passages.json';
@@ -29,28 +28,38 @@ interface PassageMeta {
   translation: string | null;
 }
 
-// ── Lazy-loaded module state (loaded once, survives across requests) ───────
+// ── Async module-level loading ─────────────────────────────────────────────
 
 let vectorsLoaded = false;
+let loadPromise: Promise<void> | null = null;
 let passageVectors: Float32Array | null = null;
 let passageCount = 0;
 let passageMetadata: PassageMeta[] = [];
 
-function ensureLoaded() {
-  if (vectorsLoaded) return;
-  vectorsLoaded = true;
+export function isVectorsLoaded(): boolean {
+  return vectorsLoaded;
+}
 
+export function getPassageCount(): number {
+  return passageCount;
+}
+
+function startLoading() {
+  if (loadPromise) return loadPromise;
+  loadPromise = loadVectors();
+  return loadPromise;
+}
+
+async function loadVectors() {
   try {
-    // Load vectors binary
     if (existsSync(VECTORS_PATH)) {
-      const buffer = readFileSync(VECTORS_PATH);
+      const buffer = await readFile(VECTORS_PATH);
       passageVectors = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4);
       passageCount = passageVectors.length / DIM;
     }
 
-    // Load passage metadata
     if (existsSync(BIBLE_PASSAGES_PATH)) {
-      const bibleData = JSON.parse(readFileSync(BIBLE_PASSAGES_PATH, 'utf-8'));
+      const bibleData = JSON.parse(await readFile(BIBLE_PASSAGES_PATH, 'utf-8'));
       for (const p of bibleData) {
         passageMetadata.push({
           id: p.id,
@@ -65,7 +74,7 @@ function ensureLoaded() {
     }
 
     if (existsSync(VOICE_PASSAGES_PATH)) {
-      const voiceData = JSON.parse(readFileSync(VOICE_PASSAGES_PATH, 'utf-8'));
+      const voiceData = JSON.parse(await readFile(VOICE_PASSAGES_PATH, 'utf-8'));
       for (const p of voiceData) {
         passageMetadata.push({
           id: p.id,
@@ -78,10 +87,15 @@ function ensureLoaded() {
         });
       }
     }
+
+    vectorsLoaded = true;
   } catch {
-    // Graceful — resonance just returns empty results
+    // Graceful — resonance returns empty results
   }
 }
+
+// Start loading immediately at module level (non-blocking)
+startLoading();
 
 function cosineSim(a: Float32Array, aOffset: number, b: number[], dim: number): number {
   let dot = 0;
@@ -96,14 +110,20 @@ function cosineSim(a: Float32Array, aOffset: number, b: number[], dim: number): 
 
 export async function POST(req: NextRequest) {
   try {
-    ensureLoaded();
+    // Ensure loading has started
+    const load = startLoading();
+    // Wait up to 10 seconds for vectors to load
+    await Promise.race([
+      load,
+      new Promise<void>((resolve) => setTimeout(resolve, 10000)),
+    ]);
 
-    if (!passageVectors || passageMetadata.length === 0) {
+    if (!vectorsLoaded || !passageVectors || passageMetadata.length === 0) {
       return NextResponse.json({
         scripture: [],
         voices: [],
         pastEntries: [],
-        note: 'Library vectors not loaded. Mount the content volume at /data/resonance/build/output/',
+        note: 'Library vectors are still loading. Try again in a moment.',
       });
     }
 
@@ -113,7 +133,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Vector must be ${DIM} dimensions` }, { status: 400 });
     }
 
-    // Compute similarities against all passages
     const scored: { idx: number; sim: number }[] = [];
     for (let i = 0; i < passageCount; i++) {
       const sim = cosineSim(passageVectors!, i * DIM, vector, DIM);
@@ -124,7 +143,6 @@ export async function POST(req: NextRequest) {
 
     scored.sort((a, b) => b.sim - a.sim);
 
-    // Split into scripture and voices, apply diversity
     const topScripture = scored
       .filter((s) => passageMetadata[s.idx]?.translation != null)
       .slice(0, MAX_PER_CATEGORY)
@@ -148,11 +166,11 @@ export async function POST(req: NextRequest) {
 function toCard(meta: PassageMeta, similarity: number, kind: 'scripture' | 'voice') {
   let source: string;
   if (meta.translation) {
-    const bookName = meta.book_id.replace(/^[A-Z]+_/, '').replace(/_/g, ' ');
+    const bookName = meta.book_id.replace(/^[a-z]+_/, '').replace(/_/g, ' ');
     const ref = meta.verse_start != null
       ? `${bookName} ${meta.chapter ?? ''}:${meta.verse_start}`
       : `${bookName} ${meta.chapter ?? ''}`;
-    source = `${ref} (${meta.translation})`;
+    source = `${ref} (${meta.translation.toUpperCase()})`;
   } else {
     source = meta.book_id;
   }

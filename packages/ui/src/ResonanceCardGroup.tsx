@@ -12,7 +12,7 @@
 
 import { type ReactNode } from 'react';
 import { Pressable, Text, View, StyleSheet } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { WindIcon } from './icons';
 
 import {
   cardSurface,
@@ -43,7 +43,7 @@ export function ResonanceCardGroup({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Feather name="wind" size={14} color={colors.resonance} />
+        <WindIcon size={14} color={colors.resonance} />
         <Text style={styles.headerText}>Resonance</Text>
       </View>
 

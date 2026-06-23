@@ -8,7 +8,7 @@
 
 import { type ReactNode } from 'react';
 import { Pressable } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { BookmarkIcon } from './icons';
 
 import { colors } from '@resonance/theme';
 
@@ -31,11 +31,9 @@ export function BookmarkButton({
       accessibilityLabel={bookmarked ? 'Remove bookmark' : 'Add bookmark'}
       accessibilityState={{ checked: bookmarked }}
     >
-      <Feather
-        name={bookmarked ? 'bookmark' : 'bookmark'}
+      <BookmarkIcon
         size={20}
         color={bookmarked ? colors.accent : tint}
-        // Feather has no filled glyph; the accent color marks the saved state.
       />
     </Pressable>
   );

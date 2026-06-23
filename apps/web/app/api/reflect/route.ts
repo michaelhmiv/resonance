@@ -8,11 +8,18 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { REFLECTION_SYSTEM_PROMPT } from '@resonance/core';
+import { rateLimit } from '../../../lib/ratelimit';
 
 const DEFAULT_MODEL = process.env.LLM_MODEL || 'qwen/qwen-2.5-72b-instruct';
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get('x-forwarded-for') || 'unknown';
+    const rl = rateLimit(ip, 5, 60);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: 'Rate limit exceeded', retryAfter: rl.retryAfter }, { status: 429 });
+    }
+
     const body = await req.json();
     const { action, excerpts, period1Excerpts, period2Excerpts } = body as {
       action: 'reflection_prompt' | 'cluster_label' | 'shift_narrative';
@@ -26,7 +33,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 503 });
     }
 
-    let prompt = '';
+    let userPrompt = '';
+    let systemContent = 'You are a concise assistant. Follow instructions exactly.';
     let maxTokens = 60;
 
     if (action === 'reflection_prompt') {
@@ -34,13 +42,14 @@ export async function POST(req: NextRequest) {
       if (texts.length === 0) {
         return NextResponse.json({ error: 'No sufficiently long excerpts provided' }, { status: 400 });
       }
-      prompt = `${REFLECTION_SYSTEM_PROMPT}\n\nJournal excerpts:\n${texts.join('\n---\n')}\n\nReflection question:`;
+      systemContent = REFLECTION_SYSTEM_PROMPT;
+      userPrompt = `Journal excerpts:\n${texts.join('\n---\n')}\n\nReflection question:`;
     } else if (action === 'cluster_label') {
       const texts = (excerpts ?? []).filter((e) => e.trim().length >= 5).slice(0, 3).map((e) => e.slice(0, 150));
       if (texts.length === 0) {
         return NextResponse.json({ error: 'No excerpts provided' }, { status: 400 });
       }
-      prompt = `Summarize these journal entries in 2-3 words. Output only the label:\n${texts.join('\n')}\n\nLabel:`;
+      userPrompt = `Summarize these journal entries in 2-3 words. Output only the label:\n${texts.join('\n')}\n\nLabel:`;
       maxTokens = 15;
     } else if (action === 'shift_narrative') {
       const p1 = (period1Excerpts ?? []).slice(0, 3).map((e) => e.slice(0, 150));
@@ -48,7 +57,7 @@ export async function POST(req: NextRequest) {
       if (p1.length === 0 || p2.length === 0) {
         return NextResponse.json({ error: 'Both period excerpts required' }, { status: 400 });
       }
-      prompt = `Compare these two sets of journal entries. Write 2-3 sentences describing what shifted between them. Do not give advice.\n\nEarlier:\n${p1.join('\n')}\n\nLater:\n${p2.join('\n')}\n\nWhat shifted:`;
+      userPrompt = `Compare these two sets of journal entries. Write 2-3 sentences describing what shifted between them. Do not give advice.\n\nEarlier:\n${p1.join('\n')}\n\nLater:\n${p2.join('\n')}\n\nWhat shifted:`;
       maxTokens = 80;
     } else {
       return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
@@ -64,14 +73,16 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model: DEFAULT_MODEL,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          { role: 'system', content: systemContent },
+          { role: 'user', content: userPrompt },
+        ],
         max_tokens: maxTokens,
         temperature: 0.7,
       }),
     });
 
     if (!response.ok) {
-      const errText = await response.text();
       return NextResponse.json({ error: `OpenRouter error: ${response.status}` }, { status: 502 });
     }
 
@@ -83,7 +94,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ text });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

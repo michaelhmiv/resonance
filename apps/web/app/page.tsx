@@ -17,11 +17,30 @@ export default function HomePage(): ReactNode {
   const [activeTab, setActiveTab] = useState<Tab>('journal');
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} className="resonance-container">
       {/* ── Header ──────────────────────────────────────────── */}
-      <View style={styles.header}>
+      <View style={styles.header} className="resonance-header">
         <Text style={styles.headerTitle}>Resonance</Text>
-        <TabBar activeTab={activeTab} onSelect={setActiveTab} />
+        <View style={styles.tabBar} className="resonance-tab-bar">
+          {([
+            { id: 'journal', label: 'Journal' },
+            { id: 'word', label: 'Word' },
+            { id: 'patterns', label: 'Patterns' },
+          ] as const).map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <Pressable
+                key={tab.id}
+                onPress={() => onSelect(tab.id)}
+                style={[styles.tab, active && styles.tabActive]}
+              >
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
       {/* ── Tab content ─────────────────────────────────────── */}
@@ -39,42 +58,16 @@ export default function HomePage(): ReactNode {
       </View>
     </View>
   );
-}
 
-function TabBar({ activeTab, onSelect }: { activeTab: Tab; onSelect: (t: Tab) => void }): ReactNode {
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'journal', label: 'Journal' },
-    { id: 'word', label: 'Word' },
-    { id: 'patterns', label: 'Patterns' },
-  ];
-  return (
-    <View style={styles.tabBar}>
-      {tabs.map((tab) => {
-        const active = activeTab === tab.id;
-        return (
-          <Pressable
-            key={tab.id}
-            onPress={() => onSelect(tab.id)}
-            style={[styles.tab, active && styles.tabActive]}
-          >
-            <Text style={[styles.tabText, active && styles.tabTextActive]}>
-              {tab.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
+  function onSelect(t: Tab) {
+    setActiveTab(t);
+  }
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#faf9f6',
-    maxWidth: 720,
-    width: '100%',
-    marginLeft: 'auto',
-    marginRight: 'auto',
     minHeight: '100vh',
   },
   header: {
@@ -86,10 +79,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   headerTitle: {
-    fontFamily: 'Georgia, serif',
-    fontSize: 24,
+    fontFamily: 'Cormorant Garamond, Georgia, serif',
+    fontSize: 28,
     fontWeight: '600',
     color: '#3a3530',
     letterSpacing: 0.4,
@@ -103,6 +98,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
+    cursor: 'pointer',
   },
   tabActive: {
     borderBottomColor: '#8b7355',
@@ -130,6 +126,7 @@ const styles = StyleSheet.create({
   settingsLink: {
     paddingVertical: 6,
     paddingHorizontal: 16,
+    cursor: 'pointer',
   },
   settingsText: {
     fontFamily: 'Inter, sans-serif',
