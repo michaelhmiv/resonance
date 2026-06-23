@@ -12,14 +12,12 @@
     "@resonance/core": "*",
     "@resonance/theme": "*",
     "@resonance/ui": "*",
-    "better-sqlite3": "^12.11.1",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-native-web": "^0.19.13"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/react": "^19.0.0",
     "typescript": "~6.0.3"
   }

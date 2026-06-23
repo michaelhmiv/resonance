@@ -1,84 +1,52 @@
-/**
- * GET /api/patterns/weekly
- *
- * Returns the count of journal entries from the past 7 days, the rolling
- * date range, and up to 5 excerpts (truncated to 150 chars). When there are
- * entries and OPENROUTER_API_KEY is set, also asks the LLM for a 2-3 word
- * theme label. Label generation is best-effort and never fails the request.
- */
+import { NextResponse, type NextRequest } from 'next/server';
+import { getJournalEntries } from '../../../../lib/db';
+import { rateLimit } from '../../../../lib/ratelimit';
 
-import { NextResponse } from 'next/server';
-import { getDb } from '../../../../lib/db';
-
-type TextRow = { text: string };
-
-const WEEK_SECONDS = 7 * 24 * 60 * 60;
-
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const db = getDb();
+    const ip = req.headers.get('x-forwarded-for') || 'unknown';
+    const rl = rateLimit(ip, 10, 60);
+    if (!rl.allowed) {
+      return NextResponse.json({ error: 'Rate limit' }, { status: 429 });
+    }
 
-    const endSec = Math.floor(Date.now() / 1000);
-    const startSec = endSec - WEEK_SECONDS;
+    const entries = getJournalEntries();
+    const weekAgo = Math.floor(Date.now() / 1000) - 7 * 86400;
+    const weekEntries = entries.filter(e => e.created_at >= weekAgo);
 
-    const rows = db
-      .prepare<unknown[], TextRow>(
-        'SELECT text FROM journal_entries WHERE created_at >= ? ORDER BY created_at DESC',
-      )
-      .all(startSec);
+    const excerpts = weekEntries.slice(0, 5).map(e => e.text.slice(0, 150));
+    const entryCount = weekEntries.length;
+    const startDate = new Date(weekAgo * 1000).toISOString().split('T')[0];
+    const endDate = new Date().toISOString().split('T')[0];
 
-    const excerpts = rows
-      .map((r) => r.text)
-      .slice(0, 5)
-      .map((t) => t.slice(0, 150));
-
-    const response: {
-      entryCount: number;
-      dateRange: { start: string; end: string };
-      excerpts: string[];
-      themeLabel?: string;
-    } = {
-      entryCount: rows.length,
-      dateRange: {
-        start: new Date(startSec * 1000).toISOString(),
-        end: new Date(endSec * 1000).toISOString(),
-      },
-      excerpts,
-    };
-
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (response.entryCount > 0 && apiKey) {
+    let themeLabel: string | undefined;
+    if (entryCount > 0 && process.env.OPENROUTER_API_KEY) {
       try {
-        const model = process.env.LLM_MODEL || 'qwen/qwen-2.5-72b-instruct';
-        const promptText = `Summarize these journal entries in 2-3 words. Output only the label:\n${excerpts.join('\n')}\nLabel:`;
-
-        const llmResp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${apiKey}`,
+            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://resonance.up.railway.app',
             'X-Title': 'Resonance',
           },
           body: JSON.stringify({
-            model,
-            messages: [{ role: 'user', content: promptText }],
+            model: process.env.LLM_MODEL || 'qwen/qwen-2.5-72b-instruct',
+            messages: [
+              { role: 'system', content: 'You are a concise assistant.' },
+              { role: 'user', content: `Summarize these journal entries in 2-3 words. Output only the label:\n${excerpts.join('\n')}\n\nLabel:` },
+            ],
             max_tokens: 15,
           }),
         });
-
-        if (llmResp.ok) {
-          const data = await llmResp.json();
-          const label: string | undefined = data?.choices?.[0]?.message?.content?.trim();
-          if (label) response.themeLabel = label;
+        if (response.ok) {
+          const data = await response.json();
+          themeLabel = data.choices?.[0]?.message?.content?.trim();
         }
-      } catch {
-        // Best-effort: a label failure must not break the weekly summary.
-      }
+      } catch { /* best-effort */ }
     }
 
-    return NextResponse.json(response);
+    return NextResponse.json({ entryCount, dateRange: { start: startDate, end: endDate }, excerpts, themeLabel });
   } catch {
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+    return NextResponse.json({ entryCount: 0, dateRange: { start: '', end: '' }, excerpts: [] });
   }
 }
