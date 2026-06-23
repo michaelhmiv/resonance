@@ -1,0 +1,13 @@
+[build]
+builder = "nixpacks"
+watchPatterns = [
+  "apps/web/**",
+  "packages/**"
+]
+
+[deploy]
+startCommand = "cd apps/web && npm start"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 60
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
