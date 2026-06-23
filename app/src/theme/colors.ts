@@ -1,0 +1,57 @@
+/**
+ * Resonance color system.
+ *
+ * The palette is restrained and warm: a cream paper background, soft white
+ * cards with hairline borders (no drop shadows), a single restrained-brown
+ * accent for active states, and a small curated highlight palette used only
+ * for text highlights in the Word tab.
+ *
+ * See design spec §2.1.
+ */
+
+export const colors = {
+  /** Background — warm cream paper. Every app surface sits on this. */
+  background: '#faf9f6',
+
+  /** Card surface — softer white tile. */
+  surface: '#ffffff',
+
+  /** Hairline card border. No drop shadows anywhere. */
+  border: '#e8e5e0',
+
+  /** Primary accent — restrained brown. Active states, links, tab indicator. */
+  accent: '#8b7355',
+
+  /** Muted accent for secondary chrome. */
+  accentMuted: '#a89880',
+
+  /** Text on cream. */
+  textPrimary: '#3a3530',
+  textSecondary: '#7a7368',
+  textTertiary: '#9a9388',
+
+  /** Placeholder text. */
+  placeholder: '#b8b0a4',
+
+  // ── Highlight palette (Word tab only) ──────────────────────────────
+  /** Warm gold. */
+  highlightGold: '#d4a574',
+  /** Soft sage. */
+  highlightSage: '#a8b89e',
+  /** Muted rose. */
+  highlightRose: '#c9a0a0',
+
+  /** Footnote / resonance mark — quiet gold. */
+  resonance: '#c9a25a',
+} as const;
+
+export type ColorToken = keyof typeof colors;
+
+/** The curated text-highlight set, in display order. */
+export const highlightPalette = [
+  colors.highlightGold,
+  colors.highlightSage,
+  colors.highlightRose,
+] as const;
+
+export type HighlightColor = (typeof highlightPalette)[number];
