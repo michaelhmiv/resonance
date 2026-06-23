@@ -237,10 +237,12 @@ Three tabs + settings icon in header.
 ```
 Header → Settings/Profile (full screen)
          ├ Embedding model
+         ├ Reflection model (LLM)
          ├ Reading preferences
          ├ Privacy & data
          ├ Storage
-         └ Accessibility
+         ├ Accessibility
+         └ Licenses & Acknowledgments
 
 Tabs
  ├ Journal
@@ -540,9 +542,7 @@ When the user looks at a theme cluster across weeks or months, they see entries 
 
 ### 8.1 Access
 
-Single header icon → **full screen**. Never a fourth tab.
-
-### 8.2 Sections
+Single header icon → **full screen**. Seven sections:
 
 | Section | Contents |
 |---|---|
@@ -551,6 +551,7 @@ Single header icon → **full screen**. Never a fourth tab.
 | **Privacy & data** | The explicit, single-line assurance that writing stays on device. Export entries (Markdown). Erase-all. App lock (opt-in: biometric or PIN, off by default). |
 | **Storage** | Library footprint. Per-package size. Storage headroom. Per-vector-model breakdown if multiple model vector sets are downloaded. |
 | **Accessibility** | Larger text, high-contrast variant, reduced motion, dynamic type. |
+| **Licenses & Acknowledgments** | Discreet section at the bottom of Settings. Lists all third-party content and software licenses: Bible translations (public domain), Library texts (public domain, with source attribution), embedding and LLM models (with license per model), open-source software used (ONNX Runtime, llama.cpp/llama.rn, React Native, etc.), font licenses. Not hidden — accessible via a simple "Licenses" or "Acknowledgments" row at the bottom of the Settings screen. Opens a scrollable screen with clear, plain-language attributions grouped by category. |
 
 **Note:** Library & Book Packages management lives in the **Word tab** via the discrete library icon, not in Settings. Settings Storage section shows sizes and storage info only.
 
@@ -672,6 +673,8 @@ Categories:
 | 22 | Export format | Markdown | Jun 24 |
 | 23 | App lock | Opt-in (off by default); biometric or PIN | Jun 24 |
 | 24 | Verse of the day scope | Curated subset (Psalms, Gospels, Epistles, select prophetic); pre-built sequence | Jun 24 |
+| 25 | LLM layer | Opt-in enhancement via Qwen 2.5 1.5B (llama.rn). Cluster labels, reflection prompts, "what shifted", weekly roundup. All have deterministic fallbacks. Separate opt-in from embedding model. Loaded on-demand, freed when idle. Pre-computed daily/weekly. No token caps. | Jun 24 |
+| 26 | Licenses & disclosures | Discreet "Licenses" row at bottom of Settings. Full scrollable screen with all attributions: Bible translations, Library texts + sources, embedding + LLM models + licenses, open-source software, fonts, cross-references. Updates dynamically with installed models/packages. | Jun 24 |
 
 ---
 

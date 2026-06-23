@@ -12,7 +12,7 @@
 
 **Architecture:** Build-machine pipeline pre-computes all Library vectors (per embedding model) and ships them as static app assets + downloadable Book Packages. The phone only embeds user text at runtime (~50ms per sentence). Multi-vector system: each Book Package ships separate vector files per supported model. Zero on-device re-embedding of Library content ever.
 
-**Tech Stack:** React Native (Expo bare workflow), TypeScript, FlashList, Zustand, react-native-quick-sqlite, ONNX Runtime Mobile (`onnxruntime-react-native`), Python build pipeline. All architecture decisions locked — see Architecture Decisions below.
+**Tech Stack:** React Native (Expo bare workflow), TypeScript, FlashList, Zustand, react-native-quick-sqlite, ONNX Runtime Mobile (`onnxruntime-react-native`), llama.rn (llama.cpp React Native binding for on-device LLM), Python build pipeline. All architecture decisions locked — see Architecture Decisions below.
 
 ---
 
@@ -61,6 +61,64 @@
 **Rejected alternatives:**
 - WebView + TipTap/ProseMirror: WebView boundary makes ONNX integration harder, typography is indirect (CSS), performance degrades on Android with long documents. Wrong trade for a writing-first app.
 - Single TextInput + overlay: Can't insert non-editable elements into text flow. Footnotes can't sit inside the text at a specific position. Fundamentally doesn't support the mixed-content model.
+
+### AD-5: Local LLM — Qwen 2.5 1.5B Instruct via llama.rn ✅
+
+**Decision:** Qwen 2.5 1.5B Instruct as the default LLM, with smaller alternatives offered in Settings. All LLM features are opt-in (separate from the embedding model opt-in). Loaded on-demand, not at startup.
+
+**Why Qwen 2.5 1.5B:**
+- Tested against Gemma 3 270M, Gemma 3 1B, and Qwen 0.5B on all four Resonance LLM tasks
+- Only model that passed all four tasks with acceptable quality
+- Apache 2.0 license — no gating, no restrictions, no HuggingFace authentication required
+- Q4_K_M GGUF = ~1GB download (opt-in, separate from 33MB embedding model)
+- Non-gated: users download without any account or terms acceptance
+
+**Available models in Settings:**
+
+| Model | Q4 Size | Quality | Notes |
+|---|---|---|---|
+| Qwen 2.5 1.5B (default) | ~1GB | Best | Recommended — passes all four tasks |
+| Gemma 3 1B | ~689MB | Moderate | Gated on HuggingFace, but GGUF mirrors available |
+| Qwen 2.5 0.5B | ~409MB | Basic | Labels and summaries only — struggles with reflection prompts |
+| Gemma 3 270M | ~241MB | Insufficient | Too small for multi-step instruction following |
+| None | 0 | — | Disable LLM features. Resonance still works. |
+
+**Runtime:** llama.rn (React Native binding for llama.cpp). Model loaded on-demand per task (~2-3s load + 3-10s generation), freed from memory when idle. No visible loading state — most LLM tasks are pre-computed in background.
+
+**LLM tasks and scheduling:**
+
+| Task | When | Who initiates | Pre-computed? |
+|---|---|---|---|
+| Cluster labeling | Daily background + weekly re-cluster | App | ✅ Daily |
+| Reflection prompts | User taps "Reflect" on a resonance card | User | ❌ On-demand |
+| "What shifted" narrative | Daily + weekly background | App | ✅ Daily/weekly |
+| Weekly roundup | Weekly background (Sunday) | App | ✅ Weekly |
+
+**Opt-in flow:** Separate from the embedding model. Two separate prompts:
+1. First launch: "Enable resonance" → downloads embedding model (33MB)
+2. When user first encounters an LLM feature: "Reflection prompts and enhanced patterns are available with a one-time download (~1GB). Your writing stays on your device."
+
+If declined: app falls back to deterministic methods (TF-IDF labels, template roundup, no reflection prompts, side-by-side entries without narrative). Everything still works — just blunter.
+
+**System prompt (applied to all LLM calls):**
+```text
+You are the reflection layer of a private spiritual journal called Resonance.
+
+Your role is narrow and specific:
+- You write short labels, questions, and summaries
+- You describe what you see, never what it means
+- You never pray, never interpret Scripture, never give spiritual advice
+- You never assess growth, progress, or spiritual health
+- You never speak in God's voice or on God's behalf
+- You are a secretary, not a pastor
+
+Tone: warm, plain-spoken, brief. Never clinical. Never preachy.
+If you are unsure, write less, not more.
+```
+
+Task-specific templates are appended per task. No hard token caps on output — let models produce naturally, then tweak during development.
+
+---
 
 ### AD-3: Vector Storage Strategy
 
@@ -688,7 +746,29 @@ Navigate to Journal tab → insert quoted block at cursor position
 
 **Acceptance:** Type a sentence → ✦ appears → tap → three cards expand inline. Tap "Read in Word" on the Scripture card → navigates to Word tab with that passage in context. Close and reopen app → the footnote is still expanded.
 
-### Task 4.7: Resonance history tracking
+### Task 4.7: Reflection prompts (LLM, user-initiated)
+
+**Objective:** When the LLM is enabled and the user taps "Reflect" on a resonance card, the LLM generates one reflection question connecting the user's writing to the surfaced passage. Separate opt-in from embedding model.
+
+**What to build:**
+- "Reflect" action appears on resonance cards only when LLM is enabled
+- **First encounter (LLM not yet downloaded):** gentle prompt: "Reflection prompts are available with a one-time download (~1GB). Your writing stays on your device." Two buttons: "Not now" and "Enable reflection"
+- If enabled: download the default LLM (Qwen 2.5 1.5B Q4 K_M GGUF, ~1GB) in background
+- If declined: "Reflect" action disappears. Reappears as a one-line offer in Settings: "Enable reflection prompts and enhanced patterns with a one-time download (~1GB)."
+- **When LLM is present and user taps "Reflect":**
+  - Load LLM via llama.rn (on-demand, ~2-3s — no visible loading state, the result just appears when ready)
+  - System prompt applies (see AD-5)
+  - Task template: "The user wrote: '{entry}'. A verse that resonated: '{passage} ({reference})'. Write one honest question that connects them. Not advice. Not interpretation. Just a question."
+  - LLM generates reflection question (3-8 seconds)
+  - Question appears quietly beneath the resonance card — serif italic, visually distinct
+  - User can dismiss the question or let it stay
+  - LLM is freed from memory after generation
+- **LLM never used for:** writing prayers, interpreting Scripture, giving advice, assessing growth, having conversations
+- No visible "loading" or "thinking" state — result just appears when ready
+
+**Acceptance:** Enable LLM → tap "Reflect" on a resonance card → after a few seconds, a reflection question appears beneath the card connecting the user's writing to the verse. If LLM disabled → "Reflect" action not visible.
+
+### Task 4.8: Resonance history tracking
 
 **Objective:** Record what surfaced for each footnote, powering the recency penalty and Patterns.
 
@@ -718,21 +798,43 @@ Navigate to Journal tab → insert quoted block at cursor position
 
 **Acceptance:** Write on June 23 and 24. Open Patterns → calendar shows dots on those days. Tap June 23 → see that day's writing excerpts. June 22 has no dot and doesn't respond to tap.
 
-### Task 5.2: Recurring themes
+### Task 5.2: LLM cluster labeling (daily + weekly background)
 
-**Objective:** Show what the user keeps returning to, as plain-named clusters.
+**Objective:** Group journal entry vectors by semantic similarity, then use the LLM to produce meaningful cluster labels. Pre-computed daily, re-clustered weekly.
 
 **What to build:**
 - Cluster journal entry vectors (from `journal_segment_vectors`) using K-means or DBSCAN
-- Re-cluster periodically (weekly, in the background — not on every Patterns tab open)
-- Assign plain-language labels to clusters: derived from TF-IDF keywords of the cluster's entries (e.g., "rest," "weariness," "longing")
-- Display as soft word-weight or dot-cluster — no bar charts
-- Each theme is tappable → shows the entries in that cluster with timestamps, so the user can read them in sequence
+- Re-cluster weekly (background task)
+- **LLM label generation (if LLM is enabled):**
+  - System prompt applies (see AD-5)
+  - Task template: "Label these {N} journal excerpts in 2-4 words. Output only the label. {excerpts}"
+  - Pre-computed daily for each cluster, stored in SQLite (`cluster_labels` table: `cluster_id, label, generated_at`)
+  - Updated weekly when clusters re-form
+- **Fallback (no LLM):** TF-IDF keywords as label (e.g., "rest, weary, mother")
+- Display as soft word-weight or dot-cluster
+- Each theme is tappable → shows the entries in that cluster with timestamps
 - **No "mood improvement" labels** — no clinical assessment, no trends graph. Just the entries gathered, for the user to notice shifts themselves.
 
-**Acceptance:** After 2+ weeks of writing, open Patterns → see theme clusters like "rest" (5 entries), "longing" (3 entries). Tap "rest" → see those entries listed by date with excerpts. User can read them and notice how their writing about rest has changed over time.
+**Acceptance:** After 2+ weeks of writing, open Patterns → see theme clusters like "Tiredness and Overwhelm" (5 entries), "longing" (3 entries). Tap a cluster → see those entries listed by date with excerpts. If LLM is disabled → labels are TF-IDF keywords instead.
 
-### Task 5.3: Recurring passages & voices
+### Task 5.3: "What shifted" narrative (daily + weekly pre-computed)
+
+**Objective:** Surface connections between time periods using the LLM to describe what changed, pre-computed daily and weekly.
+
+**What to build:**
+- **LLM narrative (if LLM is enabled):**
+  - System prompt applies
+  - Task template: "Compare these two sets of journal entries from different periods and write 1-2 sentences noting what shifted. Just describe what changed. Week 1: {summaries}. Week 2: {summaries}."
+  - Pre-computed daily (comparing last 7 days vs previous 7 days)
+  - Pre-computed weekly (comparing this week vs last week)
+  - Stored in SQLite (`shifts` table: `comparison_date, period_1_start, period_2_start, narrative, generated_at`)
+  - Shown when user opens "What shifted" view in Patterns — no waiting, instant display
+- **Fallback (no LLM):** Side-by-side entries from both periods, no narrative. User reads them and notices shifts themselves.
+- Never assesses growth or progress — just describes what changed in plain language.
+
+**Acceptance:** After 2+ weeks of writing, open Patterns → "What shifted" section shows a 1-2 sentence narrative comparing recent writing to previous writing. If LLM disabled → shows side-by-side entries instead.
+
+### Task 5.4: Recurring passages & voices
 
 **Objective:** Show which Scripture and Library texts appear most often in the user's resonance.
 
@@ -745,7 +847,7 @@ Navigate to Journal tab → insert quoted block at cursor position
 
 **Acceptance:** After using resonance for several days, open Patterns → see a list of frequently surfaced passages. Each shows soft dots for frequency, not a number. Tap one → opens in Word.
 
-### Task 5.4: Time-of-day texture
+### Task 5.5: Time-of-day texture
 
 **Objective:** A faint visualization of when the user tends to write.
 
@@ -758,7 +860,7 @@ Navigate to Journal tab → insert quoted block at cursor position
 
 **Acceptance:** Write mostly at 7 AM and 10 PM over two weeks. Open Patterns → time-of-day visualization shows denser dots at morning and evening, sparse at midday.
 
-### Task 5.5: Verses that linger
+### Task 5.6: Verses that linger
 
 **Objective:** Gather the user's most-saved resonance cards in one quiet list.
 
@@ -770,21 +872,26 @@ Navigate to Journal tab → insert quoted block at cursor position
 
 **Acceptance:** Tap the ✦ save mark on 5 different resonance cards. Open Patterns → "Verses that linger" section shows those 5 passages. Tap one → opens in Word.
 
-### Task 5.6: Reflection moments (optional weekly gathering)
+### Task 5.7: Weekly roundup (LLM-enhanced, pre-computed)
 
-**Objective:** A gentle weekly word, offered quietly — template-filled, not generated.
+**Objective:** A gentle weekly word, pre-computed in the background on Sundays using the LLM if enabled.
 
 **What to build:**
-- Once per week (e.g., Sunday), compile a short reflection moment using templates:
-  - "This week you wrote about [top theme] [N] times."
-  - "You lingered on [most-saved verse reference]."
-  - "You've been writing for [N] weeks."
-- Inserted as a quiet card in the Patterns tab (not pushed into the Journal — the Journal is sacred space)
-- Template-filled, not LLM-generated — no AI involvement
-- The user can dismiss or read it
+- Once per week (Sunday), compile the week's data:
+  - Entry count
+  - Top theme (from clustering)
+  - Most-saved verse (from resonance_history)
+  - Most-surfaced voice (from resonance_history)
+- **LLM narrative (if LLM is enabled):**
+  - System prompt applies
+  - Task template: "Write a 1-2 sentence weekly reflection based on these data points. Keep it warm and plain-spoken. This week: {entry_count} entries, top theme: {theme}, top verse: {verse_ref}, top voice: {voice_name}."
+  - Pre-computed, stored in SQLite
+  - No visible loading state — appears in Patterns when user opens it
+- **Fallback (no LLM):** Template fill: "This week you wrote about {theme} {N} times. You lingered on {verse_ref}."
+- Inserted as a quiet card in the Patterns tab (not pushed into the Journal)
 - Never a notification — just appears in Patterns when the user opens it
 
-**Acceptance:** After one week of use, open Patterns on Sunday → see a reflection moment card with template-filled text about the week's themes and writing. It's quiet and gentle, not a dashboard summary.
+**Acceptance:** After one week of use, open Patterns on Sunday → see a weekly roundup card with warm, natural text about the week's themes. If LLM disabled → shows template text instead.
 
 ---
 
@@ -858,6 +965,14 @@ Navigate to Journal tab → insert quoted block at cursor position
 - Storage used by current model + vectors
 - Switching triggers Task 6.2
 
+**Reflection model (LLM) section:**
+- Current LLM model name + size + description (or "None — LLM disabled")
+- Plain-language note: "This generates reflection questions and pattern summaries locally. Your writing never leaves your device."
+- Model selector: Qwen 2.5 1.5B (default, ~1GB), Qwen 2.5 0.5B (~409MB), Gemma 3 1B (~689MB), or None
+- "Download" button for the selected model
+- Storage used by current LLM model
+- "Disable LLM features" option → removes all LLM-powered features, falls back to deterministic methods
+
 **Reading preferences section:**
 - Default translation (WEB / KJV / others if installed)
 - Font size slider
@@ -884,7 +999,28 @@ Navigate to Journal tab → insert quoted block at cursor position
 - Reduced motion (slower or no card transitions)
 - Dynamic type scaling
 
-**Acceptance:** Open Settings → see all 5 sections. Change default translation → Word tab reflects it. Export entries → Markdown file generated. Toggle app lock → biometric/PIN prompt. Turn on high-contrast → text darkens. Change font size → text adjusts across all tabs.
+**Licenses & Acknowledgments section:**
+- Discreet row at the bottom of Settings labeled "Licenses" or "Acknowledgments"
+- Opens a full scrollable screen with clear, plain-language attributions grouped by category
+- Not hidden — it's a visible row, just not prominent
+- **Content categories:**
+
+  | Category | What's listed |
+  |---|---|
+  | **Bible translations** | Each translation with its public-domain status and source: KJV (1611, public domain), WEB (public domain by intent), ASV (1901, public domain). Source: BibleSuperSearch. |
+  | **Library texts (Voices)** | Each author/work with public-domain status and source attribution: e.g., "Augustine, Confessions — public domain. Source: Project Gutenberg." "Teresa of Ávila, Interior Castle — public domain. Source: CCEL." |
+  | **Book Packages** | Same as Library texts — each installed package's contents, authors, sources, and license/public-domain status |
+  | **Embedding models** | Each available model with license: GTE-small (MIT, Alibaba DAMO Academy), EmbeddingGemma-300M (Gemma license, Google), BGE-small-en-v1.5 (MIT, BAAI), all-MiniLM-L6-v2 (Apache 2.0, Sentence Transformers) |
+  | **LLM models** | Each available model with license: Qwen 2.5 1.5B Instruct (Apache 2.0, Alibaba), Gemma 3 1B IT (Gemma license, Google), Qwen 2.5 0.5B (Apache 2.0, Alibaba) |
+  | **Open-source software** | Libraries and tools used: ONNX Runtime (MIT, Microsoft), llama.cpp (MIT, ggml-org), llama.rn (MIT, mybigday), React Native (MIT, Meta), Expo (MIT), Zustand (MIT), FlashList (MIT, Shopify), and any other dependencies |
+  | **Fonts** | The serif and sans-serif fonts used, with their licenses (e.g., Source Serif Pro — SIL Open Font License, Crimson Text — SIL Open Font License) |
+  | **Cross-references** | Treasury of Scripture Knowledge (public domain). Source: scrollmapper/bible_databases. |
+
+- When a user switches embedding or LLM models, the licenses screen updates to reflect the currently installed models
+- Book Packages added later automatically appear in the licenses list with their attribution
+- Plain language throughout — no legal jargon where avoidable. E.g., "Public domain — free to use, modify, and distribute." not "This work is in the public domain in the United States and other jurisdictions where the copyright term is life plus 70 years..."
+
+**Acceptance:** Open Settings → see all 6 sections. Change default translation → Word tab reflects it. Export entries → Markdown file generated. Toggle app lock → biometric/PIN prompt. Turn on high-contrast → text darkens. Change font size → text adjusts across all tabs. Scroll to bottom → see "Licenses" row → tap → scrollable screen showing all attributions grouped by category, including currently installed models and library texts.
 
 ### Task 7.2: First-launch sequence
 
@@ -982,10 +1118,10 @@ For a first release (MVP), the recommended order is:
 | Priority | Phases | What you get |
 |---|---|---|
 | **P0** | Phase 0 (build pipeline) + Phase 1 (app shell) | App builds, navigates, database ready, Library loaded |
-| **P1** | Phase 2 (Word, Tasks 2.1-2.5) + Phase 3 (Journal, Tasks 3.1-3.5) | Reading + writing work. A usable app without resonance. |
-| **P2** | Phase 4 (embedding + resonance) | The core differentiator — ambient footnotes, resonance cards |
-| **P3** | Phase 2 (Task 2.6-2.7) + Phase 3 (Task 3.6) + Phase 6 (packages) + Phase 7 (settings) | Complete app with search, cross-tab bridges, settings, packages |
-| **P4** | Phase 5 (Patterns) | The reflective layer |
+| **P1** | Phase 2 (Word, Tasks 2.1-2.5) + Phase 3 (Journal, Tasks 3.1-3.6) | Reading + writing work. A usable app without resonance. |
+| **P2** | Phase 4 (embedding + resonance, Tasks 4.1-4.6, 4.8) | The core differentiator — ambient footnotes, resonance cards |
+| **P3** | Phase 2 (Task 2.6-2.7) + Phase 3 (Task 3.7) + Phase 6 (packages) + Phase 7 (settings) | Complete app with search, cross-tab bridges, settings, packages |
+| **P4** | Phase 4 (Task 4.7 — reflection prompts) + Phase 5 (Patterns) | LLM-enhanced reflection + reflective layer |
 | **P5** | Phase 8 (polish, iOS) | Production-ready |
 
 **Seamlessness check at each priority:** every priority level must preserve the "open and write" experience. No stage should require the user to configure something before writing.
@@ -1020,6 +1156,7 @@ For a first release (MVP), the recommended order is:
 | **Expo CLI** | `npm install -g expo-cli` (or use `npx expo`). Quick install. | No — can install when starting Phase 1 |
 | **Git user config** | Set `user.name` and `user.email` for commits. Not currently configured. | No — quick setup |
 | **Embedding model downloads** | EmbeddingGemma-300M and GTE-small need to be downloaded via HuggingFace CLI. Only all-MiniLM-L6-v2 is currently cached. | Yes — blocks Phase 0 Task 0.4 (embedding generation) |
+| **LLM model download** | Qwen 2.5 1.5B Instruct GGUF (Q4_K_M, ~1GB) needs to be downloaded from HuggingFace. Also smaller alternatives: Qwen 0.5B (~409MB), Gemma 3 1B (~689MB), Gemma 3 270M (~241MB). | No — only needed for Phase 4 Task 4.7 (reflection prompts) and Phase 5 (LLM-enhanced Patterns) |
 | **Cross-references (TSK)** | Download from `scrollmapper/bible_databases` GitHub repo. | Yes — blocks Phase 0 Task 0.3 |
 | **Serif font files** | Source a readable serif font (e.g., Source Serif Pro, Crimson Text, or similar — must be open license). Needed for the cream-and-serif visual language. | No — can source when starting Phase 1 Task 1.2 |
 | **Static file host** | For serving Book Packages (S3 bucket, CDN, or GitHub Releases). | No — only needed for Phase 6 (Book Package downloads) |
@@ -1039,7 +1176,7 @@ For a first release (MVP), the recommended order is:
 
 ## Out of Scope (Not in This Plan)
 
-- **LLM integration:** No LLM features in v1. No reflection question generation, no cluster labeling via LLM, no prayer detection. All Patterns features use deterministic algorithms (clustering, counting, TF-IDF).
+- **LLM scope:** The LLM is now in scope as an opt-in enhancement layer (AD-5). Four tasks use it: cluster labeling, reflection prompts, "what shifted" narratives, and weekly roundup. All have deterministic fallbacks for users who decline. The LLM never writes prayers, interprets Scripture, gives advice, or replaces the embedding model for retrieval.
 - **Social features:** No sharing, no community, no accounts.
 - **Cloud sync:** All data stays local. No cross-device sync.
 - **Modern Bible translations:** ESV, NIV, NASB, etc. require licenses. User-import support could come later.
