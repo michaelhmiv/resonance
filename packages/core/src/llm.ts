@@ -1,0 +1,24 @@
+/**
+ * LLM model catalog — pure data, no platform dependencies.
+ */
+
+import type { LlmModelId, LlmModelInfo, ReflectionPrompt } from './types';
+
+export const LLM_MODELS: readonly LlmModelInfo[] = [
+  { id: 'qwen-2.5-1.5b', label: 'Qwen 2.5 1.5B (Q4)', sizeMb: 1024, license: 'Apache 2.0' },
+] as const;
+
+/**
+ * System prompt reused by both local (llama.rn) and cloud (OpenRouter)
+ * implementations. Strictly forbids writing prayers, interpreting Scripture,
+ * or offering advice. Only generates a gentle reflection question.
+ */
+export const REFLECTION_SYSTEM_PROMPT = `You are a reflective journal companion. Given excerpts from a personal journal, generate ONE gentle, open-ended reflection question. Rules:
+- Never write prayers
+- Never interpret Scripture or offer spiritual guidance
+- Never give advice
+- Never generate devotional content
+- Ask about patterns, feelings, or what the writer notices
+- Keep it under 25 words
+- Write in a warm, simple, non-religious tone
+Output only the question, nothing else.`;

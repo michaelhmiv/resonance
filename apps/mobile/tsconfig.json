@@ -1,0 +1,32 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@resonance/core": ["../../packages/core/src"],
+      "@resonance/core/*": ["../../packages/core/src/*"],
+      "@resonance/theme": ["../../packages/theme/src"],
+      "@resonance/theme/*": ["../../packages/theme/src/*"],
+      "@resonance/ui": ["../../packages/ui/src"],
+      "@resonance/ui/*": ["../../packages/ui/src/*"]
+    },
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0"
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../../packages/core/src/**/*.ts",
+    "../../packages/theme/src/**/*.ts",
+    "../../packages/ui/src/**/*.ts",
+    "../../packages/ui/src/**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "ios",
+    "android"
+  ]
+}
