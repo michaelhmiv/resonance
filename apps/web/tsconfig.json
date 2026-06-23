@@ -1,0 +1,30 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@resonance/core": ["../../packages/core/src"],
+      "@resonance/core/*": ["../../packages/core/src/*"],
+      "@resonance/theme": ["../../packages/theme/src"],
+      "@resonance/theme/*": ["../../packages/theme/src/*"],
+      "@resonance/ui": ["../../packages/ui/src"],
+      "@resonance/ui/*": ["../../packages/ui/src/*"]
+    },
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "jsx": "preserve",
+    "moduleResolution": "bundler",
+    "plugins": [{ "name": "next" }],
+    "lib": ["dom", "dom.iterable", "esnext"]
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "../../packages/core/src/**/*.ts",
+    "../../packages/theme/src/**/*.ts",
+    "../../packages/ui/src/**/*.tsx",
+    "../../packages/ui/src/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}

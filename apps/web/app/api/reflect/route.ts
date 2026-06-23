@@ -1,0 +1,89 @@
+/**
+ * POST /api/reflect — LLM-powered reflection prompts, cluster labels,
+ * and "what shifted" narratives via OpenRouter.
+ *
+ * Strict system prompt: never writes prayers, never interprets Scripture,
+ * never offers advice. Only generates gentle reflection questions.
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { REFLECTION_SYSTEM_PROMPT } from '@resonance/core';
+
+const DEFAULT_MODEL = process.env.LLM_MODEL || 'qwen/qwen-2.5-72b-instruct';
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { action, excerpts, period1Excerpts, period2Excerpts } = body as {
+      action: 'reflection_prompt' | 'cluster_label' | 'shift_narrative';
+      excerpts?: string[];
+      period1Excerpts?: string[];
+      period2Excerpts?: string[];
+    };
+
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: 'OpenRouter API key not configured' }, { status: 503 });
+    }
+
+    let prompt = '';
+    let maxTokens = 60;
+
+    if (action === 'reflection_prompt') {
+      const texts = (excerpts ?? []).filter((e) => e.trim().length >= 12).slice(0, 5).map((e) => e.slice(0, 200));
+      if (texts.length === 0) {
+        return NextResponse.json({ error: 'No sufficiently long excerpts provided' }, { status: 400 });
+      }
+      prompt = `${REFLECTION_SYSTEM_PROMPT}\n\nJournal excerpts:\n${texts.join('\n---\n')}\n\nReflection question:`;
+    } else if (action === 'cluster_label') {
+      const texts = (excerpts ?? []).filter((e) => e.trim().length >= 5).slice(0, 3).map((e) => e.slice(0, 150));
+      if (texts.length === 0) {
+        return NextResponse.json({ error: 'No excerpts provided' }, { status: 400 });
+      }
+      prompt = `Summarize these journal entries in 2-3 words. Output only the label:\n${texts.join('\n')}\n\nLabel:`;
+      maxTokens = 15;
+    } else if (action === 'shift_narrative') {
+      const p1 = (period1Excerpts ?? []).slice(0, 3).map((e) => e.slice(0, 150));
+      const p2 = (period2Excerpts ?? []).slice(0, 3).map((e) => e.slice(0, 150));
+      if (p1.length === 0 || p2.length === 0) {
+        return NextResponse.json({ error: 'Both period excerpts required' }, { status: 400 });
+      }
+      prompt = `Compare these two sets of journal entries. Write 2-3 sentences describing what shifted between them. Do not give advice.\n\nEarlier:\n${p1.join('\n')}\n\nLater:\n${p2.join('\n')}\n\nWhat shifted:`;
+      maxTokens = 80;
+    } else {
+      return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
+    }
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://resonance.up.railway.app',
+        'X-Title': 'Resonance',
+      },
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: maxTokens,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return NextResponse.json({ error: `OpenRouter error: ${response.status}` }, { status: 502 });
+    }
+
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content?.trim();
+
+    if (!text) {
+      return NextResponse.json({ error: 'Empty response from model' }, { status: 500 });
+    }
+
+    return NextResponse.json({ text });
+  } catch (err) {
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+  }
+}
