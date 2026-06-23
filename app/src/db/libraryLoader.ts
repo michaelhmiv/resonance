@@ -189,10 +189,17 @@ export async function libraryBootstrap(db: SQLiteDatabase): Promise<void> {
   }
 
   // ── Cross-references ───────────────────────────────────────────────
-  // (stored as app_settings key-value for now — a dedicated table will be
-  // added in a future migration if needed for query performance)
+  // Stored as a JSON array under app_settings('cross_references') so the
+  // Word tab can resolve marginal cross-ref links per verse_ref. A count is
+  // also kept for diagnostics. A dedicated table may be added in a future
+  // migration if lookup queries need indexing.
   const crossRefs = await loadJsonAsset<CrossRefRow[]>(LIBRARY_FILES.crossRefs);
   if (crossRefs) {
+    await db.runAsync(
+      `INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?);`,
+      'cross_references',
+      JSON.stringify(crossRefs)
+    );
     await db.runAsync(
       `INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?);`,
       'cross_references_count',

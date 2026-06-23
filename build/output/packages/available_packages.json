@@ -1,0 +1,46 @@
+[
+  {
+    "id": "additional-translations",
+    "name": "Additional Bible Translations",
+    "description": "ASV (1901) \u2014 public domain. A classic formal-equivalence translation.",
+    "category": "Bible Translations",
+    "size_mb": 14.5,
+    "contents": [
+      {
+        "translation": "asv",
+        "passage_count": 82919,
+        "book_count": 66
+      }
+    ]
+  },
+  {
+    "id": "church-fathers",
+    "name": "Church Fathers",
+    "description": "Writings from the early Church Fathers \u2014 Irenaeus, Origen, Chrysostom, Augustine, and more.",
+    "category": "Church Fathers",
+    "size_mb": 0,
+    "contents": [],
+    "status": "pending-ingestion"
+  },
+  {
+    "id": "mystics-contemplatives",
+    "name": "Mystics & Contemplatives",
+    "description": "Additional writings from Christian mystics and contemplatives.",
+    "category": "Mystics & Contemplatives",
+    "status": "not-yet-built"
+  },
+  {
+    "id": "reformation-classics",
+    "name": "Reformation Classics",
+    "description": "Writings from Luther, Calvin, and other Reformers.",
+    "category": "Reformation Classics",
+    "status": "not-yet-built"
+  },
+  {
+    "id": "devotional-poetic",
+    "name": "Devotional & Poetic",
+    "description": "Devotional and poetic works from Christian history.",
+    "category": "Devotional & Poetic",
+    "status": "not-yet-built"
+  }
+]
