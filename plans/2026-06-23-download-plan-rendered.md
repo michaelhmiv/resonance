@@ -1,0 +1,269 @@
+# Resonance download plan
+
+Total items: 252
+
+## Summary
+- Source kinds: {'ccel_extract': 161, 'ia': 69, 'gutenberg': 22}
+- Packs: {'Pack 1 — Core conversion / doctrinal foundation': 180, 'Pack 2 — Scholastic / medieval synthesis': 10, 'Pack 3 — Mystics / contemplatives': 11, 'Pack 4 — Protestant / Reformation classics': 31, 'Pack 5 — Devotional / poetic / modern spirituals': 20}
+
+### Pack 1 — Core conversion / doctrinal foundation
+- [CCEL-EXTRACT] A Treatise Concerning Man’s Perfection In Righteousness — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] A Treatise on Faith and the Creed — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] A Treatise On Grace And Free Will — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] A Treatise On Rebuke And Grace — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] A Treatise On The Gift of Perseverance — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] A Treatise On The Grace of Christ, And On Original Sin — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] A Treatise On The Merits And Forgiveness of Sins, And On The Baptism of Infants — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] A Treatise On The Predestination of The Saints — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] A Treatise To Prove That No One Can Harm The Man Who Does Not Injure Himself — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] A Work On The Proceedings of Pelagius — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Acts of Paul and Thecla — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Acts of the Holy Apostles Peter and Paul — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Acts Or Disputation Against Fortunatus The Manichaean — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Against Lying — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Against The Epistle of Manichaeus, Called Fundamental — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] An Exhortation To Theodore After His Fall — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Answer To The Letters of Petilian, The Donatist — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [IA] Tertullian — Apologeticus adversus gentes pro christianis — https://archive.org/download/apologeticusadve00tert/apologeticusadve00tert_djvu.txt
+- [GUTENBERG] John of Damascus — Barlaam and Ioasaph — https://www.gutenberg.org/cache/epub/749/pg749.txt
+- [IA] Thomas Aquinas — Catena aurea : commentary on the four Gospels, collected out of the works of the Fathers — https://archive.org/download/p1catenaaureacom01thomuoft/p1catenaaureacom01thomuoft_djvu.txt
+- [CCEL-EXTRACT] Clemens Alexandrinus on the Salvation of the Rich Man — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [IA] Clement of Alexandria — Clement of Alexandria: Quis dives salvetur — https://archive.org/download/clementofalexand00clem_0/clementofalexand00clem_0_djvu.txt
+- [CCEL-EXTRACT] Concerning Faith of Things Not Seen — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Concerning Free-Will — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Concerning Repentance — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Concerning The Nature of Good, Against The Manichaeans — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Concerning Virgins — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Concerning Widows — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Correspondence of St. Chrysostom With The Bishop of Rome — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Council of Nicaea Letter of Eusebius of Caesarea to the people of his Diocese — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Councils of Ariminum and Seleucia — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] De Decretis or Defence of the Nicene Definition — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] De Trinitate — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Dialogues of Sulpitius Severus — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [IA] Pseudo-Dionysius the Areopagite — Dionysius the Areopagite On the divine names ; and, The mystical theology — https://archive.org/download/dionysiusareopag00pseu/dionysiusareopag00pseu_djvu.txt
+- [CCEL-EXTRACT] Encyclical Epistle to the Bishops Throughout the World — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Epistles on the Arian Heresy And the Deposition of Arius — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Exhortation to the Heathen — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Expositio Fidei — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Exposition of the Christian Faith — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Exposition of the Orthodox Faith by John of Damascus — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Expositions On The Book of Psalms — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Fifteen Hymns For the Feast of the Epiphany — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Four Discourses Against the Arians — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Fragments from the Writings of Peter — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Historia Arianorum — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Homilies On S. Ignatius and S. Babylas — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [IA] John Chrysostom — Homilies on the Gospel of St. John and the Epistle to the Hebrews — https://archive.org/download/homiliesongospel0014john/homiliesongospel0014john_djvu.txt
+- [CCEL-EXTRACT] Homily Concerning Lowliness of Mind; And Commentary On Philippians I. 18 — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] In Ilud Omnia, Etc. — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] in Trullo — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Instructions To Catechumens — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Jerome and Gennadius Lives of Illustrious Men — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Letter To A Young Widow — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [IA] Augustine — Letters — https://archive.org/download/letters0001augu/letters0001augu_djvu.txt
+- [CCEL-EXTRACT] Letters of St. Chrysostom To Olympias — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Letters of the Blessed Theodoret, Bishop of Cyrus — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Life and Works of Rufinus with Jerome’s Apology Against Rufinus — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Life and Writings of Sulpitius Severus — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Nineteen Hymns on the Nativity of Christ in the Flesh — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Of Holy Virginity — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Of the Manichaeans — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Of the Work of Monks — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On Baptism, Against the Donatists — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On Care to Be Had for the Dead — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On Christian Doctrine — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On Continence — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [GUTENBERG] John of Damascus — On Holy Images — https://www.gutenberg.org/cache/epub/49917/pg49917.txt
+- [CCEL-EXTRACT] On Lying — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On Marriage And Concupiscence — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On Patience — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On the Catechising of the Uninstructed — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On the Creed — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On the Decease of His Brother Satyrus — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On the Duties of the Clergy — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On the Good of Marriage — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On the Good of Widowhood — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On the Holy Spirit — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On the Life of St. Martin — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On The Morals of The Catholic Church — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On The Morals of The Manichaeans — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On the Mysteries — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [IA] John Chrysostom — On the priesthood : in six books — https://archive.org/download/onpriesthood00unkngoog/onpriesthood00unkngoog_djvu.txt
+- [CCEL-EXTRACT] On the Profit of Believing — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On The Trinity — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] On Two Souls, Against The Manichaeans — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Oration on the Palms — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Our Lord’s Sermon On The Mount — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [GUTENBERG] Gerard Manley Hopkins — Poems (1918) — https://www.gutenberg.org/cache/epub/22403/pg22403.txt
+- [CCEL-EXTRACT] Register of the Epistles of Saint Gregory the Great — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Reply To Faustus The Manichaean — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] See of All Heresies — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Select Orations of Saint Gregory Nazianzen, Sometime Archbishop of Constantinople — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Select Writings and Letters of Athanasius, Bishop of Alexandria — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Selected Epistles of Gregory The Great Bishop of Rome, (Books IX.—XIV.) — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Some of The Principal Works of St. Ambrose — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] St. Hilary of Poitiers: Select Works — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [IA] John of Damascus — St. John Damascene on holy images; followed by three sermons on the Assumption — https://archive.org/download/stjohndamasceneo00john/stjohndamasceneo00john_djvu.txt
+- [IA] Thomas Aquinas — Summa contra gentiles ; seu, De veritate catholicae fidei — https://archive.org/download/summacontragenti0000thom/summacontragenti0000thom_djvu.txt
+- [CCEL-EXTRACT] Ten Homilies On The First Epistle of John To The Parthians — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Avenging of the Saviour — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Banquet of the Ten Virgins; Or, Concerning Chastity — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Book of Pastoral Rule — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Book of Pastoral Rule, And Selected Epistles, of Gregory The Great Bishop of Rome — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Canonical Epistle, With the Commentaries of Theodore Balsamon and John Zonaras — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Catechetical Lectures of S. Cyril, Archbishop of Jerusalem — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [IA] Gregory of Nyssa — The Catechetical oration of Gregory of Nyssa — https://archive.org/download/thecatecheticalo00greguoft/thecatecheticalo00greguoft_djvu.txt
+- [CCEL-EXTRACT] The Church History of Eusebius — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The City of God — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [IA] Augustine — The city of God (De civitate Dei) — https://archive.org/download/cityofgoddecivit0000augu/cityofgoddecivit0000augu_djvu.txt
+- [CCEL-EXTRACT] The Clementine Homilies — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Conferences of John Cassian — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Confessions of St. Augustin — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Correction of The Donatists — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Council of Chalcedon — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The De Sententia Dionysii — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Death of Pilate, Who Condemned Jesus — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Didache / The Two Ways (when treated as a separate book in the omnibus) — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Ecclesiastical History of Socrates Scholasticus — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Ecclesiastical History of Sozomen — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Enchiridion — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Epistle Concerning the Martyrdom of Polycarp — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Epistle of Ignatius to Polycarp — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Epistle of Ignatius to the Magnesians — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Epistle of Ignatius to the Smyrnaeans — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Epistle of Ignatius to the Trallians — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Epistle of Mathetes to Diognetus — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Epistle of Polycarp to the Philippians — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Epistles of Ignatius — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Extant Writings of Julius Africanus — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [IA] Justin Martyr — The first apology of Justin Martyr, addressed to the Emperor Antoninus Pius — https://archive.org/download/firstapologyofju00just/firstapologyofju00just_djvu.txt
+- [CCEL-EXTRACT] The First Council of Constantinople — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The First Council of Nice. a.d. 325 — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The First Ecumenical Council — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The First Epistle of Clement to the Corinthians — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [IA] Gregory of Nazianzus — The five theological orations of Gregory of Nazionzus — https://archive.org/download/thefivetheologic00greguoft/thefivetheologic00greguoft_djvu.txt
+- [CCEL-EXTRACT] The Genuine Acts of Peter — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Giving Up of Pontius Pilate — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Gospel of the Nativity of Mary — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Gospel of Thomas — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The History of Joseph the Carpenter — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Homilies of St. John Chrysostom On The Acts of The Apostles and The Epistle to The Romans — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Homilies of St. John Chrysostom On The Epistle To The Hebrews — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Homilies of St. John Chrysostom On The Epistles of St. Paul To The Philippians, Colossians, And Ephesians — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Homilies of St. John Chrysostom On The Gospel of St. John — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Homilies on Psalms L, LIII, CXXX — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Homilies On The Second Epistle of St. Paul The Apostle To The Corinthians — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Hymns And Homilies of Ephraim The Syrian, And From The Demonstrations of Aphrahat The Persian Sage — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Letters And Sermons of Leo The Great Bishop of Rome — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Letters of Saint Basil The Great — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Letters of Sulpitius Severus — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [IA] Athanasius of Alexandria — The Life of Antony — https://archive.org/download/the-life-of-antony-by-saint-athanasius-of-alexandria/the-life-of-antony-by-saint-athanasius-of-alexandria_djvu.txt
+- [CCEL-EXTRACT] The Life of The Blessed Emperor Constantine By Eusebius Pamphilus — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Narrative of Joseph of Arimathaea — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Nine Homilies of The Hexaemeron — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Oration of Eusebius — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Oration of Eusebius Pamphilus, In Praise of The Emperor Constantine — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Oration of The Emperor Constantine, Which He Addressed “To The Assembly of The Saints.” — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Pearl, Seven Hymns on the Faith — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [IA] Origen — The Philocalia of Origen — https://archive.org/download/thephilocaliaofo00origuoft/thephilocaliaofo00origuoft_djvu.txt
+- [CCEL-EXTRACT] The Recognitions of Clement — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Report of Pontius Pilate, Procurator of Judaea, Sent to Rome to Tiberius Caesar — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Sacred History of Sulpitius Severus — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Second Ecumenical Council — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Seven Books of John Cassian On The Incarnation of The Lord, Against Nestorius — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Seven Ecumenical Councils of The Undivided Church — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Shepherd of Hermas / Pastor of Hermas — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Stromata, or Miscellanies — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Syriac Version of the Ignatian Epistles — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Treatise De Spiritu Sancto — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] The Twelve Books of John Cassian on the Institutes of the Coenobia, and the Remedies for the Eight Principal Faults — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Theophilus of Antioch — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Three Fragments from the Homily on the Cross and Passion of Christ — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Three Homilies — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Tomus Ad Antiochenos — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Treatise Concerning The Christian Priesthood — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Treatise De Synodis — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Two Books of Soliloquies — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [CCEL-EXTRACT] Two Homilies On Eutropius — Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt
+- [GUTENBERG] Clement of Alexandria — Writings Vol 1-2 — https://www.gutenberg.org/cache/epub/71937/pg71937.txt
+
+### Pack 2 — Scholastic / medieval synthesis
+- [IA] Johannes Tauler — Ausgewählte Predigten: Mit einer einleitenden Monographie von Wilh. Von Langsdorff — https://archive.org/download/ausgewhltepredi00langgoog/ausgewhltepredi00langgoog_djvu.txt
+- [IA] Jan van Ruusbroec — Dat boec vanden twaelf dogheden; Die spieghel der ewigher salicheit; Van den... — https://archive.org/download/datboecvandentw00ruusgoog/datboecvandentw00ruusgoog_djvu.txt
+- [IA] Isaac of Nineveh — De S. Isaaci Ninivitae vita, scriptis et doctrina — https://archive.org/download/desisaacininivit00chab/desisaacininivit00chab_djvu.txt
+- [IA] Bernard of Clairvaux — On consideration — https://archive.org/download/onconsideration00bern/onconsideration00bern_djvu.txt
+- [IA] Bernard of Clairvaux — On Loving God by St. Bernard of Clairvaux — https://archive.org/download/loving_god_202606/loving_god_202606_djvu.txt
+- [IA] Jan van Ruusbroec — Rusbrock l'admirable: (œuvres choisies) — https://archive.org/download/rusbrockladmira00hellgoog/rusbrockladmira00hellgoog_djvu.txt
+- [IA] Bernard of Clairvaux — St. Bernard of Clairvaux's Life of St. Malachy of Armagh — https://archive.org/download/stbernardofclair00bernuoft/stbernardofclair00bernuoft_djvu.txt
+- [IA] Johannes Tauler — The history and life of the Reverend Doctor John Tauler of Strasbourg : with twenty-five of his sermons — https://archive.org/download/historyandlifer01kinggoog/historyandlifer01kinggoog_djvu.txt
+- [IA] Henry Suso — The Life of Blessed Henry Suso, by Himself — https://archive.org/download/the-life-of-blessed-henry-suso-by-himself/the-life-of-blessed-henry-suso-by-himself_djvu.txt
+- [IA] Bonaventure — The life of St. Francis of Assisi : from the "Legenda Santa Francisci" of St. Bonaventura — https://archive.org/download/lifeofstfranciso00bona/lifeofstfranciso00bona_djvu.txt
+
+### Pack 3 — Mystics / contemplatives
+- [IA] John of the Cross — A spiritual canticle of the soul and the bridegroom Christ — https://archive.org/download/spiritualcanticl0000john/spiritualcanticl0000john_djvu.txt
+- [GUTENBERG] Caussade — Abandonment to Divine Providence — https://www.gutenberg.org/cache/epub/52057/pg52057.txt
+- [GUTENBERG] Teresa of Ávila — Autobiography (Life) — https://www.gutenberg.org/cache/epub/8120/pg8120.txt
+- [GUTENBERG] Ruusbroec — Ruysbroeck and the Mystics — https://www.gutenberg.org/cache/epub/66820/pg66820.txt
+- [IA] John of the Cross — The ascent of Mount Carmel — https://archive.org/download/ascentofmountcar00johnuoft/ascentofmountcar00johnuoft_djvu.txt
+- [IA] Teresa of Ávila — The book of the foundations of S. Teresa of Jesus of the Order of our Lady of Carmel — https://archive.org/download/bookoffoundation00tereuoft/bookoffoundation00tereuoft_djvu.txt
+- [IA] Richard Rolle — The Fire of Love, and The Mending of Life; Or, The Rule of Living — https://archive.org/download/fireloveandmend00rollgoog/fireloveandmend00rollgoog_djvu.txt
+- [IA] Teresa of Ávila — The Life of Saint Teresa of Jesus, of The Order of Our Lady of Carmel — https://archive.org/download/the-life-of-saint-teresa-of-jesus-by-herself/the-life-of-saint-teresa-of-jesus-by-herself_djvu.txt
+- [IA] John of the Cross — The living flame of love — https://archive.org/download/johnofthecross00johnuoft/johnofthecross00johnuoft_djvu.txt
+- [IA] Walter Hilton — The Scale of Perfection — https://archive.org/download/scaleofperfectio0000walt_c0h2/scaleofperfectio0000walt_c0h2_djvu.txt
+- [IA] Teresa of Ávila — The way of perfection — https://archive.org/download/thewayofperfecti00tereuoft/thewayofperfecti00tereuoft_djvu.txt
+
+### Pack 4 — Protestant / Reformation classics
+- [GUTENBERG] Martin Luther — 95 Theses — https://www.gutenberg.org/cache/epub/274/pg274.txt
+- [IA] Richard Baxter — A call to the unconverted to turn and live — https://archive.org/download/acalltounconver01baxtgoog/acalltounconver01baxtgoog_djvu.txt
+- [IA] William Law — A Practical Treatise Upon Christian Perfection — https://archive.org/download/apracticaltreat01lawgoog/apracticaltreat01lawgoog_djvu.txt
+- [IA] William Law — A Serious Call to a Devout and Holy Life — https://archive.org/download/aseriouscalltoa01lawgoog/aseriouscalltoa01lawgoog_djvu.txt
+- [IA] Jonathan Edwards — A Treatise Concerning Religious Affections, in Three Parts — https://archive.org/download/atreatiseconcer00edwagoog/atreatiseconcer00edwagoog_djvu.txt
+- [IA] Martin Luther — An Explanation of Luther's Small Catechism: A Handbook for the Catechetical Class — https://archive.org/download/anexplanationlu00stumgoog/anexplanationlu00stumgoog_djvu.txt
+- [IA] John Donne — Devotions, by J. Donne. With two sermons — https://archive.org/download/devotionsbyjdon00donngoog/devotionsbyjdon00donngoog_djvu.txt
+- [IA] George Herbert — English Poems: Together with His Collection of Proverbs Entitled Jacula Prudentum — https://archive.org/download/englishpoemstog00herbgoog/englishpoemstog00herbgoog_djvu.txt
+- [IA] Jonathan Edwards — Freedom of the Will — https://archive.org/download/freedomofwill0000revj/freedomofwill0000revj_djvu.txt
+- [IA] John Bunyan — Grace Abounding to the Chief of Sinners — https://archive.org/download/bwb_T3-CBT-732/bwb_T3-CBT-732_djvu.txt
+- [IA] John Calvin — Institutes of the Christian Religion — https://archive.org/download/institutesofchri0000john_q1s5/institutesofchri0000john_q1s5_djvu.txt
+- [IA] George Fox — Journal of George Fox: being an historical account of the life, travels ... — https://archive.org/download/journalgeorgefo00armigoog/journalgeorgefo00armigoog_djvu.txt
+- [GUTENBERG] Martin Luther — Large Catechism — https://www.gutenberg.org/cache/epub/1722/pg1722.txt
+- [IA] John Donne — Letters to Severall Persons of Honour — https://archive.org/download/letterstosevera00donngoog/letterstosevera00donngoog_djvu.txt
+- [GUTENBERG] John Calvin — Letters Vol 1-2 — https://www.gutenberg.org/cache/epub/45423/pg45423.txt
+- [IA] Martin Luther — Luther's Large Catechism: God's Call to Repentence, Faith and Prayer, the Bible Plan of ... — https://archive.org/download/lutherslargecat00luthgoog/lutherslargecat00luthgoog_djvu.txt
+- [IA] Martin Luther — Luther's table talk; or, Some choice fragments from the familiar discourse of that godly man — https://archive.org/download/lutherstabletal00luthgoog/lutherstabletal00luthgoog_djvu.txt
+- [IA] John Wesley — Notes on the New Testament — https://archive.org/download/notesonnewtestam0000john/notesonnewtestam0000john_djvu.txt
+- [IA] John Owen — Pneumatologia, Or, A Discourse Concerning the Holy Spirit — https://archive.org/download/pneumatologia00owengoog/pneumatologia00owengoog_djvu.txt
+- [GUTENBERG] Bounds — Power Through Prayer — https://www.gutenberg.org/cache/epub/65115/pg65115.txt
+- [GUTENBERG] Bounds — Preacher and Prayer — https://www.gutenberg.org/cache/epub/63486/pg63486.txt
+- [GUTENBERG] Bounds — Purpose in Prayer — https://www.gutenberg.org/cache/epub/66112/pg66112.txt
+- [IA] George Fox — Selections from the Epistles of George Fox — https://archive.org/download/selectionsfrome00tukegoog/selectionsfrome00tukegoog_djvu.txt
+- [IA] John Wesley — Sermons on Several Occasions — https://archive.org/download/sermonsonseveral0001john_g6i0/sermonsonseveral0001john_g6i0_djvu.txt
+- [GUTENBERG] Martin Luther — Small Catechism — https://www.gutenberg.org/cache/epub/1670/pg1670.txt
+- [IA] John Bunyan — The Holy War — https://archive.org/download/holywar0000unse_e0t4/holywar0000unse_e0t4_djvu.txt
+- [IA] John Wesley — The journal of John Wesley — https://archive.org/download/dli.ministry.15554/dli.ministry.15554_djvu.txt
+- [IA] John Donne — The Poems of John Donne — https://archive.org/download/poemsjohndonne00clubgoog/poemsjohndonne00clubgoog_djvu.txt
+- [IA] Richard Baxter — The Reformed Pastor: A Discourse on the Pastoral Office — https://archive.org/download/reformedpastor00baxtgoog/reformedpastor00baxtgoog_djvu.txt
+- [IA] George Herbert — The temple — https://archive.org/download/temple0000geor_o2q4/temple0000geor_o2q4_djvu.txt
+- [IA] George Herbert — The Temple and A Priest to the Temple — https://archive.org/download/templeandpriestt0000geor/templeandpriestt0000geor_djvu.txt
+
+### Pack 5 — Devotional / poetic / modern spirituals
+- [IA] Thomas Traherne — Centuries of Meditations — https://archive.org/download/centuriesmedita00trahgoog/centuriesmedita00trahgoog_djvu.txt
+- [IA] Christina Rossetti — Goblin Market — https://archive.org/download/Goblin_Market_Christina_Rossetti/Goblin_Market_Christina_Rossetti_djvu.txt
+- [GUTENBERG] Chesterton — Heretics — https://www.gutenberg.org/cache/epub/470/pg470.txt
+- [IA] Charles Wesley — Hymns for the Use of Families and on Various Occasions — https://archive.org/download/hymnsforusefami00weslgoog/hymnsforusefami00weslgoog_djvu.txt
+- [IA] Francis de Sales — Introduction to the devout life — https://archive.org/download/introductiontode00fran_1/introductiontode00fran_1_djvu.txt
+- [GUTENBERG] Chesterton — Orthodoxy — https://www.gutenberg.org/cache/epub/130/pg130.txt
+- [IA] George MacDonald — Phantastes: A Faerie Romance — https://archive.org/download/phantastesfaerie0000geor_j1t6/phantastesfaerie0000geor_j1t6_djvu.txt
+- [GUTENBERG] George MacDonald — Poetical Works Vol 1-2 — https://www.gutenberg.org/cache/epub/9543/pg9543.txt
+- [IA] Henry Vaughan — Sacred poems — https://archive.org/download/sacredpoemsbyhen0000henr/sacredpoemsbyhen0000henr_djvu.txt
+- [GUTENBERG] Francis Thompson — Selected Poems — https://www.gutenberg.org/cache/epub/41215/pg41215.txt
+- [GUTENBERG] Kierkegaard — Selections from the Writings — https://www.gutenberg.org/cache/epub/60333/pg60333.txt
+- [IA] Henry Vaughan — Silex Scintillans: Sacred Poems and Private Ejaculations — https://archive.org/download/silexscintillan00lytegoog/silexscintillan00lytegoog_djvu.txt
+- [GUTENBERG] Chesterton — St. Francis of Assisi — https://www.gutenberg.org/cache/epub/63084/pg63084.txt
+- [GUTENBERG] Chesterton — The Everlasting Man — https://www.gutenberg.org/cache/epub/65688/pg65688.txt
+- [IA] George MacDonald — The hope of the Gospel — https://archive.org/download/hopeofgospel00macd/hopeofgospel00macd_djvu.txt
+- [IA] Blaise Pascal — The Provincial Letters of Blaise Pascal — https://archive.org/download/provinciallette00mcrgoog/provinciallette00mcrgoog_djvu.txt
+- [IA] Isaac Watts — The Psalms and Hymns of the Late Dr. Isaac Watts — https://archive.org/download/psalmsandhymnsl00goodgoog/psalmsandhymnsl00goodgoog_djvu.txt
+- [IA] Francis de Sales — The spiritual conferences — https://archive.org/download/the-spiritual-conferences-of-st-francis-de-sales/the-spiritual-conferences-of-st-francis-de-sales_djvu.txt
+- [IA] George MacDonald — Unspoken sermons : first [-third] series — https://archive.org/download/unspokensermonsf0000macd/unspokensermonsf0000macd_djvu.txt
+- [GUTENBERG] Chesterton — What's Wrong with the World — https://www.gutenberg.org/cache/epub/1717/pg1717.txt

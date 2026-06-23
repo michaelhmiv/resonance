@@ -1,0 +1,60 @@
+{
+  "generated_from": [
+    "sample"
+  ],
+  "source_precedence": [
+    "Gutenberg",
+    "CCEL/ANF-NPNF",
+    "IA"
+  ],
+  "total_items": 3,
+  "items": [
+    {
+      "title": "Barlaam and Ioasaph",
+      "author": "John of Damascus",
+      "pack": "Pack 1 — Core conversion / doctrinal foundation",
+      "source_kind": "gutenberg",
+      "source_section": "Gutenberg-preferred items",
+      "identifier": "749",
+      "source_url": "https://www.gutenberg.org/cache/epub/749/pg749.txt",
+      "fallback_url": "https://www.gutenberg.org/files/749/749-0.txt",
+      "canonical_key": "barlaam ioasaph",
+      "status": "download",
+      "notes": "Synthetic manifest item from Gutenberg/IA."
+    },
+    {
+      "title": "Apologeticus adversus gentes pro christianis",
+      "author": "Tertullian",
+      "pack": "Pack 1 — Core conversion / doctrinal foundation",
+      "source_kind": "ia",
+      "source_section": "IA-preferred items",
+      "identifier": "apologeticusadve00tert",
+      "source_url": "https://archive.org/download/apologeticusadve00tert/apologeticusadve00tert_djvu.txt",
+      "fallback_url": "https://archive.org/download/apologeticusadve00tert/apologeticusadve00tert.txt",
+      "canonical_key": "apologeticus adversus gentes pro christianis",
+      "status": "download",
+      "notes": "Synthetic manifest item from Gutenberg/IA."
+    },
+    {
+      "title": "A Treatise Concerning Man’s Perfection In Righteousness",
+      "author": "",
+      "pack": "Pack 1 — Core conversion / doctrinal foundation",
+      "source_kind": "ccel_extract",
+      "source_section": "Augustine",
+      "identifier": "Augustine",
+      "source_url": "",
+      "fallback_url": "",
+      "canonical_key": "treatise concerning man s perfection righteousness",
+      "status": "download",
+      "notes": "Extract from local CCEL omnibus: /data/resonance/corpus/church_fathers_complete.txt"
+    }
+  ],
+  "summary": {
+    "by_source_kind": {
+      "gutenberg": 1,
+      "ia": 1,
+      "ccel_extract": 1
+    },
+    "by_pack": {}
+  }
+}

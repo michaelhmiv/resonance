@@ -1,0 +1,186 @@
+# Resonance final download order
+
+Source precedence: **CCEL / ANF-NPNF → Gutenberg → IA** for unique work families.
+
+## DOWNLOAD NOW
+
+### Pack 1 — Core conversion / doctrinal foundation
+- Acts of Paul and Thecla — `CCEL` — contents@1057
+- Acts of the Holy Apostles Peter and Paul — `CCEL` — THE T\ TWELVE PATRIARCHS, EXCERPTS AND EPISTLES, THE CLEMENTIA, APOCRYPHA, DECRETALS, MEMOIRS OF / EDESSA AND SYRIAC DOCUMENTS, REMAINS OF THE FIRST AGE
+- Clemens Alexandrinus on the Salvation of the Rich Man — `CCEL` — FATHERS OF THE SECOND CENTURY: HERMAS, TATIAN, ATHENAGORAS, THEOPHILUS, AND CLEMENT OF / ALEXANDRIA (ENTIRE)
+- Concerning Free-Will — `CCEL` — contents@663090
+- Epistles on the Arian Heresy And the Deposition of Arius — `CCEL` — contents@663090
+- Exhortation to the Heathen — `CCEL` — FATHERS OF THE SECOND CENTURY: HERMAS, TATIAN, ATHENAGORAS, THEOPHILUS, AND CLEMENT OF / ALEXANDRIA (ENTIRE)
+- Fragments from the Writings of Peter — `CCEL` — contents@663090
+- Of the Manichaeans — `CCEL` — contents@663090
+- Oration on the Palms — `CCEL` — contents@855
+- The Avenging of the Saviour — `CCEL` — THE T\ TWELVE PATRIARCHS, EXCERPTS AND EPISTLES, THE CLEMENTIA, APOCRYPHA, DECRETALS, MEMOIRS OF / EDESSA AND SYRIAC DOCUMENTS, REMAINS OF THE FIRST AGE
+- The Banquet of the Ten Virgins; Or, Concerning Chastity — `CCEL` — contents@663090
+- The Canonical Epistle, With the Commentaries of Theodore Balsamon and John Zonaras — `CCEL` — contents@855
+- The Clementine Homilies — `CCEL` — THE T\ TWELVE PATRIARCHS, EXCERPTS AND EPISTLES, THE CLEMENTIA, APOCRYPHA, DECRETALS, MEMOIRS OF / EDESSA AND SYRIAC DOCUMENTS, REMAINS OF THE FIRST AGE
+- The Death of Pilate, Who Condemned Jesus — `CCEL` — contents@1057
+- The Epistle Concerning the Martyrdom of Polycarp — `CCEL` — ANFO1 | / THE APOSTOLIC FATHERS WITH JUSTIN MARTYR AND IRENAEUS
+- The Epistle of Ignatius to Polycarp — `CCEL` — ANFO1 | / THE APOSTOLIC FATHERS WITH JUSTIN MARTYR AND IRENAEUS
+- The Epistle of Ignatius to the Magnesians — `CCEL` — ANFO1 / THE APOSTOLIC FATHERS WITH JUSTIN MARTYR AND IRENAEUS
+- The Epistle of Ignatius to the Smyrnaeans — `CCEL` — ANFO1 / THE APOSTOLIC FATHERS WITH JUSTIN MARTYR AND IRENAEUS
+- The Epistle of Ignatius to the Trallians — `CCEL` — ANFO1 / THE APOSTOLIC FATHERS WITH JUSTIN MARTYR AND IRENAEUS
+- The Epistle of Mathetes to Diognetus — `CCEL` — ANFO1 / THE APOSTOLIC FATHERS WITH JUSTIN MARTYR AND IRENAEUS
+- The Epistle of Polycarp to the Philippians — `CCEL` — ANFO1 | / THE APOSTOLIC FATHERS WITH JUSTIN MARTYR AND IRENAEUS
+- The Epistles of Ignatius — `CCEL` — ANFO1 | / THE APOSTOLIC FATHERS WITH JUSTIN MARTYR AND IRENAEUS
+- The Extant Writings of Julius Africanus — `CCEL` — contents@663090
+- The First Epistle of Clement to the Corinthians — `CCEL` — ANFO1 / THE APOSTOLIC FATHERS WITH JUSTIN MARTYR AND IRENAEUS
+- The Genuine Acts of Peter — `CCEL` — contents@855
+- The Giving Up of Pontius Pilate — `CCEL` — THE T\ TWELVE PATRIARCHS, EXCERPTS AND EPISTLES, THE CLEMENTIA, APOCRYPHA, DECRETALS, MEMOIRS OF / EDESSA AND SYRIAC DOCUMENTS, REMAINS OF THE FIRST AGE
+- The Gospel of Thomas — `CCEL` — contents@1057
+- The Gospel of the Nativity of Mary — `CCEL` — THE T\ TWELVE PATRIARCHS, EXCERPTS AND EPISTLES, THE CLEMENTIA, APOCRYPHA, DECRETALS, MEMOIRS OF / EDESSA AND SYRIAC DOCUMENTS, REMAINS OF THE FIRST AGE
+- The History of Joseph the Carpenter — `CCEL` — contents@1057
+- The Narrative of Joseph of Arimathaea — `CCEL` — contents@1057
+- The Recognitions of Clement — `CCEL` — THE T\ TWELVE PATRIARCHS, EXCERPTS AND EPISTLES, THE CLEMENTIA, APOCRYPHA, DECRETALS, MEMOIRS OF / EDESSA AND SYRIAC DOCUMENTS, REMAINS OF THE FIRST AGE
+- The Report of Pontius Pilate, Procurator of Judaea, Sent to Rome to Tiberius Caesar — `CCEL` — THE T\ TWELVE PATRIARCHS, EXCERPTS AND EPISTLES, THE CLEMENTIA, APOCRYPHA, DECRETALS, MEMOIRS OF / EDESSA AND SYRIAC DOCUMENTS, REMAINS OF THE FIRST AGE
+- The Stromata, or Miscellanies — `CCEL` — FATHERS OF THE SECOND CENTURY: HERMAS, TATIAN, ATHENAGORAS, THEOPHILUS, AND CLEMENT OF / ALEXANDRIA (ENTIRE)
+- The Syriac Version of the Ignatian Epistles — `CCEL` — ANFO1 / THE APOSTOLIC FATHERS WITH JUSTIN MARTYR AND IRENAEUS
+- Theophilus of Antioch — `CCEL` — FATHERS OF THE SECOND CENTURY: HERMAS, TATIAN, ATHENAGORAS, THEOPHILUS, AND CLEMENT OF / ALEXANDRIA (ENTIRE)
+- Three Fragments from the Homily on the Cross and Passion of Christ — `CCEL` — contents@855
+- Concerning Repentance — `CCEL` — NPNF2-10 / AMBROSE: SELECTED WORKS AND LETTERS
+- Concerning Virgins — `CCEL` — NPNF2-10 / AMBROSE: SELECTED WORKS AND LETTERS
+- Concerning Widows — `CCEL` — NPNF2-10 / AMBROSE: SELECTED WORKS AND LETTERS
+- Council of Nicaea Letter of Eusebius of Caesarea to the people of his Diocese — `CCEL` — NPNF2-04
+- Councils of Ariminum and Seleucia — `CCEL` — ATHANASIUS: SELECT WORKS AND LETTERS
+- De Decretis or Defence of the Nicene Definition — `CCEL` — ATHANASIUS: SELECT WORKS AND LETTERS
+- De Trinitate — `CCEL` — NPNF2-09 / HILARY OF POITIERS, JOHN OF DAMASCUS
+- Dialogues of Sulpitius Severus — `CCEL` — NPNEF2-11 / SULPITIUS SEVERUS, VINCENT OF LERINS, JOHN CASSIAN
+- Encyclical Epistle to the Bishops Throughout the World — `CCEL` — ATHANASIUS: SELECT WORKS AND LETTERS
+- Expositio Fidei — `CCEL` — ATHANASIUS: SELECT WORKS AND LETTERS
+- Exposition of the Christian Faith — `CCEL` — NPNF2-10 / AMBROSE: SELECTED WORKS AND LETTERS
+- Exposition of the Orthodox Faith by John of Damascus — `CCEL` — NPNF2-09 / HILARY OF POITIERS, JOHN OF DAMASCUS
+- Fifteen Hymns For the Feast of the Epiphany — `CCEL` — contents@2688
+- Four Discourses Against the Arians — `CCEL` — ATHANASIUS: SELECT WORKS AND LETTERS
+- Historia Arianorum — `CCEL` — ATHANASIUS: SELECT WORKS AND LETTERS
+- In Ilud Omnia, Etc. — `CCEL` — NPNF2-04
+- Life and Writings of Sulpitius Severus — `CCEL` — NPNEF2-11 / SULPITIUS SEVERUS, VINCENT OF LERINS, JOHN CASSIAN
+- Nineteen Hymns on the Nativity of Christ in the Flesh — `CCEL` — NPNF2-13 / GREGORY THE GREAT (II), EPHRAIM SYRUS, APHRAHAT
+- On the Decease of His Brother Satyrus — `CCEL` — NPNF2-10 / AMBROSE: SELECTED WORKS AND LETTERS
+- On the Duties of the Clergy — `CCEL` — NPNF2-10 / AMBROSE: SELECTED WORKS AND LETTERS
+- On the Holy Spirit — `CCEL` — NPNF2-10 / AMBROSE: SELECTED WORKS AND LETTERS
+- On the Life of St. Martin — `CCEL` — NPNEF2-11 / SULPITIUS SEVERUS, VINCENT OF LERINS, JOHN CASSIAN
+- On the Mysteries — `CCEL` — NPNF2-10 / AMBROSE: SELECTED WORKS AND LETTERS
+- Register of the Epistles of Saint Gregory the Great — `CCEL` — NPNF2-12 / LEO THE GREAT, GREGORY THE GREAT
+- See of All Heresies — `CCEL` — NPNEF2-11 / SULPITIUS SEVERUS, VINCENT OF LERINS, JOHN CASSIAN
+- Select Letters of Saint Gregory Nazianzen, Archbishop of Constantinople — `CCEL` — CYRIL OF JERUSALEM, GREGORY NAZIANZEN
+- Select Orations of Saint Gregory Nazianzen, Sometime Archbishop of Constantinople — `CCEL` — CYRIL OF JERUSALEM, GREGORY NAZIANZEN
+- Select Writings and Letters of Athanasius, Bishop of Alexandria — `CCEL` — NPNF2-04 / ATHANASIUS: SELECT WORKS AND LETTERS
+- Selected Epistles of Gregory The Great Bishop of Rome, (Books IX.—XIV.) — `CCEL` — NPNF2-13 / GREGORY THE GREAT (II), EPHRAIM SYRUS, APHRAHAT
+- Some of The Principal Works of St. Ambrose — `CCEL` — NPNF2-10 / AMBROSE: SELECTED WORKS AND LETTERS
+- St. Hilary of Poitiers: Select Works — `CCEL` — NPNF2-09 / HILARY OF POITIERS, JOHN OF DAMASCUS
+- The Book of Pastoral Rule — `CCEL` — NPNF2-12 / LEO THE GREAT, GREGORY THE GREAT
+- The Book of Pastoral Rule, And Selected Epistles, of Gregory The Great Bishop of Rome — `CCEL` — contents@2688
+- The Catechetical Lectures of S. Cyril, Archbishop of Jerusalem — `CCEL` — NPNF2-07 / CYRIL OF JERUSALEM, GREGORY NAZIANZEN
+- The Conferences of John Cassian — `CCEL` — NPNF2-11 / SULPITIUS SEVERUS, VINCENT OF LERINS, JOHN CASSIAN
+- The Council of Chalcedon — `CCEL` — NPNF2-14 / THE SEVEN ECUMENICAL COUNCILS
+- The De Sententia Dionysii — `CCEL` — ATHANASIUS: SELECT WORKS AND LETTERS
+- The Doubtful Letters of Sulpitius Severus — `CCEL` — NPNF2-11 / SULPITIUS SEVERUS, VINCENT OF LERINS, JOHN CASSIAN
+- The Fifth Ecumenical Council — `CCEL` — NPNF2-14 / THE SEVEN ECUMENICAL COUNCILS
+- The First Council of Constantinople — `CCEL` — NPNF2-14 / THE SEVEN ECUMENICAL COUNCILS
+- The First Council of Nice. a.d. 325 — `CCEL` — NPNF2-14 / THE SEVEN ECUMENICAL COUNCILS
+- The First Ecumenical Council — `CCEL` — NPNF2-14 / THE SEVEN ECUMENICAL COUNCILS
+- The Fourth Ecumenical Council — `CCEL` — NPNF2-14 / THE SEVEN ECUMENICAL COUNCILS
+- The Homilies on Psalms L, LIII, CXXX — `CCEL` — NPNF2-09 / HILARY OF POITIERS, JOHN OF DAMASCUS
+- The Hymns And Homilies of Ephraim The Syrian, And From The Demonstrations of Aphrahat The Persian Sage — `CCEL` — NPNF2-13 / GREGORY THE GREAT (II), EPHRAIM SYRUS, APHRAHAT
+- The Letters And Sermons of Leo The Great Bishop of Rome — `CCEL` — NPNF2-12 / LEO THE GREAT, GREGORY THE GREAT
+- The Letters of Sulpitius Severus — `CCEL` — NPNEF2-11 / SULPITIUS SEVERUS, VINCENT OF LERINS, JOHN CASSIAN
+- The Pearl, Seven Hymns on the Faith — `CCEL` — contents@2688
+- The Sacred History of Sulpitius Severus — `CCEL` — NPNF2-11 / SULPITIUS SEVERUS, VINCENT OF LERINS, JOHN CASSIAN
+- The Second Council of Constantinople — `CCEL` — NPNF2-14 / THE SEVEN ECUMENICAL COUNCILS
+- The Second Ecumenical Council — `CCEL` — NPNF2-14 / THE SEVEN ECUMENICAL COUNCILS
+- The Seven Books of John Cassian On The Incarnation of The Lord, Against Nestorius — `CCEL` — NPNEF2-11 / SULPITIUS SEVERUS, VINCENT OF LERINS, JOHN CASSIAN
+- The Seven Ecumenical Councils of The Undivided Church — `CCEL` — NPNF2-14 / THE SEVEN ECUMENICAL COUNCILS
+- The Treatise De Spiritu Sancto — `CCEL` — NPNF2-08 / BASIL: LETTERS AND SELECT WORKS
+- The Twelve Books of John Cassian on the Institutes of the Coenobia, and the Remedies for the Eight Principal Faults — `CCEL` — NPNF2-11 / SULPITIUS SEVERUS, VINCENT OF LERINS, JOHN CASSIAN
+- Three Homilies — `CCEL` — NPNF2-13 / GREGORY THE GREAT (II), EPHRAIM SYRUS, APHRAHAT
+- Tomus Ad Antiochenos — `CCEL` — ATHANASIUS: SELECT WORKS AND LETTERS
+- Treatise De Synodis — `CCEL` — NPNF2-09 / HILARY OF POITIERS, JOHN OF DAMASCUS
+- in Trullo — `CCEL` — NPNF2-14 / THE SEVEN ECUMENICAL COUNCILS
+- A Treatise Concerning Man’s Perfection In Righteousness — `CCEL` — SAINT AUGUSTIN’S ANTI-PELAGIAN WORKS
+- A Treatise On Grace And Free Will — `CCEL` — SAINT AUGUSTIN’S ANTI-PELAGIAN WORKS
+- A Treatise On Rebuke And Grace — `CCEL` — SAINT AUGUSTIN’S ANTI-PELAGIAN WORKS
+- A Treatise On The Gift of Perseverance — `CCEL` — SAINT AUGUSTIN’S ANTI-PELAGIAN WORKS
+- A Treatise On The Grace of Christ, And On Original Sin — `CCEL` — SAINT AUGUSTIN’S ANTI-PELAGIAN WORKS
+- A Treatise On The Merits And Forgiveness of Sins, And On The Baptism of Infants — `CCEL` — SAINT AUGUSTIN’S ANTI-PELAGIAN WORKS
+- A Treatise On The Predestination of The Saints — `CCEL` — SAINT AUGUSTIN’S ANTI-PELAGIAN WORKS
+- A Treatise on Faith and the Creed — `CCEL` — ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- A Work On The Proceedings of Pelagius — `CCEL` — SAINT AUGUSTIN’S ANTI-PELAGIAN WORKS
+- Acts Or Disputation Against Fortunatus The Manichaean — `CCEL` — NPNF 1-04 / ST. AUGUSTINE: THE WRITINGS AGAINST THE MANICHAEANS AND AGAINST THE DONATISTS
+- Against Lying — `CCEL` — NPNF1-03 / ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- Against The Epistle of Manichaeus, Called Fundamental — `CCEL` — NPNF 1-04 / ST. AUGUSTINE: THE WRITINGS AGAINST THE MANICHAEANS AND AGAINST THE DONATISTS
+- Answer To The Letters of Petilian, The Donatist — `CCEL` — NPNF 1-04 / ST. AUGUSTINE: THE WRITINGS AGAINST THE MANICHAEANS AND AGAINST THE DONATISTS
+- Concerning Faith of Things Not Seen — `CCEL` — ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- Concerning The Nature of Good, Against The Manichaeans — `CCEL` — NPNF 1-04 / ST. AUGUSTINE: THE WRITINGS AGAINST THE MANICHAEANS AND AGAINST THE DONATISTS
+- Expositions On The Book of Psalms — `CCEL` — NPNF 1-08 / ST. AUGUSTINE: EXPOSITION ON THE BOOK OF PSALMS
+- Of Holy Virginity — `CCEL` — NPNF1-03 / ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- Of the Work of Monks — `CCEL` — ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- On Baptism, Against the Donatists — `CCEL` — NPNF 1-04 / ST. AUGUSTINE: THE WRITINGS AGAINST THE MANICHAEANS AND AGAINST THE DONATISTS
+- On Care to Be Had for the Dead — `CCEL` — ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- On Christian Doctrine — `CCEL` — ST AUGUSTINE: CITY OF GOD AND CHRISTIAN DOCTRINE
+- On Continence — `CCEL` — ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- On Lying — `CCEL` — NPNF1-03 / ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- On Marriage And Concupiscence — `CCEL` — SAINT AUGUSTIN’S ANTI-PELAGIAN WORKS
+- On Patience — `CCEL` — ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- On The Morals of The Catholic Church — `CCEL` — NPNF1-04 / ST. AUGUSTINE: THE WRITINGS AGAINST THE MANICHAEANS AND AGAINST THE DONATISTS
+- On The Morals of The Manichaeans — `CCEL` — NPNF 1-04 / ST. AUGUSTINE: THE WRITINGS AGAINST THE MANICHAEANS AND AGAINST THE DONATISTS
+- On The Trinity — `CCEL` — ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- On Two Souls, Against The Manichaeans — `CCEL` — NPNF 1-04 / ST. AUGUSTINE: THE WRITINGS AGAINST THE MANICHAEANS AND AGAINST THE DONATISTS
+- On the Catechising of the Uninstructed — `CCEL` — NPNF1-03 / ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- On the Creed — `CCEL` — NPNF1-03 / ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- On the Good of Marriage — `CCEL` — NPNF1-03 / ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- On the Good of Widowhood — `CCEL` — NPNF1-03 / ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- On the Profit of Believing — `CCEL` — ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- Our Lord’s Sermon On The Mount — `CCEL` — NPNF 1-06 / ST. AUGUSTINE: SERMON ON THE MOUNT, HARMONY OF THE GOSPELS, HOMILIES ON THE GOSPELS
+- Reply To Faustus The Manichaean — `CCEL` — NPNF 1-04 / ST. AUGUSTINE: THE WRITINGS AGAINST THE MANICHAEANS AND AGAINST THE DONATISTS
+- Ten Homilies On The First Epistle of John To The Parthians — `CCEL` — NPNF 1-07 / ST. AUGUSTINE: HOMILIES ON THE GOSPEL OF JOHN, HOMILIES ON THE FIRST EPISTLE OF JOHN, SOLILOQUIES
+- The City of God — `CCEL` — NPNF1-02 / ST. AUGUSTINE: CITY OF GOD AND CHRISTIAN DOCTRINE
+- The Confessions of St. Augustin — `CCEL` — ST. AUGUSTINE: THE CONFESSIONS AND LETTERS OF ST. AUGUSTINE, WITH A SKETCH OF HIS LIFE AND WORK
+- The Correction of The Donatists — `CCEL` — NPNF 1-04 / ST. AUGUSTINE: THE WRITINGS AGAINST THE MANICHAEANS AND AGAINST THE DONATISTS
+- The Enchiridion — `CCEL` — ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+- Two Books of Soliloquies — `CCEL` — NPNF 1-07 / ST. AUGUSTINE: HOMILIES ON THE GOSPEL OF JOHN, HOMILIES ON THE FIRST EPISTLE OF JOHN, SOLILOQUIES
+- A Treatise To Prove That No One Can Harm The Man Who Does Not Injure Himself — `CCEL` — contents@1087830
+- An Exhortation To Theodore After His Fall — `CCEL` — ST. CHRYSOSTOM: ON THE PRIESTHOOD, ASCETIC TREATISES, SELECT HOMILIES AND LETTERS, HOMILIES ON / THE STATUTES
+- Correspondence of St. Chrysostom With The Bishop of Rome — `CCEL` — contents@1087830
+- Homilies On S. Ignatius and S. Babylas — `CCEL` — ST. CHRYSOSTOM: ON THE PRIESTHOOD, ASCETIC TREATISES, SELECT HOMILIES AND LETTERS, HOMILIES ON / THE STATUTES
+- Homily Concerning Lowliness of Mind; And Commentary On Philippians I. 18 — `CCEL` — ST. CHRYSOSTOM: ON THE PRIESTHOOD, ASCETIC TREATISES, SELECT HOMILIES AND LETTERS, HOMILIES ON / THE STATUTES
+- Instructions To Catechumens — `CCEL` — contents@1087830
+- Letter To A Young Widow — `CCEL` — contents@1087830
+- Letters of St. Chrysostom To Olympias — `CCEL` — contents@1087830
+- The Homilies On The Second Epistle of St. Paul The Apostle To The Corinthians — `CCEL` — NPNF1-12 / ST. CHRYSOSTOM: HOMILIES ON THE EPISTLES OF PAUL TO THE CORINTHIANS
+- The Homilies of St. John Chrysostom On The Acts of The Apostles and The Epistle to The Romans — `CCEL` — NPNF1-14 / ST. CHRYSOSTOM: HOMILIES ON THE GOSPEL OF ST. JOHN AND THE EPISTLE TO THE HEBREWS
+- The Homilies of St. John Chrysostom On The Epistle To The Hebrews — `CCEL` — NPNF1-14 / ST. CHRYSOSTOM: HOMILIES ON THE GOSPEL OF ST. JOHN AND THE EPISTLE TO THE HEBREWS
+- The Homilies of St. John Chrysostom On The Gospel of Saint Matthew — `CCEL` — contents@94035
+- The Homilies of St. John Chrysostom On The Gospel of St. John — `CCEL` — contents@94035
+- Treatise Concerning The Christian Priesthood — `CCEL` — ST. CHRYSOSTOM: ON THE PRIESTHOOD, ASCETIC TREATISES, SELECT HOMILIES AND LETTERS, HOMILIES ON / THE STATUTES
+- Two Homilies On Eutropius — `CCEL` — SOSTOM: ON THE PRIESTHOOD, ASCETIC TREATISES, SELECT HOMILIES AND LETTERS, HOMILIES ON
+- Jerome and Gennadius Lives of Illustrious Men — `CCEL` — THEODORET, JEROME, GENNADIUS, & RUFINUS: HISTORICAL WRITINGS
+- Letters of the Blessed Theodoret, Bishop of Cyrus — `CCEL` — contents@2174
+- Life and Works of Rufinus with Jerome’s Apology Against Rufinus — `CCEL` — THEODORET, JEROME, GENNADIUS, & RUFINUS: HISTORICAL WRITINGS
+- The Church History of Eusebius — `CCEL` — NPNF2-01 / EUSEBIUS PAMPHILIUS: CHURCH HISTORY, LIFE OF CONSTANTINE, ORATION IN PRAISE OF CONSTANTINE
+- The Ecclesiastical History of Socrates Scholasticus — `CCEL` — SOCRATES AND SOZOMENUS ECCLESIASTICAL HISTORIES
+- The Ecclesiastical History of Sozomen — `CCEL` — SOCRATES AND SOZOMENUS ECCLESIASTICAL HISTORIES
+- The Life of The Blessed Emperor Constantine By Eusebius Pamphilus — `CCEL` — NPNF2-01 / EUSEBIUS PAMPHILIUS: CHURCH HISTORY, LIFE OF CONSTANTINE, ORATION IN PRAISE OF CONSTANTINE
+- The Oration of Eusebius — `CCEL` — contents@2074
+- The Oration of Eusebius Pamphilus, In Praise of The Emperor Constantine — `CCEL` — NPNF2-01 / EUSEBIUS PAMPHILIUS: CHURCH HISTORY, LIFE OF CONSTANTINE, ORATION IN PRAISE OF CONSTANTINE
+- The Oration of The Emperor Constantine, Which He Addressed “To The Assembly of The Saints.” — `CCEL` — NPNF2-01 / EUSEBIUS PAMPHILIUS: CHURCH HISTORY, LIFE OF CONSTANTINE, ORATION IN PRAISE OF CONSTANTINE
+
+## DOWNLOAD NOW — additional CCEL resolves
+
+### Pack 1 — Core conversion / doctrinal foundation
+- The Didache / The Two Ways (when treated as a separate book in the omnibus) — `CCEL` — ANF / early Christian texts
+- The Shepherd of Hermas / Pastor of Hermas — `CCEL` — ANF / early Christian texts
+- The Letters of Saint Basil The Great — `CCEL` — NPNF2-08 / BASIL: LETTERS AND SELECT WORKS
+- The Nine Homilies of The Hexaemeron — `CCEL` — NPNF2-08 / BASIL: LETTERS AND SELECT WORKS
+- The Homilies of St. John Chrysostom On The Epistles of St. Paul To The Philippians, Colossians, And Ephesians — `CCEL` — ST. CHRYSOSTOM: HOMILIES ON THE EPISTLES OF PAUL TO THE CORINTHIANS / RELATED HOMILIES
+
+## SKIP — already local
+
+
+## Notes
+- CCEL wins for Fathers-series material when the omnibus contains the same family as an IA/Gutenberg item.
+- The final list avoids duplicate work families across sources.
+- Use the existing skip file for the longer provenance list: `/data/resonance/plans/2026-06-23-clean-skip-keep-list.md`.

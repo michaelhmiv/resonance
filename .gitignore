@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+build/
+dist/
+*.apk
+*.aab
+*.keystore
+
+# Expo
+.expo/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Cache
+.cache/
+.hermes/
+
+# Corpus staging (large files — managed separately)
+corpus_staging/
+corpus_staging_test/
+corpus_staging_check/
+
+# Models (large binary files)
+models/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
