@@ -14,7 +14,7 @@
     "typecheck:web": "tsc --noEmit -p apps/web/tsconfig.json",
     "typecheck:packages": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/theme/tsconfig.json && tsc --noEmit -p packages/ui/tsconfig.json"
   },
-  "version": "1.0.0",
+  "version": "2.0.0",
   "devDependencies": {
     "@types/react": "^19.2.17",
     "typescript": "~6.0.3"
