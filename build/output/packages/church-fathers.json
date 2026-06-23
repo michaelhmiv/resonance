@@ -1,0 +1,9 @@
+{
+  "id": "church-fathers",
+  "name": "Church Fathers",
+  "description": "Writings from the early Church Fathers \u2014 Irenaeus, Origen, Chrysostom, Augustine, and more.",
+  "category": "Church Fathers",
+  "size_mb": 0,
+  "contents": [],
+  "status": "pending-ingestion"
+}

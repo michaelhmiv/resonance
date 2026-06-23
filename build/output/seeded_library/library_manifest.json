@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "created_at": 1782237148.194778,
+  "files": [
+    "verse_of_day.json",
+    "vectors_gte-small.bin",
+    "bible_passages.json",
+    "cross_references.json",
+    "vectors_gte-small_manifest.json",
+    "voice_passages.json",
+    "voice_books.json",
+    "bible_books.json"
+  ],
+  "bible_translations": [
+    "web",
+    "kjv"
+  ],
+  "voice_works": 18,
+  "total_passages": "auto",
+  "vector_models": [
+    "gte-small"
+  ],
+  "verse_of_day_count": 365
+}
