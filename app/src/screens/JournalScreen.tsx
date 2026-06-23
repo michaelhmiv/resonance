@@ -52,6 +52,7 @@ import {
 import { useJournalStore } from '../journal/journalStore';
 import { useFocusStore } from '../journal/focusManager';
 import { getVerseOfDay } from '../db/bibleQueries';
+import { useReadingTextStyle } from '../settings/settingsStore';
 
 // ── Item types for the FlashList ─────────────────────────────────────────────
 
@@ -277,6 +278,7 @@ function ActiveSegmentInput({
   onFocus,
 }: ActiveSegmentInputProps): ReactNode {
   const inputRef = useRef<TextInput>(null);
+  const readingStyle = useReadingTextStyle();
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -285,7 +287,10 @@ function ActiveSegmentInput({
   return (
     <TextInput
       ref={inputRef}
-      style={styles.activeInput}
+      style={[
+        styles.activeInput,
+        { fontSize: readingStyle.fontSize, lineHeight: readingStyle.lineHeight },
+      ]}
       value={segment.text ?? ''}
       onChangeText={onChangeText}
       onKeyPress={onKeyPress as never}
@@ -303,8 +308,18 @@ function ActiveSegmentInput({
 // ── Static segment text ─────────────────────────────────────────────────────
 
 function StaticSegmentText({ text }: { text: string }): ReactNode {
+  const readingStyle = useReadingTextStyle();
   if (text.length === 0) return <View style={{ height: 1 }} />;
-  return <Text style={styles.staticText}>{text}</Text>;
+  return (
+    <Text
+      style={[
+        styles.staticText,
+        { fontSize: readingStyle.fontSize, lineHeight: readingStyle.lineHeight },
+      ]}
+    >
+      {text}
+    </Text>
+  );
 }
 
 // ── Date divider ────────────────────────────────────────────────────────────

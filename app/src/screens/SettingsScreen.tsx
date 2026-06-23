@@ -1,488 +1,511 @@
 /**
- * Settings screen — 7 sections for model, reading, privacy, storage,
- * accessibility, and licenses.
+ * Settings screen — full-screen, 7 sections.
  *
- * Quiet, reverent, text-forward. No "AI assistant" vibes.
+ * Every preference lives on the device. The language is deliberately quiet
+ * and reverent: no "AI assistant" voice, no cleverness, no dark patterns.
  *
- * (design spec §8: Settings / Profile — not a fourth tab, in the header)
+ * Sections:
+ *   1. Embedding Model      — local math that finds echoes in your Library
+ *   2. Reflection Model     — optional, opt-in LLM layer (off by default)
+ *   3. Reading Preferences  — translation, reading font size, theme
+ *   4. Privacy & Data       — export, erase, lock
+ *   5. Storage              — local footprint breakdown
+ *   6. Accessibility        — text scale, reduced motion (these are live)
+ *   7. Licenses & Acknowledgments — a long, discreet list at the bottom
+ *
+ * (design spec §8.2, implementation plan Task 7.1)
  */
 
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
-  useCallback,
-  useEffect,
-  useState,
-  type ReactNode,
-} from 'react';
-import {
+  ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 
-import {
-  cardSurface,
-  colors,
-  fontFamilies,
-  layout,
-  radii,
-  serifText,
-  spacing,
-} from '../theme';
-import { EMBEDDING_MODELS } from '../embedding/embeddingService';
+import { colors, fontFamilies, layout, spacing } from '../theme';
+import { EMBEDDING_MODELS, type EmbeddingModelId, getModelInfo } from '../embedding/embeddingService';
 import { LLM_MODELS } from '../embedding/reflectionService';
+import { useSettingsStore } from '../settings/settingsStore';
+import { switchEmbeddingModel, setLlmActive } from '../settings/modelManager';
 import {
-  getActiveModel,
-  setActiveModel,
-  isLlmEnabled,
-  setLlmEnabled,
-} from '../packages/modelManager';
-import { getStorageInfo, getInstalledPackages } from '../packages/packageManager';
-import { getDatabase } from '../db/database';
-import type { EmbeddingModelId } from '../embedding/embeddingService';
+  getStorageInfo,
+  clearAllJournalData,
+  clearResonanceVectors,
+  exportJournalToFile,
+  formatBytes,
+  type StorageInfo,
+} from '../db/queries/settingsQueries';
+import {
+  Section,
+  ToggleRow,
+  SegmentedRow,
+  ChoiceRow,
+  ActionRow,
+  InfoRow,
+  RowDivider,
+  QuietNote,
+} from './settings/components';
+import { LICENSE_GROUPS } from './settings/licenses';
 
-// ── Component ───────────────────────────────────────────────────────────────
+// ── Screen ────────────────────────────────────────────────────────────────
 
 export function SettingsScreen(): ReactNode {
-  const [activeModel, setActiveModelState] = useState<EmbeddingModelId>('gte-small');
-  const [llmEnabled, setLlmEnabledState] = useState(false);
-  const [defaultTranslation, setDefaultTranslation] = useState<'WEB' | 'KJV'>('WEB');
-  const [fontSize, setFontSize] = useState<'small' | 'medium' | 'large'>('medium');
-  const [reduceMotion, setReduceMotion] = useState(false);
-  const [textScale, setTextScale] = useState<'small' | 'medium' | 'large' | 'xlarge'>('medium');
-  const [storageTotal, setStorageTotal] = useState(0);
-  const [installedPkgs, setInstalledPkgs] = useState<{ package_id: string; passage_count: number }[]>([]);
+  const loaded = useSettingsStore((s) => s.loaded);
+  const load = useSettingsStore((s) => s.load);
 
-  // ── Load settings on mount ───────────────────────────────────────────
+  // Load persisted settings once the SQLite connection is live.
   useEffect(() => {
-    const load = async () => {
-      const model = await getActiveModel();
-      setActiveModelState(model);
-      const llm = await isLlmEnabled();
-      setLlmEnabledState(llm);
-
-      const storage = await getStorageInfo();
-      setStorageTotal(storage.totalBytes);
-      const pkgs = await getInstalledPackages();
-      setInstalledPkgs(
-        pkgs.map((p) => ({ package_id: p.package_id, passage_count: 0 }))
-      );
-
-      // Load reading prefs from app_settings
-      const db = getDatabase();
-      if (db) {
-        try {
-          const transRow = await db.getFirstAsync<{ value: string }>(
-            `SELECT value FROM app_settings WHERE key = 'default_translation';`
-          );
-          if (transRow?.value) setDefaultTranslation(transRow.value as 'WEB' | 'KJV');
-
-          const sizeRow = await db.getFirstAsync<{ value: string }>(
-            `SELECT value FROM app_settings WHERE key = 'font_size';`
-          );
-          if (sizeRow?.value) setFontSize(sizeRow.value as typeof fontSize);
-        } catch {
-          // ignore
-        }
-      }
-    };
-    void load();
-  }, []);
-
-  // ── Handlers ──────────────────────────────────────────────────────────
-  const handleModelChange = useCallback(async (modelId: EmbeddingModelId) => {
-    setActiveModelState(modelId);
-    await setActiveModel(modelId);
-  }, []);
-
-  const handleLlmToggle = useCallback(async (enabled: boolean) => {
-    setLlmEnabledState(enabled);
-    await setLlmEnabled(enabled);
-  }, []);
-
-  const handleTranslationChange = useCallback(async (trans: 'WEB' | 'KJV') => {
-    setDefaultTranslation(trans);
-    const db = getDatabase();
-    if (db) {
-      await db.runAsync(
-        `INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?);`,
-        'default_translation',
-        trans
-      );
+    if (!loaded) {
+      void load();
     }
-  }, []);
+  }, [loaded, load]);
 
-  const handleExportJournal = useCallback(async () => {
-    const db = getDatabase();
-    if (!db) return;
-    try {
-      const rows = await db.getAllAsync<{ text: string; parent_date: string; created_at: number }>(
-        `SELECT text, parent_date, created_at FROM journal_segments
-         WHERE segment_type = 'text' AND text IS NOT NULL
-         ORDER BY position_index;`
-      );
-      const text = rows
-        .map((r) => {
-          const date = new Date(r.created_at).toLocaleDateString();
-          return `${date}\n${r.text}\n`;
-        })
-        .join('\n---\n\n');
-      // In production: save to file and share
-      Alert.alert('Export', `${rows.length} entries ready for export.`);
-    } catch {
-      Alert.alert('Export', 'Could not export journal data.');
-    }
-  }, []);
-
-  const handleClearJournal = useCallback(() => {
-    Alert.alert(
-      'Clear Journal',
-      'This will permanently delete all journal entries. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const db = getDatabase();
-            if (!db) return;
-            await db.runAsync('DELETE FROM journal_segments;');
-            await db.runAsync('DELETE FROM journal_segment_vectors;');
-          },
-        },
-      ]
+  if (!loaded) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <ActivityIndicator color={colors.accentMuted} />
+      </View>
     );
-  }, []);
-
-  // ── Render ─────────────────────────────────────────────────────────────
+  }
 
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
     >
-      {/* 1. Embedding Model */}
-      <Section title="Embedding Model">
-        <Text style={styles.sectionDescription}>
-          Runs on-device to match your writing with Scripture and voices.
-        </Text>
-        {EMBEDDING_MODELS.map((model) => (
-          <SettingRow
-            key={model.id}
-            label={model.label}
-            subtext={`${model.sizeMb} MB · ${model.license}`}
-            selected={activeModel === model.id}
-            onPress={() => handleModelChange(model.id)}
-          />
-        ))}
-      </Section>
+      <EmbeddingModelSection />
+      <ReflectionModelSection />
+      <ReadingPreferencesSection />
+      <PrivacyDataSection />
+      <StorageSection />
+      <AccessibilitySection />
+      <LicensesSection />
 
-      {/* 2. Reflection Model (LLM) */}
-      <Section title="Reflection Model">
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleLabel}>
-            <Text style={styles.labelText}>Enable reflection prompts</Text>
-            <Text style={styles.labelSubtext}>
-              Generates gentle questions and weekly summaries. Runs entirely
-              on-device. Never writes prayers or interprets Scripture.
-            </Text>
-          </View>
-          <Switch
-            value={llmEnabled}
-            onValueChange={handleLlmToggle}
-            trackColor={{ false: colors.border, true: colors.accent }}
-            thumbColor={colors.surface}
-          />
-        </View>
-        {llmEnabled && LLM_MODELS.map((model) => (
-          <SettingRow
-            key={model.id}
-            label={model.label}
-            subtext={`${model.sizeMb} MB · ${model.license}`}
-            selected
-          />
-        ))}
-      </Section>
-
-      {/* 3. Reading Preferences */}
-      <Section title="Reading Preferences">
-        <Text style={styles.subsectionLabel}>Default Translation</Text>
-        <View style={styles.segmentedRow}>
-          {(['WEB', 'KJV'] as const).map((t) => (
-            <SegmentedButton
-              key={t}
-              label={t}
-              selected={defaultTranslation === t}
-              onPress={() => handleTranslationChange(t)}
-            />
-          ))}
-        </View>
-        <Text style={styles.subsectionLabel}>Font Size</Text>
-        <View style={styles.segmentedRow}>
-          {(['small', 'medium', 'large'] as const).map((s) => (
-            <SegmentedButton
-              key={s}
-              label={s.charAt(0).toUpperCase() + s.slice(1)}
-              selected={fontSize === s}
-              onPress={() => setFontSize(s)}
-            />
-          ))}
-        </View>
-      </Section>
-
-      {/* 4. Privacy & Data */}
-      <Section title="Privacy & Data">
-        <SettingRow label="Export Journal" onPress={handleExportJournal} icon="download" />
-        <SettingRow
-          label="Clear All Journal Data"
-          onPress={handleClearJournal}
-          icon="trash-2"
-          destructive
-        />
-        <SettingRow label="Clear Resonance Vectors" onPress={() => {}} icon="zap" />
-        <SettingRow label="App Lock" onPress={() => {}} icon="lock" />
-        <Text style={styles.privacyNote}>
-          All data is stored locally. Nothing leaves this device.
-        </Text>
-      </Section>
-
-      {/* 5. Storage */}
-      <Section title="Storage">
-        <View style={styles.storageCard}>
-          <Text style={styles.storageTotal}>
-            {(storageTotal / (1024 * 1024)).toFixed(1)} MB
-          </Text>
-          <Text style={styles.storageLabel}>Total storage used</Text>
-        </View>
-        {installedPkgs.map((pkg) => (
-          <View key={pkg.package_id} style={styles.storageItem}>
-            <Text style={styles.storageItemLabel}>{pkg.package_id}</Text>
-          </View>
-        ))}
-        <Text style={styles.privacyNote}>
-          All data is stored locally on this device.
-        </Text>
-      </Section>
-
-      {/* 6. Accessibility */}
-      <Section title="Accessibility">
-        <Text style={styles.subsectionLabel}>Text Scale</Text>
-        <View style={styles.segmentedRow}>
-          {(['small', 'medium', 'large', 'xlarge'] as const).map((s) => (
-            <SegmentedButton
-              key={s}
-              label={s === 'xlarge' ? 'XL' : s.charAt(0).toUpperCase() + s.slice(1)}
-              selected={textScale === s}
-              onPress={() => setTextScale(s)}
-            />
-          ))}
-        </View>
-        <View style={styles.toggleRow}>
-          <Text style={styles.labelText}>Reduce Motion</Text>
-          <Switch
-            value={reduceMotion}
-            onValueChange={setReduceMotion}
-            trackColor={{ false: colors.border, true: colors.accent }}
-            thumbColor={colors.surface}
-          />
-        </View>
-      </Section>
-
-      {/* 7. Licenses & Acknowledgments */}
-      <Section title="Licenses & Acknowledgments">
-        <LicenseGroup
-          title="Bible Translations"
-          items={[
-            { name: 'King James Version (KJV)', license: 'Public Domain' },
-            { name: 'World English Bible (WEB)', license: 'Public Domain' },
-            { name: 'American Standard Version (ASV)', license: 'Public Domain' },
-          ]}
-        />
-        <LicenseGroup
-          title="Voice Texts"
-          items={[
-            { name: 'Augustine — Confessions', license: 'Public Domain' },
-            { name: "Thomas à Kempis — Imitation of Christ", license: 'Public Domain' },
-            { name: 'John of the Cross — Dark Night of the Soul', license: 'Public Domain' },
-            { name: 'Julian of Norwich — Revelations of Divine Love', license: 'Public Domain' },
-            { name: 'Brother Lawrence — Practice of the Presence of God', license: 'Public Domain' },
-            { name: 'Catherine of Siena — Dialogue', license: 'Public Domain' },
-            { name: 'Bernard of Clairvaux — On Loving God', license: 'Public Domain' },
-            { name: 'Francis de Sales — Introduction to the Devout Life', license: 'Public Domain' },
-            { name: 'Teresa of Avila — Interior Castle', license: 'Public Domain' },
-            { name: 'The Philokalia', license: 'Public Domain' },
-            { name: 'Rule of St. Benedict', license: 'Public Domain' },
-            { name: 'Desert Fathers — Sayings', license: 'Public Domain' },
-            { name: 'Ephrem the Syrian — Hymns', license: 'Public Domain' },
-            { name: 'Gregory the Great — Pastoral Rule', license: 'Public Domain' },
-            { name: 'Anselm of Canterbury — Proslogion', license: 'Public Domain' },
-            { name: 'Bede — Ecclesiastical History', license: 'Public Domain' },
-            { name: 'Meister Eckhart — Sermons', license: 'Public Domain' },
-            { name: 'William of St. Thierry — On Contemplating God', license: 'Public Domain' },
-          ]}
-        />
-        <LicenseGroup
-          title="Embedding Models"
-          items={EMBEDDING_MODELS.map((m) => ({
-            name: m.label,
-            license: m.license,
-          }))}
-        />
-        <LicenseGroup
-          title="LLM Models"
-          items={LLM_MODELS.map((m) => ({
-            name: m.label,
-            license: m.license,
-          }))}
-        />
-        <LicenseGroup
-          title="Open-Source Software"
-          items={[
-            { name: 'ONNX Runtime', license: 'MIT' },
-            { name: 'llama.cpp', license: 'MIT' },
-            { name: 'React Native', license: 'MIT' },
-            { name: 'Expo', license: 'MIT' },
-            { name: 'FlashList', license: 'MIT' },
-          ]}
-        />
-        <LicenseGroup
-          title="Fonts"
-          items={[
-            { name: 'Cormorant Garamond', license: 'OFL' },
-            { name: 'Inter', license: 'OFL' },
-          ]}
-        />
-        <LicenseGroup
-          title="Cross-References"
-          items={[
-            { name: 'Treasury of Scripture Knowledge', license: 'Public Domain' },
-          ]}
-        />
-      </Section>
-
-      <View style={{ height: spacing.xxl }} />
+      <Text style={styles.footer}>
+        Resonance — a private, offline-first spiritual journal.{'\n'}
+        Everything you read and write stays on this device.
+      </Text>
     </ScrollView>
   );
 }
 
-// ── Sub-components ───────────────────────────────────────────────────────────
+// ── 1. Embedding Model ────────────────────────────────────────────────────
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}): ReactNode {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionBody}>{children}</View>
-    </View>
+const EMBEDDING_CHOICES = EMBEDDING_MODELS.map((m) => ({
+  value: m.id as EmbeddingModelId,
+  label: m.label,
+  sizeMb: m.sizeMb,
+  license: m.license,
+}));
+
+function EmbeddingModelSection(): ReactNode {
+  const embeddingModel = useSettingsStore((s) => s.embeddingModel);
+  const setEmbeddingModel = useSettingsStore((s) => s.setEmbeddingModel);
+  const [switching, setSwitching] = useState(false);
+
+  const handleSelect = useCallback(
+    (id: EmbeddingModelId) => {
+      if (id === embeddingModel) return;
+      setEmbeddingModel(id);
+      // Fire-and-forget the model swap (stub loads the new ONNX session;
+      // failures degrade gracefully — resonance simply pauses until ready).
+      setSwitching(true);
+      void switchEmbeddingModel(id).finally(() => setSwitching(false));
+    },
+    [embeddingModel, setEmbeddingModel]
   );
-}
 
-function SettingRow({
-  label,
-  subtext,
-  selected,
-  onPress,
-  icon,
-  destructive,
-}: {
-  label: string;
-  subtext?: string;
-  selected?: boolean;
-  onPress?: () => void;
-  icon?: string;
-  destructive?: boolean;
-}): ReactNode {
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={!onPress}
-      style={({ pressed }) => [
-        styles.settingRow,
-        pressed && styles.settingRowPressed,
-      ]}
+    <Section
+      title="Embedding Model"
+      description={
+        'The model that finds echoes between your writing and the Library. ' +
+        'This is local math — it does not interpret or generate text.'
+      }
     >
-      {icon ? (
-        <Feather
-          name={icon as never}
-          size={18}
-          color={destructive ? '#b04040' : colors.textSecondary}
-        />
+      {switching ? (
+        <View style={styles.loadingInline}>
+          <ActivityIndicator color={colors.accentMuted} size="small" />
+        </View>
       ) : null}
-      <View style={styles.settingRowText}>
-        <Text
-          style={[styles.labelText, destructive && { color: '#b04040' }]}
-        >
-          {label}
-        </Text>
-        {subtext ? <Text style={styles.labelSubtext}>{subtext}</Text> : null}
-      </View>
-      {selected !== undefined && (
-        <Feather
-          name="check"
-          size={18}
-          color={selected ? colors.accent : 'transparent'}
+
+      {EMBEDDING_CHOICES.map((opt, idx) => (
+        <ChoiceRow
+          key={opt.value}
+          label={opt.label}
+          meta={`${opt.sizeMb} MB · ${opt.license}`}
+          selected={opt.value === embeddingModel}
+          onSelect={() => handleSelect(opt.value)}
         />
-      )}
-    </Pressable>
+      ))}
+
+      <QuietNote>
+        Active: {getModelInfo(embeddingModel).label}. Switching re-indexes your
+        journal on next launch.
+      </QuietNote>
+    </Section>
   );
 }
 
-function SegmentedButton({
-  label,
-  selected,
-  onPress,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}): ReactNode {
+// ── 2. Reflection Model (LLM) ─────────────────────────────────────────────
+
+function ReflectionModelSection(): ReactNode {
+  const llmEnabled = useSettingsStore((s) => s.llmEnabled);
+  const llmModel = useSettingsStore((s) => s.llmModel);
+  const setLlmEnabled = useSettingsStore((s) => s.setLlmEnabled);
+
+  const handleToggle = useCallback(
+    (enabled: boolean) => {
+      setLlmEnabled(enabled);
+      // Fire-and-forget the load/unload of the on-device LLM.
+      void setLlmActive(llmModel, enabled);
+    },
+    [llmModel, setLlmEnabled]
+  );
+
+  const activeModel = LLM_MODELS.find((m) => m.id === llmModel) ?? LLM_MODELS[0];
+
   return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        styles.segmentedBtn,
-        selected && styles.segmentedBtnActive,
-      ]}
+    <Section
+      title="Reflection Model"
+      description={
+        'Generates reflection prompts and weekly summaries. Runs entirely ' +
+        'on-device. Never writes prayers or interprets Scripture.'
+      }
     >
-      <Text
-        style={[
-          styles.segmentedBtnText,
-          selected && styles.segmentedBtnTextActive,
-        ]}
-      >
-        {label}
-      </Text>
-    </Pressable>
+      <ToggleRow
+        label="Enable reflection features"
+        value={llmEnabled}
+        onToggle={handleToggle}
+      />
+      <RowDivider />
+      {llmEnabled ? (
+        <View style={styles.subBlock}>
+          <InfoRow label="Model" value={activeModel.label} />
+          <InfoRow
+            label="Size"
+            value={`${Math.round(activeModel.sizeMb / 1024)} GB`}
+          />
+          <InfoRow label="License" value={activeModel.license} />
+        </View>
+      ) : (
+        <QuietNote>Off. Reflection prompts use your own recent writing only.</QuietNote>
+      )}
+    </Section>
   );
 }
 
-function LicenseGroup({
-  title,
-  items,
-}: {
-  title: string;
-  items: { name: string; license: string }[];
-}): ReactNode {
+// ── 3. Reading Preferences ────────────────────────────────────────────────
+
+const FONT_SIZE_OPTIONS = [
+  { value: 'small' as const, label: 'Small' },
+  { value: 'medium' as const, label: 'Medium' },
+  { value: 'large' as const, label: 'Large' },
+];
+
+const TRANSLATION_OPTIONS = [
+  { value: 'WEB' as const, label: 'WEB' },
+  { value: 'KJV' as const, label: 'KJV' },
+];
+
+const THEME_OPTIONS = [
+  { value: 'auto' as const, label: 'Auto' },
+  { value: 'light' as const, label: 'Light' },
+];
+
+function ReadingPreferencesSection(): ReactNode {
+  const readingFontSize = useSettingsStore((s) => s.readingFontSize);
+  const readingTranslation = useSettingsStore((s) => s.readingTranslation);
+  const theme = useSettingsStore((s) => s.theme);
+  const setReadingFontSize = useSettingsStore((s) => s.setReadingFontSize);
+  const setReadingTranslation = useSettingsStore((s) => s.setReadingTranslation);
+  const setTheme = useSettingsStore((s) => s.setTheme);
+
   return (
-    <View style={styles.licenseGroup}>
-      <Text style={styles.licenseGroupTitle}>{title}</Text>
-      {items.map((item, i) => (
-        <View key={i} style={styles.licenseItem}>
-          <Text style={styles.licenseName}>{item.name}</Text>
-          <Text style={styles.licenseText}>{item.license}</Text>
+    <Section title="Reading Preferences">
+      <SegmentedRow
+        label="Default translation"
+        options={TRANSLATION_OPTIONS}
+        selected={readingTranslation}
+        onChoose={setReadingTranslation}
+      />
+      <RowDivider />
+      <SegmentedRow
+        label="Reading font size"
+        options={FONT_SIZE_OPTIONS}
+        selected={readingFontSize}
+        onChoose={setReadingFontSize}
+      />
+      <RowDivider />
+      <SegmentedRow
+        label="Theme"
+        options={THEME_OPTIONS}
+        selected={theme}
+        onChoose={setTheme}
+      />
+      <QuietNote>Dark mode is not yet supported.</QuietNote>
+    </Section>
+  );
+}
+
+// ── 4. Privacy & Data ─────────────────────────────────────────────────────
+
+function PrivacyDataSection(): ReactNode {
+  const appLockEnabled = useSettingsStore((s) => s.appLockEnabled);
+  const setAppLockEnabled = useSettingsStore((s) => s.setAppLockEnabled);
+
+  const [status, setStatus] = useState<string | null>(null);
+  const [confirmType, setConfirmType] = useState<null | 'journal' | 'vectors'>(null);
+
+  const handleExport = useCallback(async () => {
+    const result = await exportJournalToFile();
+    setStatus(
+      result.path
+        ? `Exported ${result.segmentCount} segment(s) to your device.`
+        : 'Nothing to export yet.'
+    );
+  }, []);
+
+  const confirmClearJournal = useCallback(async () => {
+    await clearAllJournalData();
+    setConfirmType(null);
+    setStatus('Journal cleared.');
+  }, []);
+
+  const confirmClearVectors = useCallback(async () => {
+    await clearResonanceVectors();
+    setConfirmType(null);
+    setStatus('Resonance vectors cleared.');
+  }, []);
+
+  return (
+    <Section
+      title="Privacy & Data"
+      description="What you write never leaves this device. Export, erase, or lock your data."
+    >
+      <ActionRow label="Export journal to a file" onPress={handleExport} />
+      <RowDivider />
+      <ActionRow
+        label="Clear all journal data"
+        destructive
+        onPress={() => setConfirmType('journal')}
+      />
+      <RowDivider />
+      <ActionRow
+        label="Clear resonance vectors"
+        destructive
+        onPress={() => setConfirmType('vectors')}
+      />
+      <RowDivider />
+      <ToggleRow
+        label="App lock"
+        hint="Require biometric unlock to open. (Coming soon.)"
+        value={appLockEnabled}
+        onToggle={setAppLockEnabled}
+      />
+      {status ? <QuietNote>{status}</QuietNote> : null}
+
+      <ConfirmModal
+        visible={confirmType !== null}
+        title={confirmType === 'journal' ? 'Clear journal?' : 'Clear resonance vectors?'}
+        body={
+          confirmType === 'journal'
+            ? 'This permanently removes every journal entry on this device. This cannot be undone.'
+            : 'Embeddings of your writing will be deleted and rebuilt on next indexing. Your entries stay.'
+        }
+        confirmLabel="Clear"
+        destructive
+        onConfirm={confirmType === 'journal' ? confirmClearJournal : confirmClearVectors}
+        onCancel={() => setConfirmType(null)}
+      />
+    </Section>
+  );
+}
+
+// ── 5. Storage ────────────────────────────────────────────────────────────
+
+function StorageSection(): ReactNode {
+  const [info, setInfo] = useState<StorageInfo | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    void getStorageInfo().then((i) => {
+      if (mounted) setInfo(i);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const totalBytes =
+    info && info.dbFileSizeBytes > 0
+      ? info.dbFileSizeBytes
+      : info?.estimatedTotalBytes ?? 0;
+
+  return (
+    <Section title="Storage" description="Library footprint, per-package size, storage headroom.">
+      {info ? (
+        <>
+          <InfoRow label="Total used" value={formatBytes(totalBytes)} />
+          {info.dbFileSizeBytes === 0 ? (
+            <QuietNote>Estimated — on-disk size unavailable in this build.</QuietNote>
+          ) : null}
+        </>
+      ) : (
+        <View style={styles.loadingInline}>
+          <ActivityIndicator color={colors.accentMuted} size="small" />
+        </View>
+      )}
+
+      {info && info.packages.length > 0 ? (
+        <View style={styles.subBlock}>
+          <RowDivider />
+          {info.packages.map((p) => (
+            <View key={p.label} style={styles.packageRow}>
+              <View style={styles.packageLabel}>
+                <Text style={styles.packageText}>{p.label}</Text>
+              </View>
+              <Text style={styles.packageMeta}>
+                {formatBytes(p.bytes)} · {p.count.toLocaleString()} rows
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      <QuietNote>All data is stored locally on this device.</QuietNote>
+    </Section>
+  );
+}
+
+// ── 6. Accessibility ──────────────────────────────────────────────────────
+
+const TEXT_SCALE_OPTIONS = [
+  { value: 'small' as const, label: 'S' },
+  { value: 'medium' as const, label: 'M' },
+  { value: 'large' as const, label: 'L' },
+  { value: 'extra_large' as const, label: 'XL' },
+];
+
+function AccessibilitySection(): ReactNode {
+  const textScale = useSettingsStore((s) => s.textScale);
+  const reduceMotion = useSettingsStore((s) => s.reduceMotion);
+  const setTextScale = useSettingsStore((s) => s.setTextScale);
+  const setReduceMotion = useSettingsStore((s) => s.setReduceMotion);
+
+  // A live preview of the accessibility text scale.
+  const previewSize = (() => {
+    const map: Record<typeof textScale, number> = {
+      small: 13,
+      medium: 15,
+      large: 17,
+      extra_large: 19,
+    };
+    return map[textScale];
+  })();
+
+  return (
+    <Section title="Accessibility">
+      <SegmentedRow
+        label="Text scale"
+        options={TEXT_SCALE_OPTIONS}
+        selected={textScale}
+        onChoose={setTextScale}
+      />
+      <Text style={[styles.previewText, { fontSize: previewSize }]}>
+        The Lord is my shepherd; I shall not want.
+      </Text>
+      <RowDivider />
+      <ToggleRow
+        label="Reduce motion"
+        hint="Soften transitions; avoid entrance animations."
+        value={reduceMotion}
+        onToggle={setReduceMotion}
+      />
+      <QuietNote>These apply across the app on your next interaction.</QuietNote>
+    </Section>
+  );
+}
+
+// ── 7. Licenses & Acknowledgments ─────────────────────────────────────────
+
+function LicensesSection(): ReactNode {
+  return (
+    <Section
+      title="Licenses & Acknowledgments"
+      description="All third-party content and software. Not hidden — just discreet."
+    >
+      <QuietNote>Every voice is given freely to the Church. Used here with gratitude.</QuietNote>
+      {LICENSE_GROUPS.map((group) => (
+        <View key={group.title} style={styles.licenseGroup}>
+          <Text style={styles.licenseGroupTitle}>{group.title}</Text>
+          {group.entries.map((entry) => (
+            <View key={`${group.title}-${entry.name}`} style={styles.licenseEntry}>
+              <Text style={styles.licenseName}>{entry.name}</Text>
+              <Text style={styles.licenseMeta}>
+                {entry.license}
+                {entry.detail ? ` · ${entry.detail}` : ''}
+              </Text>
+            </View>
+          ))}
         </View>
       ))}
-    </View>
+    </Section>
+  );
+}
+
+// ── Confirm modal ─────────────────────────────────────────────────────────
+
+interface ConfirmModalProps {
+  visible: boolean;
+  title: string;
+  body: string;
+  confirmLabel: string;
+  destructive?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function ConfirmModal({
+  visible,
+  title,
+  body,
+  confirmLabel,
+  destructive,
+  onConfirm,
+  onCancel,
+}: ConfirmModalProps): ReactNode {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <Pressable style={styles.modalOverlay} onPress={onCancel}>
+        <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+          <Text style={styles.modalTitle}>{title}</Text>
+          <Text style={styles.modalBody}>{body}</Text>
+          <View style={styles.modalActions}>
+            <Pressable style={styles.modalAction} onPress={onCancel} hitSlop={8}>
+              <Text style={styles.modalActionText}>Cancel</Text>
+            </Pressable>
+            <Pressable style={styles.modalAction} onPress={onConfirm} hitSlop={8}>
+              <Text
+                style={[
+                  styles.modalActionText,
+                  destructive && styles.modalActionDestructive,
+                ]}
+              >
+                {confirmLabel}
+              </Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -495,178 +518,133 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: layout.screenPaddingX,
-    paddingVertical: spacing.lg,
-    gap: spacing.xl,
+    paddingVertical: spacing.xl,
+    paddingBottom: spacing.xxl,
   },
-  section: {
-    gap: spacing.sm,
-  },
-  sectionTitle: {
-    ...serifText,
-    fontFamily: fontFamilies.serifSemibold,
-    fontSize: 20,
-    color: colors.textPrimary,
-  },
-  sectionBody: {
-    gap: 1,
-    borderRadius: radii.md,
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  sectionDescription: {
-    ...serifText,
-    fontSize: 14,
-    color: colors.textSecondary,
-    paddingBottom: spacing.xs,
-  },
-  subsectionLabel: {
-    fontFamily: fontFamilies.sansSemibold,
-    fontSize: 12,
-    letterSpacing: 0.4,
-    color: colors.textTertiary,
-    marginTop: spacing.sm,
-  },
-  settingRow: {
-    flexDirection: 'row',
+  center: {
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: layout.cardPadding,
-    backgroundColor: colors.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
   },
-  settingRowPressed: {
-    backgroundColor: colors.background,
-  },
-  settingRowText: {
-    flex: 1,
-  },
-  labelText: {
-    fontFamily: fontFamilies.sans,
-    fontSize: 15,
-    color: colors.textPrimary,
-  },
-  labelSubtext: {
-    fontFamily: fontFamilies.sans,
-    fontSize: 12,
-    color: colors.textTertiary,
-    marginTop: 2,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    paddingHorizontal: layout.cardPadding,
-    backgroundColor: colors.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  toggleLabel: {
-    flex: 1,
-    paddingRight: spacing.md,
-  },
-  segmentedRow: {
-    flexDirection: 'row',
-    gap: 1,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: layout.cardPadding,
-  },
-  segmentedBtn: {
-    flex: 1,
+  loadingInline: {
     paddingVertical: spacing.sm,
     alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    borderRadius: radii.sm,
-    backgroundColor: colors.surface,
   },
-  segmentedBtnActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
+  subBlock: {
+    gap: 0,
   },
-  segmentedBtnText: {
-    fontFamily: fontFamilies.sansMedium,
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  segmentedBtnTextActive: {
-    color: colors.surface,
-  },
-  storageCard: {
-    padding: layout.cardPadding,
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  storageTotal: {
-    fontFamily: fontFamilies.serifSemibold,
-    fontSize: 28,
-    color: colors.textPrimary,
-  },
-  storageLabel: {
-    fontFamily: fontFamilies.sans,
-    fontSize: 13,
-    color: colors.textTertiary,
-  },
-  storageItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: layout.cardPadding,
-  },
-  storageItemLabel: {
-    fontFamily: fontFamilies.sans,
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  privacyNote: {
-    fontFamily: fontFamilies.sans,
-    fontSize: 12,
-    color: colors.textTertiary,
+  previewText: {
+    fontFamily: fontFamilies.serifItalic,
     fontStyle: 'italic',
-    paddingTop: spacing.sm,
-    paddingHorizontal: layout.cardPadding,
-    paddingBottom: spacing.sm,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+    marginLeft: spacing.xs,
   },
-  licenseGroup: {
+  footer: {
+    fontFamily: fontFamilies.serifItalic,
+    fontStyle: 'italic',
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    marginTop: spacing.xxl,
+    marginBottom: spacing.xl,
+  },
+
+  // Storage package rows
+  packageRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: spacing.sm,
-    paddingHorizontal: layout.cardPadding,
-    backgroundColor: colors.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-    gap: spacing.xs,
+    gap: spacing.md,
+  },
+  packageLabel: {
+    flex: 1,
+  },
+  packageText: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  packageMeta: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 12.5,
+    color: colors.textTertiary,
+  },
+
+  // Licenses
+  licenseGroup: {
+    marginTop: spacing.md,
   },
   licenseGroupTitle: {
     fontFamily: fontFamilies.sansSemibold,
-    fontSize: 13,
-    letterSpacing: 0.4,
-    color: colors.textTertiary,
+    fontSize: 12.5,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
+    color: colors.accentMuted,
     marginBottom: spacing.xs,
   },
-  licenseItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    paddingVertical: 2,
+  licenseEntry: {
+    paddingVertical: spacing.xs - 1,
   },
   licenseName: {
-    ...serifText,
-    fontSize: 14,
+    fontFamily: fontFamilies.serif,
+    fontSize: 14.5,
+    lineHeight: 20,
     color: colors.textPrimary,
-    flex: 1,
   },
-  licenseText: {
+  licenseMeta: {
     fontFamily: fontFamilies.sans,
     fontSize: 12,
+    lineHeight: 17,
     color: colors.textTertiary,
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xxl,
+  },
+  modalCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    padding: spacing.xl,
+    width: '100%',
+    maxWidth: 340,
+  },
+  modalTitle: {
+    fontFamily: fontFamilies.serifSemibold,
+    fontSize: 18,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  modalBody: {
+    fontFamily: fontFamilies.serif,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.lg,
+  },
+  modalAction: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  modalActionText: {
+    fontFamily: fontFamilies.sansSemibold,
+    fontSize: 14,
+    color: colors.accent,
+  },
+  modalActionDestructive: {
+    color: '#a85c5c',
   },
 });
