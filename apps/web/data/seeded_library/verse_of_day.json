@@ -1,0 +1,2557 @@
+[
+  {
+    "day_of_year": 1,
+    "book": "Psalms",
+    "chapter": 96,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 2,
+    "book": "1 Corinthians",
+    "chapter": 15,
+    "verse": 46,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 3,
+    "book": "Luke",
+    "chapter": 11,
+    "verse": 5,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 4,
+    "book": "2 Corinthians",
+    "chapter": 12,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 5,
+    "book": "Isaiah",
+    "chapter": 40,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 6,
+    "book": "Luke",
+    "chapter": 9,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 7,
+    "book": "1 John",
+    "chapter": 2,
+    "verse": 25,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 8,
+    "book": "Luke",
+    "chapter": 23,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 9,
+    "book": "Psalms",
+    "chapter": 105,
+    "verse": 23,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 10,
+    "book": "Hebrews",
+    "chapter": 13,
+    "verse": 15,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 11,
+    "book": "Psalms",
+    "chapter": 116,
+    "verse": 15,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 12,
+    "book": "Hebrews",
+    "chapter": 5,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 13,
+    "book": "1 Corinthians",
+    "chapter": 13,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 14,
+    "book": "Mark",
+    "chapter": 8,
+    "verse": 35,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 15,
+    "book": "Psalms",
+    "chapter": 111,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 16,
+    "book": "John",
+    "chapter": 3,
+    "verse": 30,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 17,
+    "book": "Colossians",
+    "chapter": 3,
+    "verse": 18,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 18,
+    "book": "Psalms",
+    "chapter": 17,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 19,
+    "book": "Ephesians",
+    "chapter": 1,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 20,
+    "book": "1 John",
+    "chapter": 2,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 21,
+    "book": "Psalms",
+    "chapter": 130,
+    "verse": 2,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 22,
+    "book": "Ephesians",
+    "chapter": 3,
+    "verse": 14,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 23,
+    "book": "Philippians",
+    "chapter": 2,
+    "verse": 12,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 24,
+    "book": "Psalms",
+    "chapter": 141,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 25,
+    "book": "Mark",
+    "chapter": 9,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 26,
+    "book": "Colossians",
+    "chapter": 2,
+    "verse": 21,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 27,
+    "book": "2 Peter",
+    "chapter": 3,
+    "verse": 14,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 28,
+    "book": "Galatians",
+    "chapter": 4,
+    "verse": 26,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 29,
+    "book": "Romans",
+    "chapter": 5,
+    "verse": 19,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 30,
+    "book": "Revelation",
+    "chapter": 5,
+    "verse": 12,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 31,
+    "book": "Matthew",
+    "chapter": 5,
+    "verse": 33,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 32,
+    "book": "Psalms",
+    "chapter": 71,
+    "verse": 13,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 33,
+    "book": "Isaiah",
+    "chapter": 6,
+    "verse": 8,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 34,
+    "book": "Philippians",
+    "chapter": 2,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 35,
+    "book": "John",
+    "chapter": 12,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 36,
+    "book": "Psalms",
+    "chapter": 96,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 37,
+    "book": "John",
+    "chapter": 9,
+    "verse": 25,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 38,
+    "book": "Ezekiel",
+    "chapter": 3,
+    "verse": 20,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 39,
+    "book": "2 Corinthians",
+    "chapter": 4,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 40,
+    "book": "Psalms",
+    "chapter": 5,
+    "verse": 8,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 41,
+    "book": "Revelation",
+    "chapter": 11,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 42,
+    "book": "Mark",
+    "chapter": 12,
+    "verse": 2,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 43,
+    "book": "Luke",
+    "chapter": 18,
+    "verse": 30,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 44,
+    "book": "Isaiah",
+    "chapter": 65,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 45,
+    "book": "Hebrews",
+    "chapter": 11,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 46,
+    "book": "Psalms",
+    "chapter": 22,
+    "verse": 21,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 47,
+    "book": "2 Peter",
+    "chapter": 1,
+    "verse": 8,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 48,
+    "book": "Psalms",
+    "chapter": 118,
+    "verse": 23,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 49,
+    "book": "2 Corinthians",
+    "chapter": 12,
+    "verse": 19,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 50,
+    "book": "Isaiah",
+    "chapter": 66,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 51,
+    "book": "1 Corinthians",
+    "chapter": 13,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 52,
+    "book": "Ephesians",
+    "chapter": 5,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 53,
+    "book": "Luke",
+    "chapter": 18,
+    "verse": 12,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 54,
+    "book": "Matthew",
+    "chapter": 18,
+    "verse": 22,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 55,
+    "book": "Jeremiah",
+    "chapter": 17,
+    "verse": 26,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 56,
+    "book": "Romans",
+    "chapter": 15,
+    "verse": 14,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 57,
+    "book": "Psalms",
+    "chapter": 105,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 58,
+    "book": "Philippians",
+    "chapter": 2,
+    "verse": 23,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 59,
+    "book": "Hebrews",
+    "chapter": 11,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 60,
+    "book": "John",
+    "chapter": 1,
+    "verse": 39,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 61,
+    "book": "1 John",
+    "chapter": 4,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 62,
+    "book": "Matthew",
+    "chapter": 22,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 63,
+    "book": "2 Peter",
+    "chapter": 3,
+    "verse": 12,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 64,
+    "book": "Matthew",
+    "chapter": 22,
+    "verse": 24,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 65,
+    "book": "Ezekiel",
+    "chapter": 18,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 66,
+    "book": "1 Corinthians",
+    "chapter": 1,
+    "verse": 5,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 67,
+    "book": "Mark",
+    "chapter": 4,
+    "verse": 19,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 68,
+    "book": "1 Thessalonians",
+    "chapter": 3,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 69,
+    "book": "Mark",
+    "chapter": 4,
+    "verse": 31,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 70,
+    "book": "Isaiah",
+    "chapter": 46,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 71,
+    "book": "2 Thessalonians",
+    "chapter": 2,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 72,
+    "book": "Hebrews",
+    "chapter": 6,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 73,
+    "book": "Psalms",
+    "chapter": 31,
+    "verse": 8,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 74,
+    "book": "Mark",
+    "chapter": 9,
+    "verse": 32,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 75,
+    "book": "Isaiah",
+    "chapter": 62,
+    "verse": 8,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 76,
+    "book": "Revelation",
+    "chapter": 7,
+    "verse": 8,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 77,
+    "book": "Ezekiel",
+    "chapter": 47,
+    "verse": 19,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 78,
+    "book": "Revelation",
+    "chapter": 21,
+    "verse": 21,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 79,
+    "book": "Ezekiel",
+    "chapter": 34,
+    "verse": 14,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 80,
+    "book": "Luke",
+    "chapter": 22,
+    "verse": 49,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 81,
+    "book": "Matthew",
+    "chapter": 19,
+    "verse": 16,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 82,
+    "book": "Psalms",
+    "chapter": 87,
+    "verse": 2,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 83,
+    "book": "Isaiah",
+    "chapter": 58,
+    "verse": 10,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 84,
+    "book": "Ephesians",
+    "chapter": 5,
+    "verse": 28,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 85,
+    "book": "Isaiah",
+    "chapter": 45,
+    "verse": 22,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 86,
+    "book": "John",
+    "chapter": 8,
+    "verse": 39,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 87,
+    "book": "1 Corinthians",
+    "chapter": 6,
+    "verse": 17,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 88,
+    "book": "Psalms",
+    "chapter": 22,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 89,
+    "book": "John",
+    "chapter": 12,
+    "verse": 15,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 90,
+    "book": "Ezekiel",
+    "chapter": 48,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 91,
+    "book": "Mark",
+    "chapter": 6,
+    "verse": 28,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 92,
+    "book": "John",
+    "chapter": 9,
+    "verse": 35,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 93,
+    "book": "Psalms",
+    "chapter": 111,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 94,
+    "book": "Matthew",
+    "chapter": 26,
+    "verse": 36,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 95,
+    "book": "Ezekiel",
+    "chapter": 33,
+    "verse": 27,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 96,
+    "book": "Luke",
+    "chapter": 6,
+    "verse": 36,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 97,
+    "book": "Ezekiel",
+    "chapter": 3,
+    "verse": 27,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 98,
+    "book": "Matthew",
+    "chapter": 5,
+    "verse": 18,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 99,
+    "book": "Jeremiah",
+    "chapter": 32,
+    "verse": 19,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 100,
+    "book": "Hebrews",
+    "chapter": 7,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 101,
+    "book": "Isaiah",
+    "chapter": 63,
+    "verse": 5,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 102,
+    "book": "Luke",
+    "chapter": 1,
+    "verse": 34,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 103,
+    "book": "Psalms",
+    "chapter": 18,
+    "verse": 16,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 104,
+    "book": "Isaiah",
+    "chapter": 51,
+    "verse": 12,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 105,
+    "book": "Romans",
+    "chapter": 8,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 106,
+    "book": "Ephesians",
+    "chapter": 1,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 107,
+    "book": "Psalms",
+    "chapter": 27,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 108,
+    "book": "Galatians",
+    "chapter": 2,
+    "verse": 2,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 109,
+    "book": "Psalms",
+    "chapter": 71,
+    "verse": 5,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 110,
+    "book": "Jeremiah",
+    "chapter": 33,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 111,
+    "book": "Psalms",
+    "chapter": 86,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 112,
+    "book": "Isaiah",
+    "chapter": 60,
+    "verse": 14,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 113,
+    "book": "1 John",
+    "chapter": 3,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 114,
+    "book": "John",
+    "chapter": 19,
+    "verse": 14,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 115,
+    "book": "Jeremiah",
+    "chapter": 20,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 116,
+    "book": "Psalms",
+    "chapter": 105,
+    "verse": 39,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 117,
+    "book": "Jeremiah",
+    "chapter": 32,
+    "verse": 34,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 118,
+    "book": "Revelation",
+    "chapter": 22,
+    "verse": 2,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 119,
+    "book": "Psalms",
+    "chapter": 106,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 120,
+    "book": "2 Peter",
+    "chapter": 1,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 121,
+    "book": "Psalms",
+    "chapter": 145,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 122,
+    "book": "Isaiah",
+    "chapter": 57,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 123,
+    "book": "Psalms",
+    "chapter": 55,
+    "verse": 8,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 124,
+    "book": "Jeremiah",
+    "chapter": 29,
+    "verse": 8,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 125,
+    "book": "Ephesians",
+    "chapter": 2,
+    "verse": 5,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 126,
+    "book": "Psalms",
+    "chapter": 85,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 127,
+    "book": "Isaiah",
+    "chapter": 43,
+    "verse": 13,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 128,
+    "book": "Psalms",
+    "chapter": 149,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 129,
+    "book": "John",
+    "chapter": 3,
+    "verse": 18,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 130,
+    "book": "James",
+    "chapter": 1,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 131,
+    "book": "Isaiah",
+    "chapter": 66,
+    "verse": 5,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 132,
+    "book": "Jeremiah",
+    "chapter": 15,
+    "verse": 19,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 133,
+    "book": "Ephesians",
+    "chapter": 1,
+    "verse": 13,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 134,
+    "book": "Isaiah",
+    "chapter": 26,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 135,
+    "book": "Ezekiel",
+    "chapter": 43,
+    "verse": 20,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 136,
+    "book": "Matthew",
+    "chapter": 22,
+    "verse": 18,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 137,
+    "book": "Revelation",
+    "chapter": 5,
+    "verse": 5,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 138,
+    "book": "Romans",
+    "chapter": 13,
+    "verse": 14,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 139,
+    "book": "Mark",
+    "chapter": 6,
+    "verse": 24,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 140,
+    "book": "Hebrews",
+    "chapter": 7,
+    "verse": 19,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 141,
+    "book": "Mark",
+    "chapter": 9,
+    "verse": 30,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 142,
+    "book": "Psalms",
+    "chapter": 97,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 143,
+    "book": "Ezekiel",
+    "chapter": 22,
+    "verse": 26,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 144,
+    "book": "Mark",
+    "chapter": 10,
+    "verse": 14,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 145,
+    "book": "Psalms",
+    "chapter": 35,
+    "verse": 19,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 146,
+    "book": "1 Timothy",
+    "chapter": 4,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 147,
+    "book": "Psalms",
+    "chapter": 118,
+    "verse": 20,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 148,
+    "book": "John",
+    "chapter": 9,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 149,
+    "book": "Psalms",
+    "chapter": 147,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 150,
+    "book": "Colossians",
+    "chapter": 1,
+    "verse": 28,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 151,
+    "book": "Matthew",
+    "chapter": 5,
+    "verse": 25,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 152,
+    "book": "Psalms",
+    "chapter": 42,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 153,
+    "book": "1 Peter",
+    "chapter": 2,
+    "verse": 19,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 154,
+    "book": "Romans",
+    "chapter": 14,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 155,
+    "book": "Mark",
+    "chapter": 10,
+    "verse": 26,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 156,
+    "book": "1 Corinthians",
+    "chapter": 1,
+    "verse": 29,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 157,
+    "book": "Isaiah",
+    "chapter": 6,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 158,
+    "book": "Mark",
+    "chapter": 11,
+    "verse": 21,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 159,
+    "book": "Romans",
+    "chapter": 14,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 160,
+    "book": "Colossians",
+    "chapter": 2,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 161,
+    "book": "Revelation",
+    "chapter": 14,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 162,
+    "book": "Hebrews",
+    "chapter": 10,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 163,
+    "book": "Revelation",
+    "chapter": 21,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 164,
+    "book": "Matthew",
+    "chapter": 28,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 165,
+    "book": "Hebrews",
+    "chapter": 2,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 166,
+    "book": "1 Timothy",
+    "chapter": 4,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 167,
+    "book": "Revelation",
+    "chapter": 2,
+    "verse": 10,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 168,
+    "book": "Psalms",
+    "chapter": 17,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 169,
+    "book": "Isaiah",
+    "chapter": 40,
+    "verse": 31,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 170,
+    "book": "Matthew",
+    "chapter": 26,
+    "verse": 46,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 171,
+    "book": "Psalms",
+    "chapter": 105,
+    "verse": 37,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 172,
+    "book": "Galatians",
+    "chapter": 2,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 173,
+    "book": "Revelation",
+    "chapter": 22,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 174,
+    "book": "Galatians",
+    "chapter": 4,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 175,
+    "book": "John",
+    "chapter": 10,
+    "verse": 5,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 176,
+    "book": "Colossians",
+    "chapter": 1,
+    "verse": 25,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 177,
+    "book": "Titus",
+    "chapter": 2,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 178,
+    "book": "Romans",
+    "chapter": 15,
+    "verse": 2,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 179,
+    "book": "Mark",
+    "chapter": 9,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 180,
+    "book": "1 Corinthians",
+    "chapter": 3,
+    "verse": 15,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 181,
+    "book": "Psalms",
+    "chapter": 18,
+    "verse": 20,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 182,
+    "book": "Mark",
+    "chapter": 12,
+    "verse": 36,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 183,
+    "book": "Luke",
+    "chapter": 11,
+    "verse": 46,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 184,
+    "book": "Isaiah",
+    "chapter": 48,
+    "verse": 19,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 185,
+    "book": "2 Corinthians",
+    "chapter": 4,
+    "verse": 16,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 186,
+    "book": "Ezekiel",
+    "chapter": 36,
+    "verse": 5,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 187,
+    "book": "John",
+    "chapter": 12,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 188,
+    "book": "Psalms",
+    "chapter": 122,
+    "verse": 5,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 189,
+    "book": "Matthew",
+    "chapter": 26,
+    "verse": 65,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 190,
+    "book": "1 Peter",
+    "chapter": 2,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 191,
+    "book": "1 Corinthians",
+    "chapter": 15,
+    "verse": 34,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 192,
+    "book": "Matthew",
+    "chapter": 14,
+    "verse": 13,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 193,
+    "book": "Jeremiah",
+    "chapter": 32,
+    "verse": 13,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 194,
+    "book": "Matthew",
+    "chapter": 9,
+    "verse": 35,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 195,
+    "book": "Psalms",
+    "chapter": 16,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 196,
+    "book": "1 Peter",
+    "chapter": 5,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 197,
+    "book": "Luke",
+    "chapter": 5,
+    "verse": 30,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 198,
+    "book": "Ephesians",
+    "chapter": 5,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 199,
+    "book": "Revelation",
+    "chapter": 14,
+    "verse": 15,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 200,
+    "book": "Hebrews",
+    "chapter": 11,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 201,
+    "book": "Isaiah",
+    "chapter": 48,
+    "verse": 16,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 202,
+    "book": "1 Peter",
+    "chapter": 2,
+    "verse": 20,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 203,
+    "book": "Matthew",
+    "chapter": 22,
+    "verse": 22,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 204,
+    "book": "Hebrews",
+    "chapter": 11,
+    "verse": 18,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 205,
+    "book": "John",
+    "chapter": 6,
+    "verse": 15,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 206,
+    "book": "Matthew",
+    "chapter": 26,
+    "verse": 45,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 207,
+    "book": "Psalms",
+    "chapter": 18,
+    "verse": 41,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 208,
+    "book": "Ezekiel",
+    "chapter": 18,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 209,
+    "book": "Psalms",
+    "chapter": 99,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 210,
+    "book": "2 Corinthians",
+    "chapter": 13,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 211,
+    "book": "Psalms",
+    "chapter": 124,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 212,
+    "book": "Ezekiel",
+    "chapter": 39,
+    "verse": 10,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 213,
+    "book": "Matthew",
+    "chapter": 26,
+    "verse": 19,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 214,
+    "book": "Colossians",
+    "chapter": 1,
+    "verse": 29,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 215,
+    "book": "Jeremiah",
+    "chapter": 30,
+    "verse": 17,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 216,
+    "book": "Mark",
+    "chapter": 4,
+    "verse": 24,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 217,
+    "book": "Luke",
+    "chapter": 8,
+    "verse": 14,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 218,
+    "book": "Psalms",
+    "chapter": 65,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 219,
+    "book": "Matthew",
+    "chapter": 21,
+    "verse": 35,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 220,
+    "book": "2 Timothy",
+    "chapter": 1,
+    "verse": 14,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 221,
+    "book": "Psalms",
+    "chapter": 106,
+    "verse": 32,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 222,
+    "book": "James",
+    "chapter": 2,
+    "verse": 2,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 223,
+    "book": "John",
+    "chapter": 16,
+    "verse": 25,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 224,
+    "book": "Matthew",
+    "chapter": 15,
+    "verse": 20,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 225,
+    "book": "John",
+    "chapter": 2,
+    "verse": 16,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 226,
+    "book": "Hebrews",
+    "chapter": 10,
+    "verse": 36,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 227,
+    "book": "Luke",
+    "chapter": 8,
+    "verse": 27,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 228,
+    "book": "Psalms",
+    "chapter": 106,
+    "verse": 23,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 229,
+    "book": "Luke",
+    "chapter": 6,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 230,
+    "book": "John",
+    "chapter": 1,
+    "verse": 38,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 231,
+    "book": "Isaiah",
+    "chapter": 55,
+    "verse": 8,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 232,
+    "book": "2 Timothy",
+    "chapter": 4,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 233,
+    "book": "John",
+    "chapter": 7,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 234,
+    "book": "Galatians",
+    "chapter": 5,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 235,
+    "book": "Jeremiah",
+    "chapter": 1,
+    "verse": 13,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 236,
+    "book": "Psalms",
+    "chapter": 42,
+    "verse": 5,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 237,
+    "book": "1 Corinthians",
+    "chapter": 13,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 238,
+    "book": "John",
+    "chapter": 12,
+    "verse": 43,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 239,
+    "book": "Mark",
+    "chapter": 11,
+    "verse": 19,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 240,
+    "book": "Isaiah",
+    "chapter": 26,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 241,
+    "book": "Mark",
+    "chapter": 12,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 242,
+    "book": "Psalms",
+    "chapter": 33,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 243,
+    "book": "1 Corinthians",
+    "chapter": 10,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 244,
+    "book": "Isaiah",
+    "chapter": 55,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 245,
+    "book": "John",
+    "chapter": 9,
+    "verse": 18,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 246,
+    "book": "Hebrews",
+    "chapter": 9,
+    "verse": 8,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 247,
+    "book": "Luke",
+    "chapter": 17,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 248,
+    "book": "Mark",
+    "chapter": 4,
+    "verse": 38,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 249,
+    "book": "Revelation",
+    "chapter": 7,
+    "verse": 15,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 250,
+    "book": "2 Corinthians",
+    "chapter": 7,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 251,
+    "book": "Luke",
+    "chapter": 1,
+    "verse": 79,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 252,
+    "book": "Ezekiel",
+    "chapter": 20,
+    "verse": 33,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 253,
+    "book": "Romans",
+    "chapter": 15,
+    "verse": 26,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 254,
+    "book": "1 Peter",
+    "chapter": 4,
+    "verse": 10,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 255,
+    "book": "Matthew",
+    "chapter": 6,
+    "verse": 24,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 256,
+    "book": "Mark",
+    "chapter": 8,
+    "verse": 14,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 257,
+    "book": "Psalms",
+    "chapter": 35,
+    "verse": 27,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 258,
+    "book": "Luke",
+    "chapter": 17,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 259,
+    "book": "Matthew",
+    "chapter": 5,
+    "verse": 24,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 260,
+    "book": "Luke",
+    "chapter": 23,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 261,
+    "book": "John",
+    "chapter": 4,
+    "verse": 41,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 262,
+    "book": "Isaiah",
+    "chapter": 40,
+    "verse": 2,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 263,
+    "book": "Revelation",
+    "chapter": 21,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 264,
+    "book": "Psalms",
+    "chapter": 96,
+    "verse": 10,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 265,
+    "book": "1 Corinthians",
+    "chapter": 3,
+    "verse": 16,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 266,
+    "book": "Psalms",
+    "chapter": 90,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 267,
+    "book": "John",
+    "chapter": 19,
+    "verse": 8,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 268,
+    "book": "Colossians",
+    "chapter": 1,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 269,
+    "book": "Psalms",
+    "chapter": 126,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 270,
+    "book": "John",
+    "chapter": 3,
+    "verse": 33,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 271,
+    "book": "Luke",
+    "chapter": 1,
+    "verse": 41,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 272,
+    "book": "Colossians",
+    "chapter": 3,
+    "verse": 16,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 273,
+    "book": "John",
+    "chapter": 7,
+    "verse": 46,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 274,
+    "book": "Isaiah",
+    "chapter": 60,
+    "verse": 8,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 275,
+    "book": "James",
+    "chapter": 1,
+    "verse": 23,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 276,
+    "book": "Ezekiel",
+    "chapter": 20,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 277,
+    "book": "Luke",
+    "chapter": 2,
+    "verse": 17,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 278,
+    "book": "Psalms",
+    "chapter": 5,
+    "verse": 2,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 279,
+    "book": "Romans",
+    "chapter": 8,
+    "verse": 26,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 280,
+    "book": "John",
+    "chapter": 11,
+    "verse": 30,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 281,
+    "book": "2 Corinthians",
+    "chapter": 12,
+    "verse": 20,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 282,
+    "book": "Matthew",
+    "chapter": 26,
+    "verse": 20,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 283,
+    "book": "Revelation",
+    "chapter": 11,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 284,
+    "book": "Psalms",
+    "chapter": 91,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 285,
+    "book": "Matthew",
+    "chapter": 22,
+    "verse": 28,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 286,
+    "book": "John",
+    "chapter": 10,
+    "verse": 23,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 287,
+    "book": "Revelation",
+    "chapter": 1,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 288,
+    "book": "Isaiah",
+    "chapter": 33,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 289,
+    "book": "Psalms",
+    "chapter": 73,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 290,
+    "book": "1 Timothy",
+    "chapter": 6,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 291,
+    "book": "Isaiah",
+    "chapter": 57,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 292,
+    "book": "Jeremiah",
+    "chapter": 32,
+    "verse": 43,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 293,
+    "book": "John",
+    "chapter": 4,
+    "verse": 43,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 294,
+    "book": "Luke",
+    "chapter": 2,
+    "verse": 10,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 295,
+    "book": "Psalms",
+    "chapter": 84,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 296,
+    "book": "John",
+    "chapter": 8,
+    "verse": 25,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 297,
+    "book": "Isaiah",
+    "chapter": 61,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 298,
+    "book": "1 Corinthians",
+    "chapter": 15,
+    "verse": 14,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 299,
+    "book": "Psalms",
+    "chapter": 147,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 300,
+    "book": "Hebrews",
+    "chapter": 10,
+    "verse": 25,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 301,
+    "book": "Ezekiel",
+    "chapter": 40,
+    "verse": 31,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 302,
+    "book": "1 Timothy",
+    "chapter": 2,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 303,
+    "book": "Matthew",
+    "chapter": 10,
+    "verse": 19,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 304,
+    "book": "Isaiah",
+    "chapter": 30,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 305,
+    "book": "John",
+    "chapter": 8,
+    "verse": 21,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 306,
+    "book": "1 John",
+    "chapter": 3,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 307,
+    "book": "John",
+    "chapter": 11,
+    "verse": 55,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 308,
+    "book": "Matthew",
+    "chapter": 5,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 309,
+    "book": "Ezekiel",
+    "chapter": 43,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 310,
+    "book": "Isaiah",
+    "chapter": 52,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 311,
+    "book": "Ezekiel",
+    "chapter": 34,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 312,
+    "book": "Mark",
+    "chapter": 4,
+    "verse": 5,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 313,
+    "book": "Isaiah",
+    "chapter": 64,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 314,
+    "book": "John",
+    "chapter": 1,
+    "verse": 17,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 315,
+    "book": "Romans",
+    "chapter": 5,
+    "verse": 17,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 316,
+    "book": "Isaiah",
+    "chapter": 61,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 317,
+    "book": "1 Corinthians",
+    "chapter": 2,
+    "verse": 7,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 318,
+    "book": "Matthew",
+    "chapter": 11,
+    "verse": 10,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 319,
+    "book": "Revelation",
+    "chapter": 14,
+    "verse": 16,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 320,
+    "book": "Romans",
+    "chapter": 13,
+    "verse": 5,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 321,
+    "book": "John",
+    "chapter": 2,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 322,
+    "book": "Ephesians",
+    "chapter": 6,
+    "verse": 15,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 323,
+    "book": "Psalms",
+    "chapter": 135,
+    "verse": 18,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 324,
+    "book": "Matthew",
+    "chapter": 25,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 325,
+    "book": "John",
+    "chapter": 1,
+    "verse": 13,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 326,
+    "book": "Revelation",
+    "chapter": 3,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 327,
+    "book": "Jeremiah",
+    "chapter": 29,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 328,
+    "book": "1 Corinthians",
+    "chapter": 11,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 329,
+    "book": "John",
+    "chapter": 20,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 330,
+    "book": "Psalms",
+    "chapter": 66,
+    "verse": 12,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 331,
+    "book": "Hebrews",
+    "chapter": 8,
+    "verse": 3,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 332,
+    "book": "Matthew",
+    "chapter": 25,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 333,
+    "book": "Ephesians",
+    "chapter": 4,
+    "verse": 28,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 334,
+    "book": "Psalms",
+    "chapter": 98,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 335,
+    "book": "1 Timothy",
+    "chapter": 3,
+    "verse": 8,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 336,
+    "book": "Hebrews",
+    "chapter": 10,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 337,
+    "book": "1 John",
+    "chapter": 3,
+    "verse": 14,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 338,
+    "book": "Luke",
+    "chapter": 18,
+    "verse": 21,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 339,
+    "book": "Jeremiah",
+    "chapter": 16,
+    "verse": 8,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 340,
+    "book": "Ezekiel",
+    "chapter": 36,
+    "verse": 14,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 341,
+    "book": "John",
+    "chapter": 12,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 342,
+    "book": "Matthew",
+    "chapter": 6,
+    "verse": 33,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 343,
+    "book": "Ezekiel",
+    "chapter": 39,
+    "verse": 23,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 344,
+    "book": "Luke",
+    "chapter": 8,
+    "verse": 44,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 345,
+    "book": "Psalms",
+    "chapter": 104,
+    "verse": 20,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 346,
+    "book": "Hebrews",
+    "chapter": 8,
+    "verse": 4,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 347,
+    "book": "Psalms",
+    "chapter": 33,
+    "verse": 9,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 348,
+    "book": "Hebrews",
+    "chapter": 6,
+    "verse": 8,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 349,
+    "book": "Psalms",
+    "chapter": 22,
+    "verse": 20,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 350,
+    "book": "Matthew",
+    "chapter": 25,
+    "verse": 40,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 351,
+    "book": "Isaiah",
+    "chapter": 45,
+    "verse": 1,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 352,
+    "book": "Ephesians",
+    "chapter": 5,
+    "verse": 22,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 353,
+    "book": "Isaiah",
+    "chapter": 64,
+    "verse": 11,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 354,
+    "book": "Psalms",
+    "chapter": 63,
+    "verse": 5,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 355,
+    "book": "Colossians",
+    "chapter": 3,
+    "verse": 6,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 356,
+    "book": "Revelation",
+    "chapter": 14,
+    "verse": 14,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 357,
+    "book": "Isaiah",
+    "chapter": 60,
+    "verse": 21,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 358,
+    "book": "Ezekiel",
+    "chapter": 40,
+    "verse": 30,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 359,
+    "book": "John",
+    "chapter": 7,
+    "verse": 41,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 360,
+    "book": "1 Peter",
+    "chapter": 2,
+    "verse": 18,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 361,
+    "book": "Philippians",
+    "chapter": 2,
+    "verse": 17,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 362,
+    "book": "Luke",
+    "chapter": 11,
+    "verse": 53,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 363,
+    "book": "John",
+    "chapter": 11,
+    "verse": 46,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 364,
+    "book": "James",
+    "chapter": 3,
+    "verse": 18,
+    "translation": "web"
+  },
+  {
+    "day_of_year": 365,
+    "book": "Revelation",
+    "chapter": 2,
+    "verse": 22,
+    "translation": "web"
+  }
+]

@@ -13,7 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 
-const BIBLE_PASSAGES = '/data/resonance/build/output/seeded_library/bible_passages.json';
+const BIBLE_PASSAGES = './data/seeded_library/bible_passages.json';
 
 interface Passage {
   id: number;

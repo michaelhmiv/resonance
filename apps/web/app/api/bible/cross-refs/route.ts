@@ -15,7 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 
-const CROSS_REFS = '/data/resonance/build/output/seeded_library/cross_references.json';
+const CROSS_REFS = './data/seeded_library/cross_references.json';
 
 interface CrossReference {
   from_ref: string;

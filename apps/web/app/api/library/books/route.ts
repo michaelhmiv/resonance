@@ -19,7 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 
-const VOICE_BOOKS = '/data/resonance/build/output/seeded_library/voice_books.json';
+const VOICE_BOOKS = './data/seeded_library/voice_books.json';
 
 interface VoiceBook {
   id: string;

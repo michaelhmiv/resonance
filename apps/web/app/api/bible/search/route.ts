@@ -20,8 +20,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 
-const BIBLE_PASSAGES = '/data/resonance/build/output/seeded_library/bible_passages.json';
-const VOICE_PASSAGES = '/data/resonance/build/output/seeded_library/voice_passages.json';
+const BIBLE_PASSAGES = './data/seeded_library/bible_passages.json';
+const VOICE_PASSAGES = './data/seeded_library/voice_passages.json';
 
 const MAX_SCRIPTURE = 50;
 const MAX_LIBRARY = 100;

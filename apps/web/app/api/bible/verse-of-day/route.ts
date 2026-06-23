@@ -13,8 +13,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 
-const VERSE_OF_DAY = '/data/resonance/build/output/seeded_library/verse_of_day.json';
-const BIBLE_PASSAGES = '/data/resonance/build/output/seeded_library/bible_passages.json';
+const VERSE_OF_DAY = './data/seeded_library/verse_of_day.json';
+const BIBLE_PASSAGES = './data/seeded_library/bible_passages.json';
 
 interface VerseOfDay {
   day_of_year: number;

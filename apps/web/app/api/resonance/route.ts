@@ -10,9 +10,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 
-const VECTORS_PATH = '/data/resonance/build/output/seeded_library/vectors_gte-small.bin';
-const BIBLE_PASSAGES_PATH = '/data/resonance/build/output/seeded_library/bible_passages.json';
-const VOICE_PASSAGES_PATH = '/data/resonance/build/output/seeded_library/voice_passages.json';
+const VECTORS_PATH = './data/seeded_library/vectors_gte-small.bin';
+const BIBLE_PASSAGES_PATH = './data/seeded_library/bible_passages.json';
+const VOICE_PASSAGES_PATH = './data/seeded_library/voice_passages.json';
 
 const DIM = 384;
 const MAX_PER_CATEGORY = 3;
