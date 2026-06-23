@@ -24,6 +24,7 @@ import {
 import { colors, fontFamilies, spacing } from './src/theme';
 import { openDatabase } from './src/db/database';
 import { useDbStore } from './src/db/dbStore';
+import { useSettingsStore } from './src/settings/settingsStore';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 export default function App(): ReactNode {
@@ -44,7 +45,13 @@ export default function App(): ReactNode {
 
     setLoading();
     openDatabase()
-      .then((db) => setReady(db))
+      .then((db) => {
+        setReady(db);
+        // Load persisted user preferences now that the connection is live,
+        // so accessibility/text-scale choices take effect from first paint.
+        void useSettingsStore.getState().load();
+        return db;
+      })
       .catch((err) => {
         console.error('[App] database open failed:', err);
         setError(
