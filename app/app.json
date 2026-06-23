@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Resonance",
+    "slug": "resonance",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/images/icon.png",
+    "scheme": "resonance",
+    "splash": {
+      "backgroundColor": "#faf9f6"
+    },
+    "ios": {
+      "icon": "./assets/images/icon.png",
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#faf9f6",
+        "foregroundImage": "./assets/images/icon.png"
+      },
+      "package": "com.resonance.app"
+    },
+    "plugins": [
+      "expo-splash-screen",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "../../node_modules/@expo-google-fonts/cormorant-garamond/CormorantGaramond_400Regular.ttf",
+            "../../node_modules/@expo-google-fonts/cormorant-garamond/CormorantGaramond_500Medium.ttf",
+            "../../node_modules/@expo-google-fonts/cormorant-garamond/CormorantGaramond_400Regular_Italic.ttf",
+            "../../node_modules/@expo-google-fonts/cormorant-garamond/CormorantGaramond_600SemiBold.ttf",
+            "../../node_modules/@expo-google-fonts/inter/Inter_400Regular.ttf",
+            "../../node_modules/@expo-google-fonts/inter/Inter_500Medium.ttf",
+            "../../node_modules/@expo-google-fonts/inter/Inter_600SemiBold.ttf"
+          ]
+        }
+      ]
+    ]
+  }
+}
