@@ -8,28 +8,51 @@
 
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { StyleSheet, Text, TextInput, View, Pressable } from 'react-native-web';
+
+const STORAGE_KEY = 'resonance-dev-password';
 
 export default function LoginPage(): ReactNode {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Auto-submit if we have a saved password
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        setPassword(saved);
+        submitPassword(saved);
+      }
+    } catch {
+      // localStorage unavailable — user types manually
+    }
+  }, []);
+
   async function handleSubmit() {
+    if (!password.trim()) return;
+    await submitPassword(password.trim());
+  }
+
+  async function submitPassword(pw: string) {
     setError('');
     setLoading(true);
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password: pw }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (res.ok && data.ok) {
+        try { localStorage.setItem(STORAGE_KEY, pw); } catch { /* ignore */ }
         window.location.href = '/';
         return;
       }
+      // Wrong password — clear saved so we don't loop
+      try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
       setError(data.error ?? 'Something went wrong. Please try again.');
     } catch {
       setError('Could not reach the server. Please try again.');
