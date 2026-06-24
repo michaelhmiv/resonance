@@ -31,11 +31,6 @@ export function CrossRefInline({
   const hasRefs = refs != null;
   const refCount = hasRefs ? refs.length : undefined;
 
-  // Don't render anything if no refs and nothing loaded
-  if (!hasRefs && localRefs === null && !cache[verseRef]) return null;
-  // If we loaded and got empty, show nothing
-  if (hasRefs && refs.length === 0) return null;
-
   const handleToggle = useCallback(async () => {
     if (expanded) {
       setExpanded(false);
@@ -53,6 +48,11 @@ export function CrossRefInline({
       setLoading(false);
     }
   }, [expanded, verseRef, hasRefs, loadRefs]);
+
+  // Don't render anything if no refs and nothing loaded
+  if (!hasRefs && localRefs === null && !cache[verseRef]) return null;
+  // If we loaded and got empty, show nothing
+  if (hasRefs && refs.length === 0) return null;
 
   return (
     <View style={styles.inline}>
