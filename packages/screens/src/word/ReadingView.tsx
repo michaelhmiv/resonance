@@ -116,6 +116,9 @@ export function ReadingView({
   const [annotationDraft, setAnnotationDraft] = useState('');
   const [sendingToJournal, setSendingToJournal] = useState(false);
 
+  // Collapsible annotations — hidden by default, tap to reveal
+  const [expandedAnnotations, setExpandedAnnotations] = useState<Set<string>>(new Set());
+
   // Chapter picker
   const [chapterPickerOpen, setChapterPickerOpen] = useState(false);
 
@@ -135,6 +138,7 @@ export function ReadingView({
     setCrossRefs({});
     setHighlightMap({});
     setAnnotationMap({});
+    setExpandedAnnotations(new Set());
 
     const loadData = async () => {
       let resultPassages: (VersePassage | LibraryPassage)[] = [];
@@ -335,6 +339,12 @@ export function ReadingView({
     setAnnotationModal(null);
     try {
       await dataLayer.saveAnnotation(ref, translation, annotationDraft);
+      // Auto-expand the newly created/updated annotation
+      setExpandedAnnotations((prev) => {
+        const next = new Set(prev);
+        next.add(ref);
+        return next;
+      });
     } catch (err) {
       console.error('[ReadingView] saveAnnotation failed:', err);
       // Revert on failure
@@ -545,7 +555,25 @@ export function ReadingView({
 
               {annotation ? (
                 <View style={styles.annotationWrap}>
-                  <Text style={styles.annotationText}>{annotation}</Text>
+                  <Pressable
+                    onPress={() => {
+                      setExpandedAnnotations((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(ref)) next.delete(ref);
+                        else next.add(ref);
+                        return next;
+                      });
+                    }}
+                    hitSlop={6}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.annotationToggle}>
+                      {expandedAnnotations.has(ref) ? '▾' : '▸'} note
+                    </Text>
+                  </Pressable>
+                  {expandedAnnotations.has(ref) ? (
+                    <Text style={styles.annotationText}>{annotation}</Text>
+                  ) : null}
                 </View>
               ) : null}
 
@@ -607,7 +635,25 @@ export function ReadingView({
 
               {annotation ? (
                 <View style={styles.annotationWrap}>
-                  <Text style={styles.annotationText}>{annotation}</Text>
+                  <Pressable
+                    onPress={() => {
+                      setExpandedAnnotations((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(ref)) next.delete(ref);
+                        else next.add(ref);
+                        return next;
+                      });
+                    }}
+                    hitSlop={6}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.annotationToggle}>
+                      {expandedAnnotations.has(ref) ? '▾' : '▸'} note
+                    </Text>
+                  </Pressable>
+                  {expandedAnnotations.has(ref) ? (
+                    <Text style={styles.annotationText}>{annotation}</Text>
+                  ) : null}
                 </View>
               ) : null}
             </View>
@@ -821,9 +867,9 @@ const styles = StyleSheet.create({
   annotationWrap: {
     marginLeft: 30,
     marginTop: spacing.xs,
-    paddingLeft: spacing.md,
+    paddingLeft: spacing.sm,
     borderLeftWidth: 2,
-    borderLeftColor: colors.border,
+    borderLeftColor: 'transparent',
   },
   annotationText: {
     fontFamily: fontFamilies.serifItalic,
@@ -831,6 +877,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: colors.textSecondary,
+  },
+  annotationToggle: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 11,
+    color: colors.textTertiary,
+    letterSpacing: 0.3,
+    marginBottom: 2,
   },
   toolbarWrap: {
     position: 'absolute',
