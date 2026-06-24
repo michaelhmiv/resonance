@@ -142,8 +142,11 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
           buffer[offset + i] = raw[i] / 127.0;
         }
       } else {
-        // float32 (default, e.g. GTE-small): read buffer directly as Float32Array
-        const floats = new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4);
+        // float32 (default, e.g. GTE-small): interpret buffer as Float32Array
+        // Copy the buffer's ArrayBuffer to avoid byteOffset alignment issues
+        const byteLen = raw.byteLength - (raw.byteLength % 4);
+        const ab = raw.buffer.slice(raw.byteOffset, raw.byteOffset + byteLen);
+        const floats = new Float32Array(ab);
         buffer.set(floats, offset);
       }
     }
