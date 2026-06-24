@@ -1,22 +1,23 @@
 /**
  * Journal screen — the primary writing surface (shared, DataLayer-driven).
  *
- * Renders past entries, verse of the day, resonance cards, and a
- * reflection prompt. All data flows through the DataLayer contract —
- * no platform-specific imports.
+ * ✦ Resonance footnotes: each saved entry gets a ✦ icon. Tap to expand
+ * matching Scripture and Library passages inline beneath that entry.
+ * Resonance is curation, not generation — no AI-written content.
  */
 
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { useDataLayer } from '@resonance/core/data-layer-context';
-import type { JournalSegment, ResonanceResult } from '@resonance/core';
+import type { JournalSegment, ResonanceResult, ResonanceCard } from '@resonance/core';
 
 interface VerseOfDay {
   book: string;
@@ -39,10 +40,13 @@ export function JournalScreen({ fetchVerseOfDay }: JournalScreenProps): ReactNod
   const [currentText, setCurrentText] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [resonance, setResonance] = useState<ResonanceResult | null>(null);
-  const [findingResonance, setFindingResonance] = useState(false);
-  const [reflection, setReflection] = useState<string | null>(null);
-  const [reflecting, setReflecting] = useState(false);
+
+  // Per-entry resonance — keyed by segment ID
+  const [resonanceMap, setResonanceMap] = useState<Record<string, ResonanceResult>>({});
+  // Which entries are currently loading resonance
+  const [loadingResonance, setLoadingResonance] = useState<Set<string>>(new Set());
+  // Which entries have expanded ✦ footnotes
+  const [expandedFootnotes, setExpandedFootnotes] = useState<Set<string>>(new Set());
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -64,15 +68,45 @@ export function JournalScreen({ fetchVerseOfDay }: JournalScreenProps): ReactNod
     load();
   }, [dataLayer, fetchVerseOfDay]);
 
+  const loadResonance = useCallback(async (segId: string, text: string) => {
+    if (resonanceMap[segId] || loadingResonance.has(segId)) return;
+    setLoadingResonance(prev => new Set(prev).add(segId));
+    try {
+      const data = await dataLayer.findResonance(text);
+      if (data) {
+        setResonanceMap(prev => ({ ...prev, [segId]: data }));
+      }
+    } catch { /* best-effort */ } finally {
+      setLoadingResonance(prev => {
+        const next = new Set(prev);
+        next.delete(segId);
+        return next;
+      });
+    }
+  }, [dataLayer, resonanceMap, loadingResonance]);
+
+  const toggleFootnote = useCallback((segId: string, text: string) => {
+    setExpandedFootnotes(prev => {
+      const next = new Set(prev);
+      if (next.has(segId)) {
+        next.delete(segId);
+      } else {
+        next.add(segId);
+        // Lazy-load resonance on first expand
+        loadResonance(segId, text);
+      }
+      return next;
+    });
+  }, [loadResonance]);
+
   const handleSave = useCallback(async () => {
     if (currentText.trim().length === 0) return;
     setSaving(true);
-    setResonance(null);
-    setReflection(null);
     try {
       const now = Date.now();
+      const segId = `${now}-${Math.random().toString(36).slice(2, 10)}`;
       const segment: JournalSegment = {
-        id: `${now}-${Math.random().toString(36).slice(2, 10)}`,
+        id: segId,
         created_at: now,
         updated_at: now,
         segment_type: 'text',
@@ -84,34 +118,20 @@ export function JournalScreen({ fetchVerseOfDay }: JournalScreenProps): ReactNod
       setSegments([segment, ...segments]);
       setCurrentText('');
 
-      setFindingResonance(true);
-      try {
-        const data = await dataLayer.findResonance(segment.text!);
-        setResonance(data);
-      } catch { /* best-effort */ } finally {
-        setFindingResonance(false);
-      }
+      // Auto-load resonance for the new entry and expand the footnote
+      loadResonance(segId, segment.text!);
+      setExpandedFootnotes(prev => new Set(prev).add(segId));
     } finally {
       setSaving(false);
     }
-  }, [currentText, segments, dataLayer]);
+  }, [currentText, segments, dataLayer, loadResonance]);
 
   const handleDelete = useCallback(async (id: string) => {
     await dataLayer.deleteSegment(id);
     setSegments(segments.filter(s => s.id !== id));
-  }, [segments, dataLayer]);
-
-  const handleReflect = useCallback(async () => {
-    if (segments.length === 0) return;
-    setReflecting(true);
-    setReflection(null);
-    try {
-      const excerpts = segments.filter(s => s.text).slice(0, 3).map(s => s.text!);
-      const result = await dataLayer.generateReflectionPrompt(excerpts);
-      if (result?.prompt) setReflection(result.prompt);
-    } catch { /* best-effort */ } finally {
-      setReflecting(false);
-    }
+    // Clean up resonance state
+    setResonanceMap(prev => { const next = { ...prev }; delete next[id]; return next; });
+    setExpandedFootnotes(prev => { const next = new Set(prev); next.delete(id); return next; });
   }, [segments, dataLayer]);
 
   if (loading) {
@@ -122,14 +142,10 @@ export function JournalScreen({ fetchVerseOfDay }: JournalScreenProps): ReactNod
     );
   }
 
-  const hasEntries = segments.length > 0;
   const textSegs = segments.filter(s => s.segment_type === 'text' && s.text);
-  const result = resonance;
-  const scripture = result?.scripture ?? [];
-  const voices = result?.voices ?? [];
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Date divider */}
       <View style={styles.dateDivider}>
         <View style={styles.dateLine} />
@@ -145,53 +161,63 @@ export function JournalScreen({ fetchVerseOfDay }: JournalScreenProps): ReactNod
         </View>
       )}
 
-      {/* Past entries */}
-      {textSegs.map((seg) => (
-        <View key={seg.id} style={styles.entryBlock}>
-          <Text style={styles.entryText}>{seg.text}</Text>
-          <Pressable onPress={() => handleDelete(seg.id)} style={styles.deleteBtn}>
-            <Text style={styles.deleteText}>Delete</Text>
-          </Pressable>
-        </View>
-      ))}
+      {/* Past entries with ✦ resonance footnotes */}
+      {textSegs.map((seg) => {
+        const hasResonance = resonanceMap[seg.id];
+        const isLoading = loadingResonance.has(seg.id);
+        const isExpanded = expandedFootnotes.has(seg.id);
 
-      {/* Resonance */}
-      {findingResonance && (
-        <View style={styles.resonanceHint}>
-          <ActivityIndicator size="small" color="#8b7355" />
-          <Text style={styles.resonanceText}>Finding resonance…</Text>
-        </View>
-      )}
-      {(scripture.length > 0 || voices.length > 0) && (
-        <View style={styles.resonanceSection}>
-          <Text style={styles.resonanceLabel}>Resonance</Text>
-          {scripture.map((card, i) => (
-            <View key={`s-${i}`} style={styles.resonanceCard}>
-              <Text style={styles.resonanceQuote}>"{card.text}"</Text>
-              <Text style={styles.resonanceSource}>{card.source}</Text>
+        return (
+          <View key={seg.id}>
+            {/* Entry row */}
+            <View style={styles.entryRow}>
+              <View style={styles.entryBody}>
+                <Text style={styles.entryText}>{seg.text}</Text>
+              </View>
+              <View style={styles.entryActions}>
+                {/* ✦ footnote toggle */}
+                <Pressable
+                  onPress={() => toggleFootnote(seg.id, seg.text!)}
+                  style={styles.footnoteBtn}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Show matching passages"
+                >
+                  <Text style={[styles.footnoteMark, isExpanded && styles.footnoteMarkActive]}>
+                    ✦
+                  </Text>
+                </Pressable>
+                {/* Delete */}
+                <Pressable onPress={() => handleDelete(seg.id)} style={styles.deleteBtn} hitSlop={8}>
+                  <Text style={styles.deleteText}>×</Text>
+                </Pressable>
+              </View>
             </View>
-          ))}
-          {voices.map((card, i) => (
-            <View key={`v-${i}`} style={styles.resonanceCard}>
-              <Text style={styles.resonanceQuote}>"{card.text}"</Text>
-              <Text style={styles.resonanceSource}>{card.source}</Text>
-            </View>
-          ))}
-        </View>
-      )}
 
-      {/* Reflection */}
-      {hasEntries && (
-        <Pressable onPress={handleReflect} style={styles.reflectButton} disabled={reflecting}>
-          <Text style={styles.reflectText}>
-            {reflecting ? 'Reflecting…' : reflection ? 'Reflect again' : 'Reflect'}
-          </Text>
-        </Pressable>
-      )}
-      {reflection && (
-        <View style={styles.reflectionCard}>
-          <Text style={styles.reflectionText}>{reflection}</Text>
-        </View>
+            {/* Expanded ✦ resonance cards */}
+            {isExpanded && (
+              <View style={styles.footnoteCards}>
+                {isLoading ? (
+                  <View style={styles.resonanceHint}>
+                    <ActivityIndicator size="small" color="#8b7355" />
+                    <Text style={styles.resonanceText}>Finding resonance…</Text>
+                  </View>
+                ) : hasResonance ? (
+                  <ResonanceCardGroup result={hasResonance} />
+                ) : (
+                  <Text style={styles.resonanceText}>No matching passages found.</Text>
+                )}
+              </View>
+            )}
+          </View>
+        );
+      })}
+
+      {/* Empty state */}
+      {textSegs.length === 0 && (
+        <Text style={styles.emptyText}>
+          Your journal is empty. Write what's on your heart — resonance will find matching Scripture and voices.
+        </Text>
       )}
 
       {/* Editor */}
@@ -209,12 +235,50 @@ export function JournalScreen({ fetchVerseOfDay }: JournalScreenProps): ReactNod
           <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save entry'}</Text>
         </Pressable>
       )}
+    </ScrollView>
+  );
+}
+
+// ── Resonance card group (rendered beneath each expanded ✦) ──────────────
+
+function ResonanceCardGroup({ result }: { result: ResonanceResult }): ReactNode {
+  const scripture = result.scripture ?? [];
+  const voices = result.voices ?? [];
+  const pastEntries = result.pastEntries ?? [];
+
+  if (scripture.length === 0 && voices.length === 0 && pastEntries.length === 0) {
+    return <Text style={styles.resonanceText}>No matching passages found.</Text>;
+  }
+
+  return (
+    <View style={styles.cardGroup}>
+      <CardSection label="Scripture" cards={scripture.slice(0, 1)} />
+      <CardSection label="Voices" cards={voices.slice(0, 1)} />
+      <CardSection label="Where you were" cards={pastEntries.slice(0, 1)} />
     </View>
   );
 }
 
+function CardSection({ label, cards }: { label: string; cards: ResonanceCard[] }): ReactNode | null {
+  if (cards.length === 0) return null;
+  return (
+    <View style={styles.cardSection}>
+      <Text style={styles.cardSectionLabel}>{label}</Text>
+      {cards.map((card, i) => (
+        <View key={i} style={styles.resonanceCard}>
+          <Text style={styles.resonanceQuote}>"{card.text}"</Text>
+          <Text style={styles.resonanceSource}>{card.source}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// ── Styles ────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: { flex: 1, gap: 16 },
+  container: { flex: 1 },
+  content: { gap: 16, paddingBottom: 40 },
   center: { justifyContent: 'center', alignItems: 'center' },
   dateDivider: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   dateLine: { flex: 1, height: 1, backgroundColor: '#e8e5e0' },
@@ -222,10 +286,30 @@ const styles = StyleSheet.create({
   verseCard: { borderWidth: 1, borderColor: '#e8e5e0', backgroundColor: '#ffffff', borderRadius: 10, padding: 16, gap: 4 },
   verseCardText: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontStyle: 'italic', fontSize: 17, lineHeight: 26, color: '#3a3530' },
   verseRef: { fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#9a9388', textAlign: 'right' },
-  entryBlock: { paddingVertical: 8, gap: 4 },
+
+  // Entry
+  entryRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  entryBody: { flex: 1 },
   entryText: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 18, lineHeight: 28, color: '#3a3530' },
-  deleteBtn: { alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 8 },
-  deleteText: { fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#9a9388' },
+  entryActions: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingTop: 2 },
+  footnoteBtn: { padding: 4 },
+  footnoteMark: { fontSize: 16, color: '#c9a25a', opacity: 0.6 },
+  footnoteMarkActive: { opacity: 1, fontWeight: '600' },
+  deleteBtn: { padding: 4 },
+  deleteText: { fontFamily: 'Inter, sans-serif', fontSize: 18, color: '#c9a0a0', fontWeight: '300' },
+
+  // Footnote cards
+  footnoteCards: { paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: '#e8e5e0', marginLeft: 4, gap: 6 },
+  cardGroup: { gap: 6 },
+  cardSection: { gap: 4 },
+  cardSectionLabel: { fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase', color: '#b8b0a4' },
+  resonanceCard: { borderWidth: 1, borderColor: '#e8e5e0', backgroundColor: '#ffffff', borderRadius: 8, padding: 12, gap: 4 },
+  resonanceQuote: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontStyle: 'italic', fontSize: 14, lineHeight: 20, color: '#3a3530' },
+  resonanceSource: { fontFamily: 'Inter, sans-serif', fontSize: 10, color: '#9a9388' },
+  resonanceHint: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  resonanceText: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontStyle: 'italic', fontSize: 13, color: '#9a9388' },
+
+  // Editor
   editor: {
     fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 18, lineHeight: 28, color: '#3a3530',
     borderWidth: 1, borderColor: '#e8e5e0', backgroundColor: '#ffffff', borderRadius: 10,
@@ -233,15 +317,5 @@ const styles = StyleSheet.create({
   },
   saveButton: { alignSelf: 'flex-end', backgroundColor: '#8b7355', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
   saveText: { fontFamily: 'Inter, sans-serif', fontWeight: '600', fontSize: 15, color: '#ffffff' },
-  resonanceHint: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 16 },
-  resonanceText: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontStyle: 'italic', fontSize: 14, color: '#9a9388' },
-  resonanceSection: { gap: 8, paddingVertical: 8 },
-  resonanceLabel: { fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: '600', letterSpacing: 0.6, textTransform: 'uppercase', color: '#c9a25a' },
-  resonanceCard: { borderWidth: 1, borderColor: '#e8e5e0', backgroundColor: '#ffffff', borderRadius: 8, padding: 14, gap: 4 },
-  resonanceQuote: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontStyle: 'italic', fontSize: 15, lineHeight: 22, color: '#3a3530' },
-  resonanceSource: { fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#9a9388' },
-  reflectButton: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 16, borderWidth: 1, borderColor: '#e8e5e0', borderRadius: 8, backgroundColor: '#ffffff' },
-  reflectText: { fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: '500', color: '#8b7355' },
-  reflectionCard: { borderWidth: 1, borderColor: '#e8e5e0', borderStyle: 'dashed', borderRadius: 10, padding: 16 },
-  reflectionText: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontStyle: 'italic', fontSize: 17, lineHeight: 26, color: '#3a3530' },
+  emptyText: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontStyle: 'italic', fontSize: 15, color: '#b8b0a4', textAlign: 'center', paddingVertical: 24 },
 });
