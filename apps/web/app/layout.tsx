@@ -5,6 +5,7 @@
 
 import { type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native-web';
+import { VectorStatusBanner } from '../components/VectorStatusBanner';
 import './globals.css';
 
 export const metadata = {
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: ReactNode }): React
         />
       </head>
       <body>
+        <VectorStatusBanner />
         <View style={styles.root}>{children}</View>
       </body>
     </html>
