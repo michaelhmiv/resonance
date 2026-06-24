@@ -51,10 +51,10 @@ import {
 } from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
 import { HighlightToolbar } from '@resonance/ui';
-import { CollapsibleCrossRefs } from '@resonance/ui';
 import { ChapterPicker } from '@resonance/ui';
 import { TranslationSelector } from '@resonance/ui';
 import { BookmarkButton } from '@resonance/ui';
+import { CrossRefInline } from './CrossRefInline';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -595,22 +595,12 @@ export function ReadingView({
                 </View>
               ) : null}
 
-              {/* Lazy collapsible cross-references */}
-              <CollapsibleCrossRefs
+              {/* Inline cross-ref marker + expandable refs */}
+              <CrossRefInline
                 verseRef={ref}
-                loadRefs={async (refs) => {
-                  // Phase 2.2 — use batch endpoint, fallback to cache
-                  if (refs.length === 1 && crossRefs[refs[0]]) {
-                    return { [refs[0]]: crossRefs[refs[0]] };
-                  }
-                  try {
-                    return await dataLayer.getCrossReferencesBatch(refs);
-                  } catch {
-                    return {};
-                  }
-                }}
                 cache={crossRefs}
-                onPress={handleCrossRefPress}
+                loadRefs={async (refs: string[]) => dataLayer.getCrossReferencesBatch(refs)}
+                onNavigate={handleCrossRefPress}
               />
             </View>
           );
