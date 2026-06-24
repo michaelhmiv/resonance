@@ -48,13 +48,18 @@ export function JournalScreen({ fetchVerseOfDay }: JournalScreenProps): ReactNod
 
   useEffect(() => {
     const load = async () => {
-      const segs = await dataLayer.loadSegments();
-      setSegments(segs);
-      if (fetchVerseOfDay) {
-        const vod = await fetchVerseOfDay();
-        if (vod) setVerseOfDay(vod);
+      try {
+        const segs = await dataLayer.loadSegments();
+        setSegments(segs);
+        if (fetchVerseOfDay) {
+          const vod = await fetchVerseOfDay();
+          if (vod) setVerseOfDay(vod);
+        }
+      } catch (err) {
+        console.error('[Journal] load failed:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     load();
   }, [dataLayer, fetchVerseOfDay]);

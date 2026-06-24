@@ -61,7 +61,11 @@ export function PatternsScreen(): ReactNode {
     dataLayer.loadSegments().then((segs) => {
       setSegments(segs);
       return loadPatterns(segs, currentMonth);
-    }).then(() => setLoading(false));
+    }).then(() => setLoading(false))
+    .catch((err) => {
+      console.error('[Patterns] load failed:', err);
+      setLoading(false);
+    });
   }, [dataLayer, loadPatterns, currentMonth]);
 
   useEffect(() => {

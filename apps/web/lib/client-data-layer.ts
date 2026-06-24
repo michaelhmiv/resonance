@@ -153,11 +153,14 @@ export class WebDataLayer implements DataLayer {
       .slice()
       .reverse()
       .map((entry, index) => {
-        const createdMs = entry.created_at * 1000;
+        const ts = (val: unknown): number =>
+          typeof val === 'number' ? val * 1000 : typeof val === 'string' ? new Date(val).getTime() : Date.now();
+        const createdMs = ts(entry.created_at);
+        const updatedMs = ts(entry.updated_at ?? entry.created_at);
         return {
           id: entry.id,
           created_at: createdMs,
-          updated_at: (entry.updated_at ?? entry.created_at) * 1000,
+          updated_at: updatedMs,
           segment_type: 'text' as const,
           text: entry.text,
           position_index: index,
