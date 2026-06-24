@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { REFLECTION_SYSTEM_PROMPT } from '@resonance/core';
 import { rateLimit } from '../../../lib/ratelimit';
 
-const DEFAULT_MODEL = process.env.LLM_MODEL || 'qwen/qwen-2.5-72b-instruct';
+const DEFAULT_MODEL = process.env.RESONANCE_LLM_MODEL || 'deepseek/deepseek-v4-pro';
 
 export async function POST(req: NextRequest) {
   try {
@@ -83,7 +83,8 @@ export async function POST(req: NextRequest) {
     });
 
     if (!response.ok) {
-      return NextResponse.json({ error: `OpenRouter error: ${response.status}` }, { status: 502 });
+      const detail = await response.text().catch(() => '');
+      return NextResponse.json({ error: `OpenRouter error: ${response.status}`, model: DEFAULT_MODEL, detail: detail.slice(0, 500) }, { status: 502 });
     }
 
     const data = await response.json();
@@ -93,7 +94,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Empty response from model' }, { status: 500 });
     }
 
-    return NextResponse.json({ text });
+    return NextResponse.json({ text, model: DEFAULT_MODEL });
   } catch {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }

@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
+import { lexicalResonance } from '../../../lib/resonance-fallback';
 
 const VECTORS_PATH = './data/seeded_library/vectors_gte-small.bin';
 const BIBLE_PASSAGES_PATH = './data/seeded_library/bible_passages.json';
@@ -118,19 +119,25 @@ export async function POST(req: NextRequest) {
       new Promise<void>((resolve) => setTimeout(resolve, 10000)),
     ]);
 
-    if (!vectorsLoaded || !passageVectors || passageMetadata.length === 0) {
-      return NextResponse.json({
-        scripture: [],
-        voices: [],
-        pastEntries: [],
-        note: 'Library vectors are still loading. Try again in a moment.',
-      });
+    const { vector, text, limit = 10 } = (await req.json()) as { vector?: number[]; text?: string; limit?: number };
+
+    if ((!vector || vector.length !== DIM) && (!text || text.trim().length < 12)) {
+      return NextResponse.json({ error: `Provide either a ${DIM}-dimension vector or journal text` }, { status: 400 });
     }
 
-    const { vector, limit = 10 } = (await req.json()) as { vector: number[]; limit?: number };
-
-    if (!vector || vector.length !== DIM) {
-      return NextResponse.json({ error: `Vector must be ${DIM} dimensions` }, { status: 400 });
+    if (!vectorsLoaded || !passageVectors || passageMetadata.length === 0 || !vector || vector.length !== DIM) {
+      const fallback = lexicalResonance(
+        text?.trim() ?? '',
+        passageMetadata.filter((p) => p.translation != null),
+        passageMetadata.filter((p) => p.translation == null),
+        MAX_PER_CATEGORY,
+      );
+      return NextResponse.json({
+        ...fallback,
+        pastEntries: [],
+        method: 'lexical-fallback',
+        note: 'Semantic vector index unavailable; using transparent lexical fallback until vector shards are deployed.',
+      });
     }
 
     const scored: { idx: number; sim: number }[] = [];

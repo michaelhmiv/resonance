@@ -37,5 +37,11 @@ export async function setLlmActive(
     await disposeLlm();
     return true;
   }
+  if (modelId === 'deepseek-v4-pro') {
+    // DeepSeek is a cloud-only premium/web model. The local mobile manager must
+    // not pass it to llama.rn; premium mobile will use the cloud DataLayer.
+    await disposeLlm();
+    return false;
+  }
   return initLlm(modelId);
 }

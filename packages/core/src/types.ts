@@ -179,7 +179,7 @@ export interface EmbeddingModelInfo {
   license: string;
 }
 
-export type LlmModelId = 'qwen-2.5-1.5b' | 'none';
+export type LlmModelId = 'qwen-2.5-1.5b' | 'deepseek-v4-pro' | 'none';
 
 export interface LlmModelInfo {
   id: LlmModelId;

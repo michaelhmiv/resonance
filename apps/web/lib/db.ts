@@ -71,9 +71,17 @@ export function getJournalEntries() {
   return ensureLoaded().journal_entries.sort((a, b) => b.created_at - a.created_at);
 }
 
-export function createJournalEntry(text: string) {
+export function createJournalEntry(text: string, id?: string, createdAt?: number, updatedAt?: number) {
   const s = ensureLoaded();
-  const entry = { id: genId(), text, created_at: now(), updated_at: now() };
+  const existing = id ? s.journal_entries.find(e => e.id === id) : null;
+  if (existing) {
+    existing.text = text;
+    existing.updated_at = updatedAt ?? now();
+    save();
+    return existing;
+  }
+  const timestamp = createdAt ?? now();
+  const entry = { id: id ?? genId(), text, created_at: timestamp, updated_at: updatedAt ?? timestamp };
   s.journal_entries.push(entry);
   save();
   return entry;

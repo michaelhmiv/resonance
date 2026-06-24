@@ -8,7 +8,7 @@ const DEFAULTS: Record<string, string> = {
   textScale: 'medium',
   reduceMotion: 'off',
   embeddingModel: 'gte-small',
-  llmModel: 'qwen-2.5-72b',
+  llmModel: 'deepseek-v4-pro',
 };
 
 export async function GET() {

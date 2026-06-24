@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
             'X-Title': 'Resonance',
           },
           body: JSON.stringify({
-            model: process.env.LLM_MODEL || 'qwen/qwen-2.5-72b-instruct',
+            model: process.env.RESONANCE_LLM_MODEL || 'deepseek/deepseek-v4-pro',
             messages: [
               { role: 'system', content: 'You are a concise assistant.' },
               { role: 'user', content: `Summarize these journal entries in 2-3 words. Output only the label:\n${excerpts.join('\n')}\n\nLabel:` },

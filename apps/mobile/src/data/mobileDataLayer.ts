@@ -24,6 +24,18 @@ import {
   getBookmarks,
   getCrossReferences,
 } from '../db/queries/readingQueries';
+import { findResonance, storeSegmentVector } from '../embedding/resonanceService';
+import {
+  clusterEntries,
+  generateWeeklyRoundup,
+  generateShiftReport,
+  getCalendarDays,
+} from '../embedding/patternsService';
+import {
+  generateReflectionPrompt,
+  generateClusterLabel,
+  generateShiftNarrative,
+} from '../embedding/reflectionService';
 
 export class MobileDataLayer implements DataLayer {
   async getBooks(translation: Translation) {
@@ -98,38 +110,40 @@ export class MobileDataLayer implements DataLayer {
     return getCrossReferences(verseRef);
   }
 
-  async findResonance(_journalText: string): Promise<ResonanceResult | null> {
-    return null;
+  async findResonance(journalText: string): Promise<ResonanceResult | null> {
+    return findResonance(journalText) as Promise<ResonanceResult | null>;
   }
 
-  async storeSegmentVector(_segmentId: string, _text: string): Promise<void> {}
-
-  async clusterEntries(_segments: JournalSegment[]): Promise<EntryCluster[]> {
-    return [];
+  async storeSegmentVector(segmentId: string, text: string): Promise<void> {
+    return storeSegmentVector(segmentId, text);
   }
 
-  async generateWeeklyRoundup(_segments: JournalSegment[], weekStart: string): Promise<WeeklyRoundup> {
-    return { weekStart, entryCount: 0, themes: [], excerpt: '' };
+  async clusterEntries(segments: JournalSegment[]): Promise<EntryCluster[]> {
+    return clusterEntries(segments) as Promise<EntryCluster[]>;
   }
 
-  async generateShiftReport(_segments: JournalSegment[], p1Start: string, p2Start: string): Promise<ShiftReport> {
-    return { comparisonDate: '', period1Start: p1Start, period2Start: p2Start, narrative: null };
+  async generateWeeklyRoundup(segments: JournalSegment[], weekStart: string): Promise<WeeklyRoundup> {
+    return generateWeeklyRoundup(segments, weekStart) as Promise<WeeklyRoundup>;
   }
 
-  async getCalendarDays(_segments: JournalSegment[], _year: number, _month: number): Promise<CalendarDay[]> {
-    return [];
+  async generateShiftReport(segments: JournalSegment[], p1Start: string, p2Start: string): Promise<ShiftReport> {
+    return generateShiftReport(segments, p1Start, p2Start) as Promise<ShiftReport>;
   }
 
-  async generateReflectionPrompt(_excerpts: string[]): Promise<ReflectionPrompt | null> {
-    return null;
+  async getCalendarDays(segments: JournalSegment[], year: number, month: number): Promise<CalendarDay[]> {
+    return getCalendarDays(segments, year, month) as Promise<CalendarDay[]>;
   }
 
-  async generateClusterLabel(_excerpts: string[]): Promise<string | null> {
-    return null;
+  async generateReflectionPrompt(excerpts: string[]): Promise<ReflectionPrompt | null> {
+    return generateReflectionPrompt(excerpts) as Promise<ReflectionPrompt | null>;
   }
 
-  async generateShiftNarrative(_p1Excerpts: string[], _p2Excerpts: string[]): Promise<string | null> {
-    return null;
+  async generateClusterLabel(excerpts: string[]): Promise<string | null> {
+    return generateClusterLabel(excerpts);
+  }
+
+  async generateShiftNarrative(p1Excerpts: string[], p2Excerpts: string[]): Promise<string | null> {
+    return generateShiftNarrative(p1Excerpts, p2Excerpts);
   }
 
   async getActiveEmbeddingModel(): Promise<EmbeddingModelId> {

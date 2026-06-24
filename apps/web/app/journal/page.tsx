@@ -77,16 +77,10 @@ export default function JournalPage(): ReactNode {
       // Fire resonance in background
       setFindingResonance(true);
       try {
-        const embedRes = await fetch('/api/embed', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: entry.text }),
-        });
-        const { vector } = await embedRes.json();
         const resRes = await fetch('/api/resonance', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ vector }),
+          body: JSON.stringify({ text: entry.text }),
         });
         const data = await resRes.json();
         setResonance(data);

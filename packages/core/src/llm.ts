@@ -5,8 +5,11 @@
 import type { LlmModelId, LlmModelInfo, ReflectionPrompt } from './types';
 
 export const LLM_MODELS: readonly LlmModelInfo[] = [
-  { id: 'qwen-2.5-1.5b', label: 'Qwen 2.5 1.5B (Q4)', sizeMb: 1024, license: 'Apache 2.0' },
+  { id: 'qwen-2.5-1.5b', label: 'Qwen 2.5 1.5B (Q4 local)', sizeMb: 1024, license: 'Apache 2.0' },
+  { id: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro (cloud)', sizeMb: 0, license: 'Commercial API' },
 ] as const;
+
+export const DEFAULT_CLOUD_LLM_MODEL = 'deepseek/deepseek-v4-pro';
 
 /**
  * System prompt reused by both local (llama.rn) and cloud (OpenRouter)

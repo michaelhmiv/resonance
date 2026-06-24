@@ -147,9 +147,41 @@ export class WebDataLayer implements DataLayer {
     return data.passages;
   }
 
-  async loadSegments(): Promise<JournalSegment[]> { return []; }
-  async saveSegment(_segment: JournalSegment): Promise<void> {}
-  async deleteSegment(_id: string): Promise<void> {}
+  async loadSegments(): Promise<JournalSegment[]> {
+    const data = await api<{ entries: { id: string; text: string; created_at: number; updated_at?: number }[] }>('/api/journal/entries');
+    return data.entries
+      .slice()
+      .reverse()
+      .map((entry, index) => {
+        const createdMs = entry.created_at * 1000;
+        return {
+          id: entry.id,
+          created_at: createdMs,
+          updated_at: (entry.updated_at ?? entry.created_at) * 1000,
+          segment_type: 'text' as const,
+          text: entry.text,
+          position_index: index,
+          parent_date: new Date(createdMs).toISOString().slice(0, 10),
+        };
+      });
+  }
+
+  async saveSegment(segment: JournalSegment): Promise<void> {
+    if (segment.segment_type !== 'text') return;
+    await api('/api/journal/entries', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: segment.id,
+        text: segment.text ?? '',
+        created_at: Math.floor(segment.created_at / 1000),
+        updated_at: Math.floor(segment.updated_at / 1000),
+      }),
+    });
+  }
+
+  async deleteSegment(id: string): Promise<void> {
+    await fetch(`/api/journal/entries/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
 
   async getHighlightsForRefs(refs: string[]): Promise<HighlightMap> {
     if (refs.length === 0) return {};
@@ -211,19 +243,82 @@ export class WebDataLayer implements DataLayer {
     return data.refs;
   }
 
-  async findResonance(_journalText: string): Promise<ResonanceResult | null> { return null; }
-  async storeSegmentVector(_segmentId: string, _text: string): Promise<void> {}
-  async clusterEntries(_segments: JournalSegment[]): Promise<EntryCluster[]> { return []; }
-  async generateWeeklyRoundup(_segments: JournalSegment[], weekStart: string): Promise<WeeklyRoundup> {
-    return { weekStart, entryCount: 0, themes: [], excerpt: '' };
+  async findResonance(journalText: string): Promise<ResonanceResult | null> {
+    if (journalText.trim().length < 12) return null;
+    const data = await api<ResonanceResult>('/api/resonance', {
+      method: 'POST',
+      body: JSON.stringify({ text: journalText }),
+    });
+    return data;
   }
+
+  async storeSegmentVector(_segmentId: string, _text: string): Promise<void> {
+    // Web resonance is server-side. Segment vectors are persisted once the
+    // cloud/Supabase DataLayer replaces the temporary JSON store.
+  }
+
+  async clusterEntries(segments: JournalSegment[]): Promise<EntryCluster[]> {
+    const textSegments = segments.filter((s) => s.segment_type === 'text' && (s.text ?? '').trim().length > 12);
+    const byWord = new Map<string, JournalSegment[]>();
+    const stop = new Set(['the','and','that','with','from','this','have','will','your','you','are','was','were','for','but','not','feel','feeling','really','just']);
+    for (const seg of textSegments) {
+      const words = (seg.text ?? '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 4 && !stop.has(w));
+      for (const word of new Set(words.slice(0, 30))) {
+        const bucket = byWord.get(word) ?? [];
+        bucket.push(seg);
+        byWord.set(word, bucket);
+      }
+    }
+    return Array.from(byWord.entries())
+      .filter(([, bucket]) => bucket.length >= 2)
+      .sort((a, b) => b[1].length - a[1].length)
+      .slice(0, 6)
+      .map(([label, bucket], index) => ({
+        id: `cluster-${index}-${label}`,
+        label,
+        entryCount: bucket.length,
+        excerpts: bucket.slice(0, 3).map((s) => s.text ?? ''),
+        dateRange: { start: bucket[0]?.parent_date ?? '', end: bucket[bucket.length - 1]?.parent_date ?? '' },
+      }));
+  }
+
+  async generateWeeklyRoundup(segments: JournalSegment[], weekStart: string): Promise<WeeklyRoundup> {
+    const weekStartMs = new Date(`${weekStart}T00:00:00Z`).getTime();
+    const weekEndMs = weekStartMs + 7 * 86400000;
+    const week = segments.filter((s) => s.created_at >= weekStartMs && s.created_at < weekEndMs && s.segment_type === 'text' && (s.text ?? '').trim());
+    const excerpt = week.slice().sort((a, b) => (b.text?.length ?? 0) - (a.text?.length ?? 0))[0]?.text?.slice(0, 200) ?? '';
+    const clusters = await this.clusterEntries(week);
+    return { weekStart, entryCount: week.length, themes: clusters.map((c) => c.label).slice(0, 5), excerpt };
+  }
+
   async generateShiftReport(_segments: JournalSegment[], p1Start: string, p2Start: string): Promise<ShiftReport> {
-    return { comparisonDate: '', period1Start: p1Start, period2Start: p2Start, narrative: null };
+    return { comparisonDate: new Date().toISOString().slice(0, 10), period1Start: p1Start, period2Start: p2Start, narrative: null };
   }
-  async getCalendarDays(_segments: JournalSegment[], _year: number, _month: number): Promise<CalendarDay[]> { return []; }
-  async generateReflectionPrompt(_excerpts: string[]): Promise<ReflectionPrompt | null> { return null; }
-  async generateClusterLabel(_excerpts: string[]): Promise<string | null> { return null; }
-  async generateShiftNarrative(_p1Excerpts: string[], _p2Excerpts: string[]): Promise<string | null> { return null; }
+
+  async getCalendarDays(segments: JournalSegment[], year: number, month: number): Promise<CalendarDay[]> {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    return Array.from({ length: daysInMonth }, (_, i) => {
+      const day = i + 1;
+      const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const count = segments.filter((s) => s.parent_date === date && s.segment_type === 'text' && (s.text ?? '').trim()).length;
+      return { date, hasEntries: count > 0, entryCount: count };
+    });
+  }
+
+  async generateReflectionPrompt(excerpts: string[]): Promise<ReflectionPrompt | null> {
+    const data = await api<{ text?: string }>('/api/reflect', { method: 'POST', body: JSON.stringify({ action: 'reflection_prompt', excerpts }) });
+    return data.text ? { prompt: data.text, generatedAt: Date.now() } : null;
+  }
+
+  async generateClusterLabel(excerpts: string[]): Promise<string | null> {
+    const data = await api<{ text?: string }>('/api/reflect', { method: 'POST', body: JSON.stringify({ action: 'cluster_label', excerpts }) });
+    return data.text ?? null;
+  }
+
+  async generateShiftNarrative(p1Excerpts: string[], p2Excerpts: string[]): Promise<string | null> {
+    const data = await api<{ text?: string }>('/api/reflect', { method: 'POST', body: JSON.stringify({ action: 'shift_narrative', period1Excerpts: p1Excerpts, period2Excerpts: p2Excerpts }) });
+    return data.text ?? null;
+  }
   async getActiveEmbeddingModel(): Promise<EmbeddingModelId> { return 'gte-small'; }
   async setActiveEmbeddingModel(_id: EmbeddingModelId): Promise<void> {}
 }
