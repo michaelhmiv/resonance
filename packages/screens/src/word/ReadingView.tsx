@@ -546,6 +546,9 @@ export function ReadingView({
           return (
             <View style={styles.verseBlock}>
               <Pressable
+                onPress={() => {
+                  if (activeVerseRef) setActiveVerseRef(null);
+                }}
                 onLongPress={() => {
                   setActiveVerseRef(ref);
                   setActiveVerseText(passage.text);
@@ -576,6 +579,23 @@ export function ReadingView({
                   >
                     {passage.text}
                   </Text>
+                  {/* Visible tap target for highlight toolbar on web.
+                      Long-press is unreliable on mobile browsers (native
+                      context menu intercepts the gesture). This ✦ gives a
+                      reliable, always-visible way to open the toolbar. */}
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      setActiveVerseRef(ref);
+                      setActiveVerseText(passage.text);
+                    }}
+                    hitSlop={10}
+                    accessibilityRole="button"
+                    accessibilityLabel="Highlight or annotate this verse"
+                    style={styles.highlightHandle}
+                  >
+                    <Text style={styles.highlightHandleText}>✦</Text>
+                  </Pressable>
                 </View>
               </Pressable>
 
@@ -633,6 +653,9 @@ export function ReadingView({
           return (
             <View style={styles.verseBlock}>
               <Pressable
+                onPress={() => {
+                  if (activeVerseRef) setActiveVerseRef(null);
+                }}
                 onLongPress={() => {
                   setActiveVerseRef(ref);
                   setActiveVerseText(passage.text);
@@ -651,6 +674,23 @@ export function ReadingView({
                   >
                     {passage.text}
                   </Text>
+                  {/* Visible tap target for highlight toolbar on web.
+                      Long-press is unreliable on mobile browsers (native
+                      context menu intercepts the gesture). This ✦ gives a
+                      reliable, always-visible way to open the toolbar. */}
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      setActiveVerseRef(ref);
+                      setActiveVerseText(passage.text);
+                    }}
+                    hitSlop={10}
+                    accessibilityRole="button"
+                    accessibilityLabel="Highlight or annotate this verse"
+                    style={styles.highlightHandle}
+                  >
+                    <Text style={styles.highlightHandleText}>✦</Text>
+                  </Pressable>
                 </View>
               </Pressable>
 
@@ -814,6 +854,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    position: 'relative',
   },
   centerLoading: {
     justifyContent: 'center',
@@ -913,6 +954,9 @@ const styles = StyleSheet.create({
     bottom: spacing.lg,
     left: layout.screenPaddingX,
     right: layout.screenPaddingX,
+    zIndex: 100,
+    // @ts-expect-error — web-only elevation
+    elevation: 10,
   },
   annotationOverlay: {
     flex: 1,
@@ -992,5 +1036,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     color: colors.textTertiary,
     textTransform: 'uppercase',
+  },
+  highlightHandle: {
+    paddingLeft: spacing.sm,
+    justifyContent: 'center',
+  },
+  highlightHandleText: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    opacity: 0.4,
   },
 });
