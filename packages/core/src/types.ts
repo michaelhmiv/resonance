@@ -171,12 +171,15 @@ export interface CalendarDay {
 
 export type EmbeddingModelId = 'gte-small' | 'bge-small-en' | 'all-minilm-l6';
 
+export type EmbeddingModelTier = 'local' | 'cloud';
+
 export interface EmbeddingModelInfo {
   id: EmbeddingModelId;
   label: string;
   dim: number;
   sizeMb: number;
   license: string;
+  tier: EmbeddingModelTier;
 }
 
 export type LlmModelId = 'qwen-2.5-1.5b' | 'deepseek-v4-pro' | 'none';
@@ -186,6 +189,7 @@ export interface LlmModelInfo {
   label: string;
   sizeMb: number;
   license: string;
+  tier: EmbeddingModelTier;
 }
 
 export interface ReflectionPrompt {

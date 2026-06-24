@@ -38,11 +38,13 @@ import { PassageCard } from '@resonance/ui';
 interface SearchScreenProps {
   onCancel: () => void;
   onOpenScripture: (bookName: string, chapter: number) => void;
+  onOpenLibrary?: (bookId: string) => void;
 }
 
 export function SearchScreen({
   onCancel,
   onOpenScripture,
+  onOpenLibrary,
 }: SearchScreenProps): ReactNode {
   const dataLayer = useDataLayer();
   const [query, setQuery] = useState('');
@@ -86,16 +88,20 @@ export function SearchScreen({
 
   const handleOpenHit = useCallback(
     (hit: PassageHit) => {
-      // Only Scripture hits can be opened in the reading surface directly.
+      // Scripture hits: navigate to book + chapter
       if (hit.translation != null && hit.chapter != null) {
-        // Derive book name from book_id: strip "<TRANSLATION>_" prefix.
         const bookName = hit.book_id
           .replace(/^[A-Z]+_/, '')
           .replace(/_/g, ' ');
         onOpenScripture(bookName, hit.chapter);
+        return;
+      }
+      // Library hits: open library reading surface
+      if (hit.translation == null && onOpenLibrary) {
+        onOpenLibrary(hit.book_id);
       }
     },
-    [onOpenScripture]
+    [onOpenScripture, onOpenLibrary]
   );
 
   return (

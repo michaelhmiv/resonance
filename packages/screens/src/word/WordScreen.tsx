@@ -95,6 +95,7 @@ export function WordScreen({ onOpenSettings }: WordScreenProps): ReactNode {
       <SearchScreen
         onCancel={() => setView({ name: 'browse' })}
         onOpenScripture={openScriptureChapter}
+        onOpenLibrary={openLibraryBook}
       />
     );
   }

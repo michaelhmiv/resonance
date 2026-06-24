@@ -8,10 +8,13 @@ import type { EmbeddingModelId, EmbeddingModelInfo } from './types';
 export const EMBEDDING_DIM = 384;
 
 export const EMBEDDING_MODELS: readonly EmbeddingModelInfo[] = [
-  { id: 'gte-small', label: 'GTE-small', dim: 384, sizeMb: 33, license: 'MIT' },
-  { id: 'bge-small-en', label: 'BGE-small-en-v1.5', dim: 384, sizeMb: 34, license: 'MIT' },
-  { id: 'all-minilm-l6', label: 'all-MiniLM-L6-v2', dim: 384, sizeMb: 23, license: 'Apache 2.0' },
+  { id: 'gte-small', label: 'GTE-small', dim: 384, sizeMb: 33, license: 'MIT', tier: 'cloud' },
+  { id: 'bge-small-en', label: 'BGE-small-en-v1.5', dim: 384, sizeMb: 34, license: 'MIT', tier: 'local' },
+  { id: 'all-minilm-l6', label: 'all-MiniLM-L6-v2', dim: 384, sizeMb: 23, license: 'Apache 2.0', tier: 'local' },
 ] as const;
+
+export const CLOUD_EMBEDDING_MODELS = EMBEDDING_MODELS.filter(m => m.tier === 'cloud');
+export const LOCAL_EMBEDDING_MODELS = EMBEDDING_MODELS.filter(m => m.tier === 'local');
 
 export function getModelInfo(id: EmbeddingModelId): EmbeddingModelInfo {
   return EMBEDDING_MODELS.find((m) => m.id === id) ?? EMBEDDING_MODELS[0];

@@ -187,6 +187,22 @@ export function ReadingView({
     [mode, libraryBook]
   );
 
+  const handleCrossRefPress = useCallback(
+    (ref: string) => {
+      if (!onNavigateChapter) return;
+      // Parse "Book Name Chapter:Verse" or "Book Name Chapter:Verse-End"
+      // e.g. "Proverbs 8:22-30" → book="Proverbs", chapter=8
+      // e.g. "1 Chronicles 16:26" → book="1 Chronicles", chapter=16
+      const match = ref.match(/^(.+?)\s+(\d+):/);
+      if (!match) return;
+      const bookName = match[1].trim();
+      const chapter = parseInt(match[2], 10);
+      if (!bookName || isNaN(chapter)) return;
+      onNavigateChapter(bookName, chapter);
+    },
+    [onNavigateChapter]
+  );
+
   const handleApplyHighlight = useCallback(
     async (color: string) => {
       if (!activeVerseRef) return;
@@ -347,7 +363,7 @@ export function ReadingView({
               ) : null}
 
               {xrefs.length > 0 && (
-                <CrossReferenceLinks refs={xrefs} onPress={() => {}} />
+                <CrossReferenceLinks refs={xrefs} onPress={handleCrossRefPress} />
               )}
             </View>
           );

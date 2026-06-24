@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { StyleSheet, Text, View, Pressable, ScrollView, ActivityIndicator } from 'react-native-web';
-import { EMBEDDING_MODELS, LLM_MODELS } from '@resonance/core';
+import { CLOUD_EMBEDDING_MODELS, CLOUD_LLM_MODELS } from '@resonance/core';
 
 interface Settings {
   translation: string;
@@ -112,7 +112,7 @@ export default function SettingsPage(): ReactNode {
         <Text style={styles.description}>
           Matches your writing with Scripture and voices.
         </Text>
-        {EMBEDDING_MODELS.map((model) => (
+        {CLOUD_EMBEDDING_MODELS.map((model) => (
           <Pressable
             key={model.id}
             onPress={() => updateSetting('embeddingModel', model.id)}
@@ -132,7 +132,7 @@ export default function SettingsPage(): ReactNode {
         <Text style={styles.description}>
           Generates gentle questions and weekly summaries. Never writes prayers or interprets Scripture.
         </Text>
-        {LLM_MODELS.map((model) => (
+        {CLOUD_LLM_MODELS.map((model) => (
           <Pressable
             key={model.id}
             onPress={() => updateSetting('llmModel', model.id)}
@@ -202,8 +202,8 @@ export default function SettingsPage(): ReactNode {
           { name: 'WEB', license: 'Public Domain' },
           { name: 'ASV', license: 'Public Domain' },
         ]} />
-        <LicenseGroup title="Embedding Models" items={EMBEDDING_MODELS.map(m => ({ name: m.label, license: m.license }))} />
-        <LicenseGroup title="LLM Models" items={LLM_MODELS.map(m => ({ name: m.label, license: m.license }))} />
+        <LicenseGroup title="Embedding Models" items={CLOUD_EMBEDDING_MODELS.map(m => ({ name: m.label, license: m.license }))} />
+        <LicenseGroup title="LLM Models" items={CLOUD_LLM_MODELS.map(m => ({ name: m.label, license: m.license }))} />
         <LicenseGroup title="Open-Source" items={[
           { name: 'ONNX Runtime', license: 'MIT' },
           { name: 'llama.cpp', license: 'MIT' },

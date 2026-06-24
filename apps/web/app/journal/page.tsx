@@ -8,8 +8,11 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { StyleSheet, Text, TextInput, View, Pressable, ActivityIndicator } from 'react-native-web';
+import { DataLayerProvider } from '@resonance/core/data-layer-context';
+import { useDataLayer } from '@resonance/core/data-layer-context';
+import { WebDataLayer } from '../../lib/client-data-layer';
 
 interface JournalEntry {
   id: string;
@@ -36,6 +39,7 @@ interface ResonanceCard {
 }
 
 export default function JournalPage(): ReactNode {
+  const dataLayer = useMemo(() => new WebDataLayer(), []);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [verseOfDay, setVerseOfDay] = useState<VerseOfDay | null>(null);
   const [currentText, setCurrentText] = useState('');
@@ -74,15 +78,10 @@ export default function JournalPage(): ReactNode {
       setEntries([entry, ...entries]);
       setCurrentText('');
 
-      // Fire resonance in background
+      // Fire resonance via DataLayer (embeds text first for semantic search)
       setFindingResonance(true);
       try {
-        const resRes = await fetch('/api/resonance', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: entry.text }),
-        });
-        const data = await resRes.json();
+        const data = await dataLayer.findResonance(entry.text);
         setResonance(data);
       } catch {
         // Resonance is best-effort
