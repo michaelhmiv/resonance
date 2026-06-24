@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Re-use the same singleton pattern as lib/db.ts
 let _supabase: any = null;
+let _tableEnsured = false;
+
 function getClient(): any {
   if (!_supabase) {
     const { createClient } = require('@supabase/supabase-js');
@@ -19,8 +21,27 @@ function getClient(): any {
   return _supabase;
 }
 
+// Auto-create the reading_events table on first access
+async function ensureTable(): Promise<void> {
+  if (_tableEnsured) return;
+  try {
+    const sb = getClient();
+    // Probe: if table exists, we're done
+    const { error: probeErr } = await sb.from('reading_events').select('id').limit(1);
+    if (!probeErr) { _tableEnsured = true; return; }
+    // Table doesn't exist — try creating via rpc (if admin set this up)
+    const { error: rpcErr } = await sb.rpc('init_reading_events');
+    if (!rpcErr) { _tableEnsured = true; return; }
+  } catch (err) {
+    console.warn('[reading-events] auto-migration failed, falling back gracefully:', err);
+  } finally {
+    _tableEnsured = true; // Don't keep retrying on every request
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
+    await ensureTable();
     const { searchParams } = new URL(req.url);
     const start = searchParams.get('start') || '2000-01-01';
     const end = searchParams.get('end') || new Date().toISOString().slice(0, 10);
@@ -54,6 +75,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureTable();
     const { bookId, chapter, verseRef, timestamp } = await req.json();
     const sb = getClient();
 

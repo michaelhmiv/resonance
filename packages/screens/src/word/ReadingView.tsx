@@ -98,6 +98,7 @@ export function ReadingView({
   const [annotationMap, setAnnotationMap] = useState<AnnotationMap>({});
   const [crossRefs, setCrossRefs] = useState<Record<string, string[]>>({});
   const [bookmarked, setBookmarked] = useState(false);
+  const [fontSize, setFontSize] = useState<string>('medium');
 
   // Highlight toolbar state
   const [activeVerseRef, setActiveVerseRef] = useState<string | null>(null);
@@ -178,6 +179,13 @@ export function ReadingView({
     dataLayer.recordReadingEvent(mode.bookName, mode.chapter, ref, Date.now()).catch(() => {});
   }, [mode, dataLayer]);
 
+  // ── Load saved font size ──────────────────────────────────────────────
+  useEffect(() => {
+    dataLayer.getSettings().then((settings) => {
+      if (settings?.fontSize) setFontSize(settings.fontSize);
+    }).catch(() => {});
+  }, [dataLayer]);
+
   // ── Actions ──────────────────────────────────────────────────────────────
 
   const verseRefFor = useCallback(
@@ -251,6 +259,8 @@ export function ReadingView({
     });
     setAnnotationModal(null);
   }, [annotationModal, annotationDraft, translation, dataLayer]);
+
+const fontSizeMap: Record<string, number> = { small: 15, medium: 17, large: 19 };
 
   // ── Title / header ──────────────────────────────────────────────────────
 
@@ -360,7 +370,7 @@ export function ReadingView({
                         : ''}
                     </Text>
                   )}
-                  <Text style={styles.verseText}>{passage.text}</Text>
+                  <Text style={[styles.verseText, { fontSize: fontSizeMap[fontSize] || 17 }]}>{passage.text}</Text>
                 </View>
               </Pressable>
 
