@@ -55,3 +55,5 @@ tsconfig.tsbuildinfo
 apps/web/data/seeded_library/vectors/
 build/output/seeded_library/vectors_gte-small.bin
 build/output/seeded_library/vectors_pplx/
+supabase/
+.next

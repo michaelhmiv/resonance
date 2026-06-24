@@ -3,7 +3,7 @@ import { getJournalEntries, createJournalEntry } from '../../../../lib/db';
 
 export async function GET() {
   try {
-    const entries = getJournalEntries();
+    const entries = await getJournalEntries();
     return NextResponse.json({ entries });
   } catch {
     return NextResponse.json({ entries: [] }, { status: 500 });
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     if (!text || text.trim().length === 0) {
       return NextResponse.json({ error: 'Text required' }, { status: 400 });
     }
-    const entry = createJournalEntry(
+    const entry = await createJournalEntry(
       text.trim(),
       typeof id === 'string' ? id : undefined,
       typeof created_at === 'number' ? created_at : undefined,

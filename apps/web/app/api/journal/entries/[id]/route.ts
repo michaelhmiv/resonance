@@ -8,7 +8,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const { text } = await req.json();
-    return NextResponse.json(updateJournalEntry(id, text));
+    return NextResponse.json(await updateJournalEntry(id, text));
   } catch {
     return NextResponse.json({ error: 'Failed to update' }, { status: 500 });
   }
@@ -20,7 +20,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    return NextResponse.json(deleteJournalEntry(id));
+    return NextResponse.json(await deleteJournalEntry(id));
   } catch {
     return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
   }

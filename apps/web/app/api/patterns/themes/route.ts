@@ -15,7 +15,7 @@ const STOP_WORDS = new Set([
 
 export async function GET() {
   try {
-    const entries = getJournalEntries().slice(0, 50);
+    const entries = (await getJournalEntries()).slice(0, 50);
 
     if (entries.length === 0) {
       return NextResponse.json({ themes: [] });

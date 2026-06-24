@@ -1,200 +1,194 @@
 /**
- * JSON file-based store — no native dependencies, works everywhere.
- * Stand-in for Supabase. Persists to /tmp on Railway (volatile) or 
- * RAILWAY_VOLUME_MOUNT_PATH (persistent volume) if available.
+ * Supabase-backed data store — replaces JSON file store.
+ * Same function signatures as before, now persisted in PostgreSQL.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import path from 'path';
+import { createClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-const DB_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH
-  ? process.env.RAILWAY_VOLUME_MOUNT_PATH
-  : '/tmp';
-const DB_FILE = path.join(DB_DIR, 'resonance-db.json');
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://oeumvgwecqtqqgbyiune.supabase.co';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ldW12Z3dlY3F0cXFnYnlpdW5lIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjI2NzkzOSwiZXhwIjoyMDk3ODQzOTM5fQ.9G6vG2GYD6DJy5rEPdPb-4LJ3yu6PYYJjVwjjc8dltw';
 
-interface DBState {
-  journal_entries: { id: string; text: string; created_at: number; updated_at: number }[];
-  bookmarks: { id: string; verse_ref: string; label: string | null; created_at: number }[];
-  highlights: { id: string; verse_ref: string; color: string; created_at: number }[];
-  annotations: { id: string; verse_ref: string; translation: string; text: string; created_at: number }[];
-  settings: Record<string, string>;
-}
-
-const DEFAULT_STATE: DBState = {
-  journal_entries: [],
-  bookmarks: [],
-  highlights: [],
-  annotations: [],
-  settings: {},
-};
-
-let state: DBState | null = null;
-
-function ensureLoaded(): DBState {
-  if (state) return state;
-  try {
-    if (existsSync(DB_FILE)) {
-      state = JSON.parse(readFileSync(DB_FILE, 'utf-8'));
-    } else {
-      state = { ...DEFAULT_STATE };
-      save();
-    }
-  } catch {
-    state = { ...DEFAULT_STATE };
+// Singleton client
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (!_supabase) {
+    _supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
   }
-  return state!;
+  return _supabase;
 }
 
-function save() {
-  if (!state) return;
-  try {
-    if (!existsSync(DB_DIR)) {
-      mkdirSync(DB_DIR, { recursive: true });
-    }
-    writeFileSync(DB_FILE, JSON.stringify(state, null, 2));
-  } catch {
-    // Best effort persistence
-  }
-}
+// Default dev user ID (pre-auth, service role bypasses RLS)
+const DEV_USER_ID = '00000000-0000-0000-0000-000000000000';
 
-function genId(): string {
-  return Array.from({ length: 16 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-}
-
-function now(): number {
-  return Math.floor(Date.now() / 1000);
+async function getDevUserId(): Promise<string> {
+  const sb = getSupabase();
+  const { data } = await sb.from('profiles').select('id').eq('email', 'dev@resonance.local').single();
+  return data?.id || DEV_USER_ID;
 }
 
 // ── Journal entries ────────────────────────────────────────────────────────
 
-export function getJournalEntries() {
-  return ensureLoaded().journal_entries.sort((a, b) => b.created_at - a.created_at);
+export async function getJournalEntries() {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const { data } = await sb.from('journal_entries').select('*').eq('user_id', uid).order('created_at', { ascending: false });
+  return data || [];
 }
 
-export function createJournalEntry(text: string, id?: string, createdAt?: number, updatedAt?: number) {
-  const s = ensureLoaded();
-  const existing = id ? s.journal_entries.find(e => e.id === id) : null;
-  if (existing) {
-    existing.text = text;
-    existing.updated_at = updatedAt ?? now();
-    save();
-    return existing;
+export async function createJournalEntry(text: string, id?: string, createdAt?: number, updatedAt?: number) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const timestamp = createdAt ? new Date(createdAt * 1000).toISOString() : new Date().toISOString();
+  const tsUpdated = updatedAt ? new Date(updatedAt * 1000).toISOString() : timestamp;
+
+  if (id) {
+    // Upsert
+    const { data } = await sb.from('journal_entries')
+      .upsert({ id, user_id: uid, text, created_at: timestamp, updated_at: tsUpdated })
+      .select().single();
+    return data;
   }
-  const timestamp = createdAt ?? now();
-  const entry = { id: id ?? genId(), text, created_at: timestamp, updated_at: updatedAt ?? timestamp };
-  s.journal_entries.push(entry);
-  save();
-  return entry;
+
+  const { data } = await sb.from('journal_entries')
+    .insert({ user_id: uid, text, created_at: timestamp, updated_at: tsUpdated })
+    .select().single();
+  return data;
 }
 
-export function updateJournalEntry(id: string, text: string) {
-  const s = ensureLoaded();
-  const entry = s.journal_entries.find(e => e.id === id);
-  if (entry) {
-    entry.text = text;
-    entry.updated_at = now();
-    save();
-  }
+export async function updateJournalEntry(id: string, text: string) {
+  const sb = getSupabase();
+  const { error } = await sb.from('journal_entries')
+    .update({ text, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
   return { ok: true };
 }
 
-export function deleteJournalEntry(id: string) {
-  const s = ensureLoaded();
-  s.journal_entries = s.journal_entries.filter(e => e.id !== id);
-  save();
+export async function deleteJournalEntry(id: string) {
+  const sb = getSupabase();
+  const { error } = await sb.from('journal_entries').delete().eq('id', id);
+  if (error) throw error;
   return { ok: true };
 }
 
 // ── Bookmarks ─────────────────────────────────────────────────────────────
 
-export function getBookmarks() {
-  return ensureLoaded().bookmarks.sort((a, b) => b.created_at - a.created_at);
+export async function getBookmarks() {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const { data } = await sb.from('bookmarks').select('*').eq('user_id', uid).order('created_at', { ascending: false });
+  return data || [];
 }
 
-export function createBookmark(verseRef: string, label: string | null) {
-  const s = ensureLoaded();
-  const bookmark = { id: genId(), verse_ref: verseRef, label, created_at: now() };
-  s.bookmarks.push(bookmark);
-  save();
-  return bookmark;
+export async function createBookmark(verseRef: string, label: string | null) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const { data } = await sb.from('bookmarks')
+    .upsert({ user_id: uid, verse_ref: verseRef, label }, { onConflict: 'user_id,verse_ref' })
+    .select().single();
+  return data;
 }
 
-export function deleteBookmark(id: string) {
-  const s = ensureLoaded();
-  s.bookmarks = s.bookmarks.filter(b => b.id !== id);
-  save();
+export async function deleteBookmark(id: string) {
+  const sb = getSupabase();
+  const { error } = await sb.from('bookmarks').delete().eq('id', id);
+  if (error) throw error;
   return { ok: true };
 }
 
 // ── Highlights ────────────────────────────────────────────────────────────
 
-export function getHighlights(verseRefPrefix?: string) {
-  const hls = ensureLoaded().highlights;
+export async function getHighlights(verseRefPrefix?: string) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  let query = sb.from('highlights').select('*').eq('user_id', uid);
   if (verseRefPrefix) {
-    return hls.filter(h => h.verse_ref.startsWith(verseRefPrefix));
+    query = query.ilike('verse_ref', `${verseRefPrefix}%`);
   }
-  return hls;
+  const { data } = await query;
+  return data || [];
 }
 
-export function createHighlight(verseRef: string, color: string) {
-  const s = ensureLoaded();
-  // Remove existing highlight for this verse_ref
-  s.highlights = s.highlights.filter(h => h.verse_ref !== verseRef);
-  const highlight = { id: genId(), verse_ref: verseRef, color, created_at: now() };
-  s.highlights.push(highlight);
-  save();
-  return highlight;
+export async function createHighlight(verseRef: string, color: string) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const { data } = await sb.from('highlights')
+    .upsert({ user_id: uid, verse_ref: verseRef, color }, { onConflict: 'user_id,verse_ref' })
+    .select().single();
+  return data;
 }
 
-export function deleteHighlight(id: string) {
-  const s = ensureLoaded();
-  s.highlights = s.highlights.filter(h => h.id !== id);
-  save();
+export async function deleteHighlight(id: string) {
+  const sb = getSupabase();
+  const { error } = await sb.from('highlights').delete().eq('id', id);
+  if (error) throw error;
   return { ok: true };
 }
 
 // ── Annotations ───────────────────────────────────────────────────────────
 
-export function getAnnotations(verseRefPrefix?: string, translation?: string) {
-  let rows = ensureLoaded().annotations;
+export async function getAnnotations(verseRefPrefix?: string, translation?: string) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  let query = sb.from('annotations').select('*').eq('user_id', uid);
   if (verseRefPrefix) {
-    rows = rows.filter(a => a.verse_ref.startsWith(verseRefPrefix));
+    query = query.ilike('verse_ref', `${verseRefPrefix}%`);
   }
   if (translation) {
-    rows = rows.filter(a => a.translation.toLowerCase() === translation.toLowerCase());
+    query = query.ilike('translation', translation);
   }
-  return rows.sort((a, b) => b.created_at - a.created_at);
+  const { data } = await query.order('created_at', { ascending: false });
+  return data || [];
 }
 
-export function createAnnotation(verseRef: string, translation: string, text: string) {
-  const s = ensureLoaded();
-  s.annotations = s.annotations.filter(a => !(a.verse_ref === verseRef && a.translation.toLowerCase() === translation.toLowerCase()));
+export async function createAnnotation(verseRef: string, translation: string, text: string) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
   if (text.trim().length === 0) {
-    save();
+    await sb.from('annotations').delete()
+      .eq('user_id', uid)
+      .eq('verse_ref', verseRef)
+      .eq('translation', translation);
     return { ok: true };
   }
-  const annotation = { id: genId(), verse_ref: verseRef, translation, text: text.trim(), created_at: now() };
-  s.annotations.push(annotation);
-  save();
-  return annotation;
+  const { data } = await sb.from('annotations')
+    .upsert({ user_id: uid, verse_ref: verseRef, translation, text, updated_at: new Date().toISOString() }, 
+      { onConflict: 'user_id,verse_ref,translation' })
+    .select().single();
+  return data;
 }
 
-export function deleteAnnotation(id: string) {
-  const s = ensureLoaded();
-  s.annotations = s.annotations.filter(a => a.id !== id);
-  save();
+export async function deleteAnnotation(id: string) {
+  const sb = getSupabase();
+  const { error } = await sb.from('annotations').delete().eq('id', id);
+  if (error) throw error;
   return { ok: true };
 }
 
 // ── Settings ──────────────────────────────────────────────────────────────
 
-export function getSettings(): Record<string, string> {
-  return { ...ensureLoaded().settings };
+export async function getSettings(): Promise<Record<string, string>> {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const { data } = await sb.from('user_settings').select('key,value').eq('user_id', uid);
+  const result: Record<string, string> = {};
+  if (data) {
+    for (const row of data) {
+      result[row.key] = row.value;
+    }
+  }
+  return result;
 }
 
-export function setSetting(key: string, value: string) {
-  const s = ensureLoaded();
-  s.settings[key] = value;
-  save();
+export async function setSetting(key: string, value: string) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const { error } = await sb.from('user_settings')
+    .upsert({ user_id: uid, key, value }, { onConflict: 'user_id,key' });
+  if (error) throw error;
   return { ok: true };
 }

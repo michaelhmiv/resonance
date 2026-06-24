@@ -7,7 +7,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    return NextResponse.json(deleteAnnotation(id));
+    return NextResponse.json(await deleteAnnotation(id));
   } catch {
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }

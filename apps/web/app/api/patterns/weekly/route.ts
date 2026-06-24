@@ -10,9 +10,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Rate limit' }, { status: 429 });
     }
 
-    const entries = getJournalEntries();
+    const entries = await getJournalEntries();
     const weekAgo = Math.floor(Date.now() / 1000) - 7 * 86400;
-    const weekEntries = entries.filter(e => e.created_at >= weekAgo);
+    const weekEntries = entries.filter(e => {
+      const ts = typeof e.created_at === 'string' ? new Date(e.created_at).getTime() / 1000 : e.created_at;
+      return ts >= weekAgo;
+    });
 
     const excerpts = weekEntries.slice(0, 5).map(e => e.text.slice(0, 150));
     const entryCount = weekEntries.length;

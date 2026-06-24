@@ -13,7 +13,7 @@ const DEFAULTS: Record<string, string> = {
 
 export async function GET() {
   try {
-    const stored = getSettings();
+    const stored = await getSettings();
     return NextResponse.json({ ...DEFAULTS, ...stored });
   } catch {
     return NextResponse.json(DEFAULTS);
@@ -26,7 +26,7 @@ export async function PUT(req: NextRequest) {
     if (!key || value === undefined) {
       return NextResponse.json({ error: 'key and value required' }, { status: 400 });
     }
-    return NextResponse.json(setSetting(key, String(value)));
+    return NextResponse.json(await setSetting(key, String(value)));
   } catch {
     return NextResponse.json({ error: 'Failed to save setting' }, { status: 500 });
   }
