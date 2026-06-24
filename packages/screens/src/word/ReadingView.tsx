@@ -978,7 +978,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   passageListContent: {
-    paddingBottom: 120, // room for fixed bottom chrome (~100px + breathing room)
+    paddingBottom: 150, // room for fixed bottom chrome (44px pill + nav bar + padding)
   },
   verseBlock: {
     paddingHorizontal: 0,
