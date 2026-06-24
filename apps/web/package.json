@@ -15,7 +15,8 @@
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-native-web": "^0.19.13"
+    "react-native-web": "^0.19.13",
+    "@resonance/screens": "*"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

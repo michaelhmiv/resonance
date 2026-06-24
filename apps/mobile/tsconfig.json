@@ -3,13 +3,33 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": ["./src/*"],
-      "@resonance/core": ["../../packages/core/src"],
-      "@resonance/core/*": ["../../packages/core/src/*"],
-      "@resonance/theme": ["../../packages/theme/src"],
-      "@resonance/theme/*": ["../../packages/theme/src/*"],
-      "@resonance/ui": ["../../packages/ui/src"],
-      "@resonance/ui/*": ["../../packages/ui/src/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@resonance/core": [
+        "../../packages/core/src"
+      ],
+      "@resonance/core/*": [
+        "../../packages/core/src/*"
+      ],
+      "@resonance/theme": [
+        "../../packages/theme/src"
+      ],
+      "@resonance/theme/*": [
+        "../../packages/theme/src/*"
+      ],
+      "@resonance/ui": [
+        "../../packages/ui/src"
+      ],
+      "@resonance/ui/*": [
+        "../../packages/ui/src/*"
+      ],
+      "@resonance/screens": [
+        "../../packages/screens/src"
+      ],
+      "@resonance/screens/*": [
+        "../../packages/screens/src/*"
+      ]
     },
     "baseUrl": ".",
     "ignoreDeprecations": "6.0"
@@ -22,7 +42,9 @@
     "../../packages/ui/src/**/*.ts",
     "../../packages/ui/src/**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "../../packages/screens/src/**/*.ts",
+    "../../packages/screens/src/**/*.tsx"
   ],
   "exclude": [
     "node_modules",

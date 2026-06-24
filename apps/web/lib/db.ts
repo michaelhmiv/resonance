@@ -145,6 +145,39 @@ export function deleteHighlight(id: string) {
   return { ok: true };
 }
 
+// ── Annotations ───────────────────────────────────────────────────────────
+
+export function getAnnotations(verseRefPrefix?: string, translation?: string) {
+  let rows = ensureLoaded().annotations;
+  if (verseRefPrefix) {
+    rows = rows.filter(a => a.verse_ref.startsWith(verseRefPrefix));
+  }
+  if (translation) {
+    rows = rows.filter(a => a.translation.toLowerCase() === translation.toLowerCase());
+  }
+  return rows.sort((a, b) => b.created_at - a.created_at);
+}
+
+export function createAnnotation(verseRef: string, translation: string, text: string) {
+  const s = ensureLoaded();
+  s.annotations = s.annotations.filter(a => !(a.verse_ref === verseRef && a.translation.toLowerCase() === translation.toLowerCase()));
+  if (text.trim().length === 0) {
+    save();
+    return { ok: true };
+  }
+  const annotation = { id: genId(), verse_ref: verseRef, translation, text: text.trim(), created_at: now() };
+  s.annotations.push(annotation);
+  save();
+  return annotation;
+}
+
+export function deleteAnnotation(id: string) {
+  const s = ensureLoaded();
+  s.annotations = s.annotations.filter(a => a.id !== id);
+  save();
+  return { ok: true };
+}
+
 // ── Settings ──────────────────────────────────────────────────────────────
 
 export function getSettings(): Record<string, string> {

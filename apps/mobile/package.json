@@ -38,7 +38,8 @@
     "zustand": "^5.0.2",
     "@resonance/core": "*",
     "@resonance/theme": "*",
-    "@resonance/ui": "*"
+    "@resonance/ui": "*",
+    "@resonance/screens": "*"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",

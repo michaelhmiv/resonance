@@ -1,0 +1,16 @@
+{
+  "name": "@resonance/screens",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@resonance/core": "*",
+    "@resonance/theme": "*",
+    "@resonance/ui": "*"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  }
+}

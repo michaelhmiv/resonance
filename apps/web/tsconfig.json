@@ -2,19 +2,49 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "paths": {
-      "@resonance/core": ["../../packages/core/src"],
-      "@resonance/core/*": ["../../packages/core/src/*"],
-      "@resonance/theme": ["../../packages/theme/src"],
-      "@resonance/theme/*": ["../../packages/theme/src/*"],
-      "@resonance/ui": ["../../packages/ui/src"],
-      "@resonance/ui/*": ["../../packages/ui/src/*"]
+      "@resonance/core": [
+        "../../packages/core/src"
+      ],
+      "@resonance/core/*": [
+        "../../packages/core/src/*"
+      ],
+      "@resonance/theme": [
+        "../../packages/theme/src"
+      ],
+      "@resonance/theme/*": [
+        "../../packages/theme/src/*"
+      ],
+      "@resonance/ui": [
+        "../../packages/ui/src"
+      ],
+      "@resonance/ui/*": [
+        "../../packages/ui/src/*"
+      ],
+      "@resonance/screens": [
+        "../../packages/screens/src"
+      ],
+      "@resonance/screens/*": [
+        "../../packages/screens/src/*"
+      ]
     },
     "baseUrl": ".",
     "ignoreDeprecations": "6.0",
     "jsx": "preserve",
     "moduleResolution": "bundler",
-    "plugins": [{ "name": "next" }],
-    "lib": ["dom", "dom.iterable", "esnext"]
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "noEmit": true,
+    "incremental": true,
+    "isolatedModules": true
   },
   "include": [
     "next-env.d.ts",
@@ -24,7 +54,11 @@
     "../../packages/core/src/**/*.ts",
     "../../packages/theme/src/**/*.ts",
     "../../packages/ui/src/**/*.tsx",
-    "../../packages/ui/src/**/*.ts"
+    "../../packages/ui/src/**/*.ts",
+    "../../packages/screens/src/**/*.ts",
+    "../../packages/screens/src/**/*.tsx"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }

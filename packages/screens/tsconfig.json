@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "..",
+    "declaration": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "@resonance/core": ["../core/src"],
+      "@resonance/core/*": ["../core/src/*"],
+      "@resonance/theme": ["../theme/src"],
+      "@resonance/theme/*": ["../theme/src/*"],
+      "@resonance/ui": ["../ui/src"],
+      "@resonance/ui/*": ["../ui/src/*"]
+    }
+  },
+  "include": ["src/**/*"]
+}

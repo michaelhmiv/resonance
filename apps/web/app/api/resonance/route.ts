@@ -36,11 +36,11 @@ let passageVectors: Float32Array | null = null;
 let passageCount = 0;
 let passageMetadata: PassageMeta[] = [];
 
-export function isVectorsLoaded(): boolean {
+function isVectorsLoaded(): boolean {
   return vectorsLoaded;
 }
 
-export function getPassageCount(): number {
+function getPassageCount(): number {
   return passageCount;
 }
 

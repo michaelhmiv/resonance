@@ -1,11 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    cpus: 1,
+  },
   transpilePackages: [
     'react-native-web',
     '@resonance/core',
     '@resonance/theme',
     '@resonance/ui',
+    '@resonance/screens',
   ],
   typescript: {
     // Types are verified locally via tsc --noEmit.

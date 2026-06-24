@@ -15,8 +15,9 @@ export function middleware(req: NextRequest) {
   if (PUBLIC_PATHS.some((p) => path.startsWith(p))) {
     return NextResponse.next();
   }
+  const authSecret = process.env.RESONANCE_AUTH_SECRET;
   const authCookie = req.cookies.get('resonance-auth');
-  if (authCookie?.value === process.env.RESONANCE_AUTH_SECRET) {
+  if (authSecret && authCookie?.value === authSecret) {
     return NextResponse.next();
   }
   return NextResponse.redirect(new URL('/login', req.url));

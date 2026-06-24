@@ -15,4 +15,6 @@ export {
   XIcon,
   SearchIcon,
   LibraryIcon,
+  ChevronRightIcon,
+  SettingsIcon,
 } from './icons';

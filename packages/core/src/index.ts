@@ -21,3 +21,4 @@ export * from './segmentModel';
 
 // ── Schema (SQL DDL — same for both SQLite and PostgreSQL) ──────────────────
 export * from './schema';
+
