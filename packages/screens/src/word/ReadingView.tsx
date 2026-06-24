@@ -151,6 +151,24 @@ export function ReadingView({
           mode.chapter,
           mode.translation
         );
+        // Merge verse chunks: clauses with same verse_start become one continuous block.
+        // Bible data stores semantic clauses separately (e.g. verse 1 → 2-3 chunks).
+        if (resultPassages.length > 0) {
+          const merged = new Map<number, VersePassage>();
+          for (const p of resultPassages as VersePassage[]) {
+            const key = p.verse_start ?? 0;
+            const existing = merged.get(key);
+            if (existing) {
+              existing.text = existing.text + ' ' + p.text;
+              if (p.verse_end != null && (existing.verse_end == null || p.verse_end > existing.verse_end)) {
+                existing.verse_end = p.verse_end;
+              }
+            } else {
+              merged.set(key, { ...p });
+            }
+          }
+          resultPassages = Array.from(merged.values()).sort((a, b) => (a.verse_start ?? 0) - (b.verse_start ?? 0));
+        }
         verseRefs = resultPassages
           .map((p) =>
             scriptureRef(mode.bookName, mode.chapter, p.verse_start, p.verse_end)
