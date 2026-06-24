@@ -192,3 +192,57 @@ export async function setSetting(key: string, value: string) {
   if (error) throw error;
   return { ok: true };
 }
+
+// ── Reading events ─────────────────────────────────────────────────────────
+
+export async function recordReadingEvent(bookId: string, chapter: number, verseRef: string, timestamp?: number) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const createdAt = timestamp ? new Date(timestamp).toISOString() : new Date().toISOString();
+  try {
+    await sb.from('reading_events').insert({
+      user_id: uid,
+      book_id: bookId,
+      chapter,
+      verse_ref: verseRef,
+      created_at: createdAt,
+    });
+  } catch {
+    // Table may not exist — this is best-effort
+  }
+}
+
+export async function getReadingEvents(start: string, end: string): Promise<{ date: string; count: number }[]> {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  try {
+    const { data } = await sb.from('reading_events')
+      .select('created_at')
+      .eq('user_id', uid)
+      .gte('created_at', `${start}T00:00:00Z`)
+      .lte('created_at', `${end}T23:59:59Z`);
+    if (!data) return [];
+    const byDate = new Map<string, number>();
+    for (const row of data) {
+      const date = String(row.created_at).slice(0, 10);
+      byDate.set(date, (byDate.get(date) || 0) + 1);
+    }
+    return Array.from(byDate.entries()).map(([date, count]) => ({ date, count }));
+  } catch {
+    return [];
+  }
+}
+
+// Auto-create the reading_events table on first import
+export async function ensureReadingEventsTable(): Promise<void> {
+  const sb = getSupabase();
+  try {
+    // Probe first
+    const { error: probeErr } = await sb.from('reading_events').select('id').limit(1);
+    if (!probeErr) return;
+    // Try creating via rpc
+    await sb.rpc('create_reading_events_table_if_needed');
+  } catch {
+    // Best-effort — table will be created manually or via migration
+  }
+}
