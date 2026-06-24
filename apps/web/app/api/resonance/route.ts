@@ -231,8 +231,12 @@ export async function POST(req: NextRequest) {
       method: 'lexical-fallback',
       note: 'Semantic vector index unavailable; using transparent lexical fallback until vector shards are deployed.',
     });
-  } catch {
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+  } catch (err) {
+    console.error('[resonance] route error:', err);
+    return NextResponse.json({
+      error: 'Internal error',
+      detail: err instanceof Error ? err.message.slice(0, 300) : String(err),
+    }, { status: 500 });
   }
 }
 
