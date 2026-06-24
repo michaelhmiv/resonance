@@ -579,24 +579,22 @@ export function ReadingView({
                   >
                     {passage.text}
                   </Text>
-                  {/* Visible tap target for highlight toolbar on web.
-                      Long-press is unreliable on mobile browsers (native
-                      context menu intercepts the gesture). This ✦ gives a
-                      reliable, always-visible way to open the toolbar. */}
-                  <Pressable
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      setActiveVerseRef(ref);
-                      setActiveVerseText(passage.text);
-                    }}
-                    hitSlop={10}
-                    accessibilityRole="button"
-                    accessibilityLabel="Highlight or annotate this verse"
-                    style={styles.highlightHandle}
-                  >
-                    <Text style={styles.highlightHandleText}>✦</Text>
-                  </Pressable>
                 </View>
+              </Pressable>
+              {/* ✦ highlight handle — outside the long-press wrapper so
+                  tap events don't conflict with the parent Pressable's
+                  gesture handlers. */}
+              <Pressable
+                onPress={() => {
+                  setActiveVerseRef(ref);
+                  setActiveVerseText(passage.text);
+                }}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Highlight or annotate this verse"
+                style={styles.highlightHandle}
+              >
+                <Text style={styles.highlightHandleText}>✦</Text>
               </Pressable>
 
               {annotation ? (
@@ -674,24 +672,22 @@ export function ReadingView({
                   >
                     {passage.text}
                   </Text>
-                  {/* Visible tap target for highlight toolbar on web.
-                      Long-press is unreliable on mobile browsers (native
-                      context menu intercepts the gesture). This ✦ gives a
-                      reliable, always-visible way to open the toolbar. */}
-                  <Pressable
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      setActiveVerseRef(ref);
-                      setActiveVerseText(passage.text);
-                    }}
-                    hitSlop={10}
-                    accessibilityRole="button"
-                    accessibilityLabel="Highlight or annotate this verse"
-                    style={styles.highlightHandle}
-                  >
-                    <Text style={styles.highlightHandleText}>✦</Text>
-                  </Pressable>
                 </View>
+              </Pressable>
+              {/* ✦ highlight handle — outside the long-press wrapper so
+                  tap events don't conflict with the parent Pressable's
+                  gesture handlers. */}
+              <Pressable
+                onPress={() => {
+                  setActiveVerseRef(ref);
+                  setActiveVerseText(passage.text);
+                }}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Highlight or annotate this verse"
+                style={styles.highlightHandle}
+              >
+                <Text style={styles.highlightHandleText}>✦</Text>
               </Pressable>
 
               {annotation ? (
@@ -1038,12 +1034,15 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   highlightHandle: {
+    alignSelf: 'flex-end',
+    marginTop: -18,
+    marginRight: spacing.xs,
     paddingLeft: spacing.sm,
-    justifyContent: 'center',
+    paddingVertical: 2,
   },
   highlightHandleText: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.textTertiary,
-    opacity: 0.4,
+    opacity: 0.35,
   },
 });
