@@ -28,6 +28,7 @@ export async function GET() {
 
   return NextResponse.json({
     status: 'ok',
+    gitSha: '0a3ec15',
     model: process.env.RESONANCE_LLM_MODEL || 'deepseek/deepseek-v4-pro',
     vectors: vectorInfo,
   });
