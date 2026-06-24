@@ -43,6 +43,27 @@ export async function GET(req: NextRequest) {
   try {
     await ensureTable();
     const { searchParams } = new URL(req.url);
+    const last = searchParams.get('last');
+
+    // Last read position — return the single most recent event
+    if (last === '1') {
+      const sb = getClient();
+      const { data, error } = await sb
+        .from('reading_events')
+        .select('book_id, chapter, verse_ref')
+        .eq('user_id', '00000000-0000-0000-0000-000000000000')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error || !data || data.length === 0) {
+        return NextResponse.json({ position: null });
+      }
+      const row = data[0];
+      return NextResponse.json({
+        position: { bookId: row.book_id, chapter: row.chapter, verseRef: row.verse_ref },
+      });
+    }
+
     const start = searchParams.get('start') || '2000-01-01';
     const end = searchParams.get('end') || new Date().toISOString().slice(0, 10);
 

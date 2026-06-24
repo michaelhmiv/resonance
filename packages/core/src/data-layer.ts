@@ -62,6 +62,7 @@ export interface DataLayer {
   getCrossReferencesBatch(refs: string[]): Promise<Record<string, string[]>>;
   recordReadingEvent(bookId: string, chapter: number, verseRef: string, timestamp: number): Promise<void>;
   getReadingHistory(startDate: string, endDate: string): Promise<{ date: string; count: number }[]>;
+  getLastReadPosition?(): Promise<{ bookId: string; chapter: number; verseRef: string } | null>;
 
   // ── Resonance ──────────────────────────────────────────────────────────
   findResonance(journalText: string): Promise<ResonanceResult | null>;

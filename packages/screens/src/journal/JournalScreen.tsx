@@ -31,8 +31,9 @@ interface VerseOfDay {
 interface JournalScreenProps {
   /** Callback to fetch verse of the day (platform-specific: web hits /api, mobile hits local DB) */
   fetchVerseOfDay?: () => Promise<VerseOfDay | null>;
-  /** Navigate to a book in the Word tab (web: router.push, mobile: tab switch) */
-  onNavigateToBook?: (bookId: string) => void;
+  /** Navigate to a book in the Word tab (web: router.push, mobile: tab switch)
+   *  Now supports optional chapter and verse for deep linking. */
+  onNavigateToBook?: (bookId: string, chapter?: number, verse?: number) => void;
 }
 
 export function JournalScreen({ fetchVerseOfDay, onNavigateToBook }: JournalScreenProps): ReactNode {
@@ -265,22 +266,35 @@ function ResonanceCardGroup({ result, onNavigateToBook }: { result: ResonanceRes
   );
 }
 
-function CardSection({ label, cards, onNavigateToBook }: { label: string; cards: ResonanceCard[]; onNavigateToBook?: (bookId: string) => void }): ReactNode | null {
+function CardSection({ label, cards, onNavigateToBook }: { label: string; cards: ResonanceCard[]; onNavigateToBook?: (bookId: string, chapter?: number, verse?: number) => void }): ReactNode | null {
   if (cards.length === 0) return null;
+
+  // Helper: parse chapter and verse from a source string like "Matthew 5:22" or "Matthew 5:22-24"
+  const parseSource = (source: string): { chapter?: number; verse?: number } => {
+    const match = source.match(/(\d+):(\d+)/);
+    if (match) {
+      return { chapter: parseInt(match[1], 10), verse: parseInt(match[2], 10) };
+    }
+    return {};
+  };
+
   return (
     <View style={styles.cardSection}>
       <Text style={styles.cardSectionLabel}>{label}</Text>
-      {cards.map((card, i) => (
-        <View key={i} style={styles.resonanceCard}>
-          <Text style={styles.resonanceQuote}>"{card.text}"</Text>
-          <Text style={styles.resonanceSource}>{card.source}</Text>
-          {onNavigateToBook && card.bookId ? (
-            <Pressable onPress={() => onNavigateToBook(card.bookId)} style={styles.readMoreBtn}>
-              <Text style={styles.readMoreText}>Read in Word →</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ))}
+      {cards.map((card, i) => {
+        const { chapter, verse } = parseSource(card.source ?? '');
+        return (
+          <View key={i} style={styles.resonanceCard}>
+            <Text style={styles.resonanceQuote}>"{card.text}"</Text>
+            <Text style={styles.resonanceSource}>{card.source}</Text>
+            {onNavigateToBook && card.bookId ? (
+              <Pressable onPress={() => onNavigateToBook(card.bookId, chapter, verse)} style={styles.readMoreBtn}>
+                <Text style={styles.readMoreText}>Read in Word →</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        );
+      })}
     </View>
   );
 }

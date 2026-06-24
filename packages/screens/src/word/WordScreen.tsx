@@ -5,19 +5,23 @@
  * header, a search icon, and renders either the Scripture browser,
  * Library browser, reading view, or search screen depending on state.
  *
+ * Supports deep-linking via initialBook/initialChapter/initialVerse
+ * and a "Continue Reading" card for Phase 7.
+ *
  * (design spec §6: Word tab — browse, search, highlight, annotate, bookmark)
  */
 
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SearchIcon, SettingsIcon } from '@resonance/ui';
 
-import { colors, fontFamilies, screenContainer, spacing } from '@resonance/theme';
+import { colors, fontFamilies, radii, screenContainer, spacing } from '@resonance/theme';
 import { type Translation } from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
 import { ScriptureBrowser } from './ScriptureBrowser';
@@ -33,14 +37,27 @@ type ScreenView =
 
 interface WordScreenProps {
   onOpenSettings?: () => void;
+  /** Deep-link: auto-open this book on mount */
+  initialBook?: string;
+  /** Deep-link: chapter number */
+  initialChapter?: number;
+  /** Deep-link: scroll to this verse */
+  initialVerse?: number;
 }
 
-export function WordScreen({ onOpenSettings }: WordScreenProps): ReactNode {
+export function WordScreen({
+  onOpenSettings,
+  initialBook,
+  initialChapter,
+  initialVerse,
+}: WordScreenProps): ReactNode {
   const [surface, setSurface] = useState<'scripture' | 'library'>('scripture');
   const [translation, setTranslation] = useState<Translation>('WEB');
   const [view, setView] = useState<ScreenView>({ name: 'browse' });
   const [totalChapters, setTotalChapters] = useState(1);
+  const [lastReadPosition, setLastReadPosition] = useState<{ bookId: string; chapter: number; verseRef: string } | null>(null);
   const dataLayer = useDataLayer();
+  const deepLinkApplied = useRef(false);
 
   // Load saved translation preference on mount
   useEffect(() => {
@@ -51,6 +68,58 @@ export function WordScreen({ onOpenSettings }: WordScreenProps): ReactNode {
       }
     }).catch(() => {});
   }, [dataLayer]);
+
+  // Fetch last read position for "Continue Reading" card
+  useEffect(() => {
+    dataLayer.getLastReadPosition?.().then((pos) => {
+      if (pos) setLastReadPosition(pos);
+    }).catch(() => {});
+  }, [dataLayer]);
+
+  // Apply deep-link on mount
+  useEffect(() => {
+    if (deepLinkApplied.current) return;
+    if (!initialBook || initialChapter == null) return;
+    deepLinkApplied.current = true;
+
+    // Determine if it's scripture or library from the book id
+    const bookId = initialBook;
+    if (bookId.startsWith('voice_') || bookId.startsWith('author_')) {
+      setSurface('library');
+      setView({
+        name: 'reading',
+        mode: { kind: 'library', bookId },
+      });
+    } else {
+      // Scripture: parse book name from ID (e.g. "web_Matthew" → "Matthew")
+      const bookName = bookId.replace(/^(web|kjv)_/, '').replace(/_/g, ' ');
+      setSurface('scripture');
+      dataLayer.getChapters(bookName, translation).then((chapters) => {
+        setTotalChapters(chapters.length || 1);
+        setView({
+          name: 'reading',
+          mode: {
+            kind: 'scripture',
+            bookName,
+            chapter: initialChapter,
+            translation,
+            totalChapters: chapters.length || 1,
+          },
+        });
+      }).catch(() => {
+        setView({
+          name: 'reading',
+          mode: {
+            kind: 'scripture',
+            bookName,
+            chapter: initialChapter,
+            translation,
+            totalChapters: 99,
+          },
+        });
+      });
+    }
+  }, [initialBook, initialChapter, translation, dataLayer]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -97,6 +166,29 @@ export function WordScreen({ onOpenSettings }: WordScreenProps): ReactNode {
     [dataLayer, translation]
   );
 
+  const handleChangeTranslation = useCallback(
+    (nextTranslation: Translation) => {
+      setTranslation(nextTranslation);
+      if (view.name === 'reading' && view.mode.kind === 'scripture') {
+        const { bookName, chapter } = view.mode;
+        dataLayer.getChapters(bookName, nextTranslation).then((chapters) => {
+          setTotalChapters(chapters.length || 1);
+          setView({
+            name: 'reading',
+            mode: {
+              kind: 'scripture',
+              bookName,
+              chapter,
+              translation: nextTranslation,
+              totalChapters: chapters.length || 1,
+            },
+          });
+        }).catch(() => {});
+      }
+    },
+    [view, dataLayer]
+  );
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   // Search screen renders over everything.
@@ -116,7 +208,12 @@ export function WordScreen({ onOpenSettings }: WordScreenProps): ReactNode {
       <ReadingView
         mode={view.mode}
         onNavigateChapter={navigateChapter}
-        onBack={() => setView({ name: 'browse' })}
+        onChangeTranslation={handleChangeTranslation}
+        onBack={() => {
+          deepLinkApplied.current = false;
+          setView({ name: 'browse' });
+        }}
+        initialVerse={initialVerse}
       />
     );
   }
@@ -184,6 +281,36 @@ export function WordScreen({ onOpenSettings }: WordScreenProps): ReactNode {
       ) : (
         <LibraryBrowser onOpenBook={openLibraryBook} />
       )}
+
+      {/* Continue Reading card */}
+      {lastReadPosition && !deepLinkApplied.current && (
+        <View style={styles.continueCard}>
+          <Pressable
+            onPress={() => {
+              const pos = lastReadPosition;
+              if (pos.bookId.startsWith('voice_') || pos.bookId.startsWith('author_')) {
+                setSurface('library');
+                setView({ name: 'reading', mode: { kind: 'library', bookId: pos.bookId } });
+              } else {
+                const bookName = pos.bookId.replace(/^(web|kjv)_/, '').replace(/_/g, ' ');
+                setSurface('scripture');
+                dataLayer.getChapters(bookName, translation).then((chapters) => {
+                  setTotalChapters(chapters.length || 1);
+                  setView({
+                    name: 'reading',
+                    mode: { kind: 'scripture', bookName, chapter: pos.chapter, translation, totalChapters: chapters.length || 1 },
+                  });
+                }).catch(() => {});
+              }
+            }}
+            style={styles.continueCardInner}
+          >
+            <Text style={styles.continueLabel}>Continue Reading</Text>
+            <Text style={styles.continueRef}>{lastReadPosition.verseRef}</Text>
+            <Text style={styles.continueAction}>Tap to resume →</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
@@ -226,5 +353,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.lg,
     marginRight: spacing.md,
+  },
+  continueCard: {
+    position: 'absolute',
+    bottom: spacing.lg,
+    left: spacing.lg,
+    right: spacing.lg,
+  },
+  continueCardInner: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.xs,
+  },
+  continueLabel: {
+    fontFamily: fontFamilies.sansSemibold,
+    fontSize: 12,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    color: colors.textTertiary,
+  },
+  continueRef: {
+    fontFamily: fontFamilies.serifSemibold,
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  continueAction: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 13,
+    color: colors.accent,
+    marginTop: spacing.xs,
   },
 });

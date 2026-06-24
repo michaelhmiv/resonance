@@ -30,6 +30,10 @@ interface HighlightToolbarProps {
   onDismiss: () => void;
   /** Currently applied color for the selection, if any (for the active state). */
   currentColor?: string;
+  /** Optional: Send this passage to the journal. */
+  onSendToJournal?: () => void;
+  /** Whether a Send-to-Journal action is in progress */
+  sendingToJournal?: boolean;
 }
 
 export function HighlightToolbar({
@@ -39,6 +43,8 @@ export function HighlightToolbar({
   onClear,
   onDismiss,
   currentColor,
+  onSendToJournal,
+  sendingToJournal,
 }: HighlightToolbarProps): ReactNode {
   return (
     <View style={styles.bar}>
@@ -87,6 +93,21 @@ export function HighlightToolbar({
         >
           <EditIcon size={16} color={colors.textSecondary} />
         </Pressable>
+
+        {onSendToJournal ? (
+          <Pressable
+            onPress={onSendToJournal}
+            hitSlop={6}
+            style={styles.action}
+            disabled={sendingToJournal}
+            accessibilityRole="button"
+            accessibilityLabel="Send to Journal"
+          >
+            <Text style={styles.journalAction}>
+              {sendingToJournal ? '...' : '📓'}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <Pressable
@@ -147,5 +168,8 @@ const styles = StyleSheet.create({
   },
   dismiss: {
     paddingLeft: spacing.xs,
+  },
+  journalAction: {
+    fontSize: 16,
   },
 });

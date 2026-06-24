@@ -120,6 +120,10 @@ export class MobileDataLayer implements DataLayer {
     return result;
   }
 
+  async getLastReadPosition(): Promise<{ bookId: string; chapter: number; verseRef: string } | null> {
+    return null; // Mobile: not implemented yet
+  }
+
   async findResonance(journalText: string): Promise<ResonanceResult | null> {
     return findResonance(journalText) as Promise<ResonanceResult | null>;
   }

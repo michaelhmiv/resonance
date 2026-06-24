@@ -21,6 +21,7 @@ import {
 import {
   ActivityIndicator,
   FlatList,
+  SectionList,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -50,9 +51,10 @@ import {
 } from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
 import { HighlightToolbar } from '@resonance/ui';
-import { CrossReferenceLinks } from '@resonance/ui';
+import { CollapsibleCrossRefs } from '@resonance/ui';
+import { ChapterPicker } from '@resonance/ui';
+import { TranslationSelector } from '@resonance/ui';
 import { BookmarkButton } from '@resonance/ui';
-import { SendToJournalButton } from '@resonance/ui';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -80,6 +82,8 @@ interface ReadingViewProps {
   onChangeTranslation?: (t: Translation) => void;
   onNavigateChapter?: (bookName: string, chapter: number) => void;
   onBack: () => void;
+  /** Optional: scroll to this verse number after load (deep linking). */
+  initialVerse?: number;
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -87,7 +91,9 @@ interface ReadingViewProps {
 export function ReadingView({
   mode,
   onNavigateChapter,
+  onChangeTranslation,
   onBack,
+  initialVerse,
 }: ReadingViewProps): ReactNode {
   const [passages, setPassages] = useState<
     (VersePassage | LibraryPassage)[]
@@ -102,11 +108,19 @@ export function ReadingView({
 
   // Highlight toolbar state
   const [activeVerseRef, setActiveVerseRef] = useState<string | null>(null);
+  const [activeVerseText, setActiveVerseText] = useState<string>('');
   const [annotationModal, setAnnotationModal] = useState<{
     ref: string;
     text: string;
   } | null>(null);
   const [annotationDraft, setAnnotationDraft] = useState('');
+  const [sendingToJournal, setSendingToJournal] = useState(false);
+
+  // Chapter picker
+  const [chapterPickerOpen, setChapterPickerOpen] = useState(false);
+
+  // Library section nav
+  const [librarySection, setLibrarySection] = useState(0);
 
   const isScripture = mode.kind === 'scripture';
   const translation = isScripture ? mode.translation : 'WEB';
@@ -150,10 +164,19 @@ export function ReadingView({
       setLoading(false);
 
       // 3. Load highlights and annotations in parallel (non-blocking)
-      if (verseRefs.length > 0 && mode.kind === 'scripture') {
+      // For scripture, use verse ref strings. For library, use passage IDs.
+      const refsToLoad: string[] = [];
+      if (mode.kind === 'scripture') {
+        refsToLoad.push(...verseRefs);
+      } else {
+        // Library: use passage IDs as highlight keys
+        refsToLoad.push(...resultPassages.map((p) => String(p.id)));
+      }
+
+      if (refsToLoad.length > 0) {
         Promise.all([
-          dataLayer.getHighlightsForRefs(verseRefs),
-          dataLayer.getAnnotationsForRefs(verseRefs, mode.translation),
+          dataLayer.getHighlightsForRefs(refsToLoad),
+          dataLayer.getAnnotationsForRefs(refsToLoad, mode.kind === 'scripture' ? mode.translation : 'WEB'),
         ]).then(([hMap, aMap]) => {
           if (!cancelled) {
             setHighlightMap(hMap);
@@ -197,6 +220,21 @@ export function ReadingView({
     }).catch(() => {});
   }, [dataLayer]);
 
+  // ── Scroll to initial verse on load ──────────────────────────────────
+  const scrolledToInitial = useRef(false);
+  useEffect(() => {
+    if (!loading && initialVerse != null && !scrolledToInitial.current && isScripture) {
+      const idx = passages.findIndex((p) => p.verse_start === initialVerse);
+      if (idx >= 0) {
+        // Small delay to let FlatList layout finish
+        setTimeout(() => {
+          scrollRef.current?.scrollToIndex({ index: idx, animated: false, viewPosition: 0.1 });
+        }, 100);
+      }
+      scrolledToInitial.current = true;
+    }
+  }, [loading, initialVerse, passages, isScripture]);
+
   // ── Actions ──────────────────────────────────────────────────────────────
 
   const verseRefFor = useCallback(
@@ -209,9 +247,10 @@ export function ReadingView({
           passage.verse_end
         );
       }
-      return `${libraryBook?.title ?? 'Library'} ${passage.chapter ?? ''}`;
+      // Library: use passage ID as key for highlights/annotations
+      return String(passage.id);
     },
-    [mode, libraryBook]
+    [mode]
   );
 
   const handleCrossRefPress = useCallback(
@@ -271,7 +310,41 @@ export function ReadingView({
     setAnnotationModal(null);
   }, [annotationModal, annotationDraft, translation, dataLayer]);
 
-const fontSizeMap: Record<string, number> = { small: 15, medium: 17, large: 19 };
+  const handleSendToJournal = useCallback(async () => {
+    if (!activeVerseRef || !activeVerseText || sendingToJournal) return;
+    setSendingToJournal(true);
+    try {
+      await dataLayer.appendQuoteToJournal(activeVerseText, activeVerseRef);
+      // Brief feedback, then close toolbar
+      setTimeout(() => {
+        setSendingToJournal(false);
+        setActiveVerseRef(null);
+      }, 1500);
+    } catch {
+      setSendingToJournal(false);
+    }
+  }, [activeVerseRef, activeVerseText, sendingToJournal, dataLayer]);
+
+  const fontSizeMap: Record<string, number> = { small: 15, medium: 17, large: 19 };
+
+  // ── Library sections (pseudo-chapters, batches of 25) ──────────────────
+  const librarySections = useMemo(() => {
+    if (isScripture || passages.length === 0) return [];
+    const batchSize = 25;
+    const sections: { title: string; data: (VersePassage | LibraryPassage)[] }[] = [];
+    for (let i = 0; i < passages.length; i += batchSize) {
+      const part = sections.length + 1;
+      sections.push({
+        title: `Part ${part}`,
+        data: passages.slice(i, i + batchSize),
+      });
+    }
+    return sections;
+  }, [isScripture, passages]);
+
+  const totalLibrarySections = librarySections.length;
+  const canPrevSection = librarySection > 0;
+  const canNextSection = librarySection < totalLibrarySections - 1;
 
   // ── Title / header ──────────────────────────────────────────────────────
 
@@ -279,7 +352,12 @@ const fontSizeMap: Record<string, number> = { small: 15, medium: 17, large: 19 }
     if (mode.kind === 'scripture') {
       return `${mode.bookName} ${mode.chapter}`;
     }
-    return libraryBook?.title ?? 'Reading';
+    if (libraryBook) {
+      const parts = [libraryBook.title ?? 'Reading'];
+      if (libraryBook.author) parts.push(libraryBook.author);
+      return parts.join(' — ');
+    }
+    return 'Reading';
   }, [mode, libraryBook]);
 
   const bookmarkRef = useMemo(() => {
@@ -333,14 +411,54 @@ const fontSizeMap: Record<string, number> = { small: 15, medium: 17, large: 19 }
         >
           <Text style={styles.backText}>← Browse</Text>
         </Pressable>
+
+        {/* Translation switcher (scripture mode) */}
+        {isScripture && onChangeTranslation ? (
+          <TranslationSelector
+            value={mode.translation}
+            onChange={onChangeTranslation}
+          />
+        ) : null}
+
         <Text style={styles.headerTitle}>{headerTitle}</Text>
         <View style={styles.headerActions}>
-          {isScripture && onNavigateChapter ? (
+          {isScripture ? (
             <ChapterNavButtons
               mode={mode}
-              onNavigate={onNavigateChapter}
+              onNavigate={onNavigateChapter!}
+              onOpenPicker={() => setChapterPickerOpen(true)}
             />
-          ) : null}
+          ) : (
+            <View style={styles.chapterNav}>
+              {canPrevSection ? (
+                <Pressable
+                  onPress={() => setLibrarySection((prev) => Math.max(0, prev - 1))}
+                  hitSlop={4}
+                  accessibilityRole="button"
+                  accessibilityLabel="Previous section"
+                >
+                  <Text style={styles.chapterNavText}>‹</Text>
+                </Pressable>
+              ) : (
+                <View style={{ width: 20 }} />
+              )}
+              <Text style={styles.chapterPos}>
+                {librarySection + 1} / {totalLibrarySections}
+              </Text>
+              {canNextSection ? (
+                <Pressable
+                  onPress={() => setLibrarySection((prev) => Math.min(totalLibrarySections - 1, prev + 1))}
+                  hitSlop={4}
+                  accessibilityRole="button"
+                  accessibilityLabel="Next section"
+                >
+                  <Text style={styles.chapterNavText}>›</Text>
+                </Pressable>
+              ) : (
+                <View style={{ width: 20 }} />
+              )}
+            </View>
+          )}
           <BookmarkButton
             bookmarked={bookmarked}
             onPress={handleToggleBookmark}
@@ -349,21 +467,24 @@ const fontSizeMap: Record<string, number> = { small: 15, medium: 17, large: 19 }
       </View>
 
       {/* ── Passage list ────────────────────────────────────────────── */}
-      <FlatList
-        ref={scrollRef}
-        data={passages}
-        keyExtractor={(item, idx) => `${item.id}-${idx}`}
-        contentContainerStyle={listContentContainer}
-        renderItem={({ item: passage }) => {
+      {isScripture ? (
+        <FlatList
+          ref={scrollRef}
+          data={passages}
+          keyExtractor={(item, idx) => `${item.id}-${idx}`}
+          contentContainerStyle={listContentContainer}
+          renderItem={({ item: passage }) => {
           const ref = verseRefFor(passage);
           const highlight = highlightMap[ref];
           const annotation = annotationMap[ref];
-          const xrefs = crossRefs[ref] ?? [];
 
           return (
             <View style={styles.verseBlock}>
               <Pressable
-                onLongPress={() => setActiveVerseRef(ref)}
+                onLongPress={() => {
+                  setActiveVerseRef(ref);
+                  setActiveVerseText(passage.text);
+                }}
                 delayLongPress={350}
               >
                 <View
@@ -391,17 +512,73 @@ const fontSizeMap: Record<string, number> = { small: 15, medium: 17, large: 19 }
                 </View>
               ) : null}
 
-              {xrefs.length > 0 && (
-                <CrossReferenceLinks refs={xrefs} onPress={handleCrossRefPress} />
-              )}
-              <View style={styles.sendToJournalRow}>
-                <SendToJournalButton quote={passage.text} source={ref} />
-              </View>
+              {/* Lazy collapsible cross-references */}
+              <CollapsibleCrossRefs
+                verseRef={ref}
+                loadRefs={async (refs) => {
+                  // Phase 2.2 — use batch endpoint, fallback to cache
+                  if (refs.length === 1 && crossRefs[refs[0]]) {
+                    return { [refs[0]]: crossRefs[refs[0]] };
+                  }
+                  try {
+                    return await dataLayer.getCrossReferencesBatch(refs);
+                  } catch {
+                    return {};
+                  }
+                }}
+                cache={crossRefs}
+                onPress={handleCrossRefPress}
+              />
             </View>
           );
         }}
         ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
       />
+    ) : (
+      <SectionList
+        sections={[librarySections[librarySection] ?? { title: 'Part 1', data: [] }]}
+        keyExtractor={(item, idx) => `${item.id}-${idx}`}
+        contentContainerStyle={listContentContainer}
+        renderSectionHeader={({ section: { title } }) => (
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionHeaderText}>{title}</Text>
+          </View>
+        )}
+        renderItem={({ item: passage }) => {
+          const ref = verseRefFor(passage);
+          const highlight = highlightMap[ref];
+          const annotation = annotationMap[ref];
+
+          return (
+            <View style={styles.verseBlock}>
+              <Pressable
+                onLongPress={() => {
+                  setActiveVerseRef(ref);
+                  setActiveVerseText(passage.text);
+                }}
+                delayLongPress={350}
+              >
+                <View
+                  style={[
+                    styles.verseContent,
+                    highlight ? { backgroundColor: highlight + '33' } : null,
+                  ]}
+                >
+                  <Text style={[styles.verseText, { fontSize: fontSizeMap[fontSize] || 17 }]}>{passage.text}</Text>
+                </View>
+              </Pressable>
+
+              {annotation ? (
+                <View style={styles.annotationWrap}>
+                  <Text style={styles.annotationText}>{annotation}</Text>
+                </View>
+              ) : null}
+            </View>
+          );
+        }}
+        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
+      />
+    )}
 
       {/* ── Highlight toolbar ───────────────────────────────────────── */}
       {activeVerseRef && (
@@ -413,9 +590,23 @@ const fontSizeMap: Record<string, number> = { small: 15, medium: 17, large: 19 }
             onAddNote={handleOpenAnnotation}
             onClear={handleClearHighlight}
             onDismiss={() => setActiveVerseRef(null)}
+            onSendToJournal={handleSendToJournal}
+            sendingToJournal={sendingToJournal}
           />
         </View>
       )}
+
+      {/* ── Chapter picker modal ────────────────────────────────────── */}
+      {isScripture ? (
+        <ChapterPicker
+          visible={chapterPickerOpen}
+          onClose={() => setChapterPickerOpen(false)}
+          totalChapters={mode.totalChapters}
+          currentChapter={mode.chapter}
+          bookName={mode.bookName}
+          onSelect={(ch) => onNavigateChapter?.(mode.bookName, ch)}
+        />
+      ) : null}
 
       {/* ── Annotation modal ─────────────────────────────────────────── */}
       <Modal
@@ -468,9 +659,11 @@ const fontSizeMap: Record<string, number> = { small: 15, medium: 17, large: 19 }
 function ChapterNavButtons({
   mode,
   onNavigate,
+  onOpenPicker,
 }: {
   mode: Extract<ReadingMode, { kind: 'scripture' }>;
   onNavigate: (bookName: string, chapter: number) => void;
+  onOpenPicker: () => void;
 }): ReactNode {
   const prevCh = mode.chapter > 1 ? mode.chapter - 1 : 0;
   const nextCh =
@@ -490,9 +683,11 @@ function ChapterNavButtons({
       ) : (
         <View style={{ width: 20 }} />
       )}
-      <Text style={styles.chapterPos}>
-        {mode.chapter} / {mode.totalChapters}
-      </Text>
+      <Pressable onPress={onOpenPicker} hitSlop={4}>
+        <Text style={styles.chapterPos}>
+          {mode.chapter} / {mode.totalChapters}
+        </Text>
+      </Pressable>
       {nextCh > 0 ? (
         <Pressable
           onPress={() => onNavigate(mode.bookName, nextCh)}
@@ -670,5 +865,19 @@ const styles = StyleSheet.create({
   sendToJournalRow: {
     marginTop: spacing.xs,
     paddingLeft: spacing.xs,
+  },
+  sectionHeader: {
+    paddingHorizontal: layout.screenPaddingX,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  sectionHeaderText: {
+    fontFamily: fontFamilies.sansSemibold,
+    fontSize: 13,
+    letterSpacing: 0.4,
+    color: colors.textTertiary,
+    textTransform: 'uppercase',
   },
 });

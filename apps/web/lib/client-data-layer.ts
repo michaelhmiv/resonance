@@ -322,6 +322,15 @@ export class WebDataLayer implements DataLayer {
     return data.events || [];
   }
 
+  async getLastReadPosition(): Promise<{ bookId: string; chapter: number; verseRef: string } | null> {
+    try {
+      const data = await api<{ position: { bookId: string; chapter: number; verseRef: string } | null }>('/api/reading/events?last=1');
+      return data.position ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   async clusterEntries(segments: JournalSegment[]): Promise<EntryCluster[]> {
     const textSegments = segments.filter((s) => s.segment_type === 'text' && (s.text ?? '').trim().length > 12);
     const byWord = new Map<string, JournalSegment[]>();

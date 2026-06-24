@@ -21,10 +21,12 @@ export default function JournalPage(): ReactNode {
     } catch { return null; }
   };
 
-  const handleNavigateToBook = useCallback((bookId: string) => {
+  const handleNavigateToBook = useCallback((bookId: string, chapter?: number, verse?: number) => {
     // bookId is e.g. "web_Matthew" for scripture or "voice_100000" for library
-    // For scripture: navigate to Word tab with book preselected
-    router.push(`/word?book=${encodeURIComponent(bookId)}`);
+    let url = `/word?book=${encodeURIComponent(bookId)}`;
+    if (chapter != null) url += `&chapter=${chapter}`;
+    if (verse != null) url += `&verse=${verse}`;
+    router.push(url);
   }, [router]);
 
   return (
