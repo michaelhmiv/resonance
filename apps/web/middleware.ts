@@ -8,7 +8,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/api/auth', '/api/vectors', '/api/admin'];
+const PUBLIC_PATHS = ['/login', '/api/auth', '/api/vectors', '/api/admin', '/api/embed', '/api/resonance'];
 
 export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
