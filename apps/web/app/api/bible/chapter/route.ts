@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     const verses = passages
       .filter(
         (p) =>
-          p.translation === translation &&
+          p.translation.toLowerCase() === translation.toLowerCase() &&
           p.book === book &&
           p.chapter === chapter,
       )
