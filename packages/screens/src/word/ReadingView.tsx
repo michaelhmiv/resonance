@@ -272,21 +272,44 @@ export function ReadingView({
   const handleApplyHighlight = useCallback(
     async (color: string) => {
       if (!activeVerseRef) return;
-      await dataLayer.saveHighlight(activeVerseRef, color);
+      // Optimistic update — show the color immediately
+      const prevColor = highlightMap[activeVerseRef];
       setHighlightMap((prev) => ({ ...prev, [activeVerseRef]: color }));
+      try {
+        await dataLayer.saveHighlight(activeVerseRef, color);
+      } catch (err) {
+        console.error('[ReadingView] saveHighlight failed:', err);
+        // Revert on failure
+        setHighlightMap((prev) => {
+          const next = { ...prev };
+          if (prevColor) next[activeVerseRef] = prevColor;
+          else delete next[activeVerseRef];
+          return next;
+        });
+      }
     },
-    [activeVerseRef, dataLayer]
+    [activeVerseRef, highlightMap, dataLayer]
   );
 
   const handleClearHighlight = useCallback(async () => {
     if (!activeVerseRef) return;
-    await dataLayer.removeHighlight(activeVerseRef);
+    // Optimistic removal
+    const prevColor = highlightMap[activeVerseRef];
     setHighlightMap((prev) => {
       const next = { ...prev };
       delete next[activeVerseRef];
       return next;
     });
-  }, [activeVerseRef, dataLayer]);
+    try {
+      await dataLayer.removeHighlight(activeVerseRef);
+    } catch (err) {
+      console.error('[ReadingView] removeHighlight failed:', err);
+      // Revert on failure
+      if (prevColor) {
+        setHighlightMap((prev) => ({ ...prev, [activeVerseRef]: prevColor }));
+      }
+    }
+  }, [activeVerseRef, highlightMap, dataLayer]);
 
   const handleOpenAnnotation = useCallback(() => {
     if (!activeVerseRef) return;
@@ -297,18 +320,32 @@ export function ReadingView({
 
   const handleSaveAnnotation = useCallback(async () => {
     if (!annotationModal) return;
-    await dataLayer.saveAnnotation(annotationModal.ref, translation, annotationDraft);
+    const ref = annotationModal.ref;
+    const prevAnnotation = annotationMap[ref];
+    // Optimistic update
     setAnnotationMap((prev) => {
       const next = { ...prev };
       if (annotationDraft.trim().length > 0) {
-        next[annotationModal.ref] = annotationDraft;
+        next[ref] = annotationDraft;
       } else {
-        delete next[annotationModal.ref];
+        delete next[ref];
       }
       return next;
     });
     setAnnotationModal(null);
-  }, [annotationModal, annotationDraft, translation, dataLayer]);
+    try {
+      await dataLayer.saveAnnotation(ref, translation, annotationDraft);
+    } catch (err) {
+      console.error('[ReadingView] saveAnnotation failed:', err);
+      // Revert on failure
+      setAnnotationMap((prev) => {
+        const next = { ...prev };
+        if (prevAnnotation) next[ref] = prevAnnotation;
+        else delete next[ref];
+        return next;
+      });
+    }
+  }, [annotationModal, annotationDraft, translation, annotationMap, dataLayer]);
 
   const handleSendToJournal = useCallback(async () => {
     if (!activeVerseRef || !activeVerseText || sendingToJournal) return;
