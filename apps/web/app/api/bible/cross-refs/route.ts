@@ -26,6 +26,21 @@ interface CrossReference {
 // Module-level cache (lazy loaded on first request).
 let cachedCrossRefs: Map<string, string[]> | null = null;
 
+// The cross_references.json uses abbreviated book names (e.g. "Exod"),
+// but the client sends full names (e.g. "Exodus"). Normalize on lookup.
+const BOOK_NAME_NORMALIZE: Record<string, string> = {
+  Exodus: 'Exod',
+};
+
+function normalizeRef(ref: string): string {
+  for (const [full, abbr] of Object.entries(BOOK_NAME_NORMALIZE)) {
+    if (ref.startsWith(full + ' ')) {
+      return abbr + ref.slice(full.length);
+    }
+  }
+  return ref;
+}
+
 function loadCrossRefs(): Map<string, string[]> {
   if (!cachedCrossRefs) {
     const data: CrossReference[] = JSON.parse(readFileSync(CROSS_REFS, 'utf-8'));
@@ -53,7 +68,7 @@ export async function GET(request: NextRequest) {
     }
 
     const map = loadCrossRefs();
-    const refs = map.get(ref) || [];
+    const refs = map.get(normalizeRef(ref)) || [];
 
     return NextResponse.json({ refs });
   } catch (err) {
@@ -77,7 +92,7 @@ export async function POST(request: NextRequest) {
     const map = loadCrossRefs();
     const result: Record<string, string[]> = {};
     for (const ref of requestedRefs) {
-      const targets = map.get(ref);
+      const targets = map.get(normalizeRef(ref));
       if (targets && targets.length > 0) {
         result[ref] = targets;
       }
