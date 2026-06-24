@@ -118,11 +118,15 @@ export function ReadingView({
     let cancelled = false;
     setLoading(true);
     setPassages([]);
+    setCrossRefs({});
+    setHighlightMap({});
+    setAnnotationMap({});
 
     const loadData = async () => {
       let resultPassages: (VersePassage | LibraryPassage)[] = [];
       let verseRefs: string[] = [];
 
+      // 1. Load passages
       if (mode.kind === 'scripture') {
         resultPassages = await dataLayer.getVerses(
           mode.bookName,
@@ -141,29 +145,36 @@ export function ReadingView({
 
       if (cancelled) return;
 
+      // 2. Show passages immediately — don't wait for highlights/cross-refs
       setPassages(resultPassages);
+      setLoading(false);
 
-      // Load highlights and annotations for Scripture passages.
+      // 3. Load highlights and annotations in parallel (non-blocking)
       if (verseRefs.length > 0 && mode.kind === 'scripture') {
-        const [hMap, aMap] = await Promise.all([
+        Promise.all([
           dataLayer.getHighlightsForRefs(verseRefs),
           dataLayer.getAnnotationsForRefs(verseRefs, mode.translation),
-        ]);
-        if (!cancelled) {
-          setHighlightMap(hMap);
-          setAnnotationMap(aMap);
-        }
+        ]).then(([hMap, aMap]) => {
+          if (!cancelled) {
+            setHighlightMap(hMap);
+            setAnnotationMap(aMap);
+          }
+        }).catch(() => {});
 
-        // Load cross-references for each verse (batch).
+        // 4. Load cross-references in background (non-blocking, fire-and-forget)
+        // Phase 2 will make these lazy on expand, but preload for now
         const xrefMap: Record<string, string[]> = {};
-        for (const ref of verseRefs) {
-          const refs = await dataLayer.getCrossReferences(ref);
-          if (refs.length > 0) xrefMap[ref] = refs;
-        }
-        if (!cancelled) setCrossRefs(xrefMap);
+        Promise.all(
+          verseRefs.map(async (ref) => {
+            try {
+              const refs = await dataLayer.getCrossReferences(ref);
+              if (refs.length > 0) xrefMap[ref] = refs;
+            } catch { /* skip failed refs */ }
+          })
+        ).then(() => {
+          if (!cancelled) setCrossRefs(xrefMap);
+        }).catch(() => {});
       }
-
-      setLoading(false);
     };
 
     loadData();

@@ -253,6 +253,15 @@ export class WebDataLayer implements DataLayer {
     return data.refs;
   }
 
+  async getCrossReferencesBatch(refs: string[]): Promise<Record<string, string[]>> {
+    if (refs.length === 0) return {};
+    const data = await api<{ refs: Record<string, string[]> }>('/api/bible/cross-refs', {
+      method: 'POST',
+      body: JSON.stringify({ refs }),
+    });
+    return data.refs;
+  }
+
   async findResonance(journalText: string): Promise<ResonanceResult | null> {
     if (journalText.trim().length < 3) return null;
 

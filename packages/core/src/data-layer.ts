@@ -59,6 +59,7 @@ export interface DataLayer {
   removeBookmark(verseRef: string): Promise<void>;
   getBookmarks(): Promise<Bookmark[]>;
   getCrossReferences(verseRef: string): Promise<string[]>;
+  getCrossReferencesBatch(refs: string[]): Promise<Record<string, string[]>>;
   recordReadingEvent(bookId: string, chapter: number, verseRef: string, timestamp: number): Promise<void>;
   getReadingHistory(startDate: string, endDate: string): Promise<{ date: string; count: number }[]>;
 

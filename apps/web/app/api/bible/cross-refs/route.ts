@@ -63,3 +63,31 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// POST /api/bible/cross-refs — batched: send { refs: ["Gen 1:1", "Matt 5:3"] }
+// Returns { refs: { "Gen 1:1": [...], "Matt 5:3": [...] } }
+export async function POST(request: NextRequest) {
+  try {
+    const { refs: requestedRefs } = (await request.json()) as { refs?: string[] };
+
+    if (!requestedRefs || requestedRefs.length === 0) {
+      return NextResponse.json({ refs: {} });
+    }
+
+    const map = loadCrossRefs();
+    const result: Record<string, string[]> = {};
+    for (const ref of requestedRefs) {
+      const targets = map.get(ref);
+      if (targets && targets.length > 0) {
+        result[ref] = targets;
+      }
+    }
+
+    return NextResponse.json({ refs: result });
+  } catch (err) {
+    return NextResponse.json(
+      { error: 'Internal server error', detail: err instanceof Error ? err.message : String(err) },
+      { status: 500 },
+    );
+  }
+}

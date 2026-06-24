@@ -110,6 +110,16 @@ export class MobileDataLayer implements DataLayer {
     return getCrossReferences(verseRef);
   }
 
+  async getCrossReferencesBatch(refs: string[]): Promise<Record<string, string[]>> {
+    if (refs.length === 0) return {};
+    const result: Record<string, string[]> = {};
+    await Promise.all(refs.map(async (ref) => {
+      const targets = await getCrossReferences(ref);
+      if (targets.length > 0) result[ref] = targets;
+    }));
+    return result;
+  }
+
   async findResonance(journalText: string): Promise<ResonanceResult | null> {
     return findResonance(journalText) as Promise<ResonanceResult | null>;
   }
