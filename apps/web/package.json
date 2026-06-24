@@ -10,13 +10,14 @@
   },
   "dependencies": {
     "@resonance/core": "*",
+    "@resonance/screens": "*",
     "@resonance/theme": "*",
     "@resonance/ui": "*",
+    "@xenova/transformers": "^2.17.2",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-native-web": "^0.19.13",
-    "@resonance/screens": "*"
+    "react-native-web": "^0.19.13"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

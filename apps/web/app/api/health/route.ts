@@ -1,18 +1,34 @@
 /**
  * GET /api/health — health check for Railway.
+ * Public shallow health, no auth required.
  */
 
 import { NextResponse } from 'next/server';
 import { existsSync } from 'fs';
 
-const VECTORS_PATH = './data/seeded_library/vectors_gte-small.bin';
+const MANIFEST_PATH = './data/seeded_library/vectors/manifest.json';
 
 export async function GET() {
+  let vectorInfo = { loaded: false, model: 'gte-small', passageCount: 0, method: 'lexical-fallback' };
+
+  if (existsSync(MANIFEST_PATH)) {
+    try {
+      const { readFileSync } = await import('fs');
+      const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf-8'));
+      vectorInfo = {
+        loaded: true,
+        model: manifest.model || 'gte-small',
+        passageCount: manifest.passage_count || 0,
+        method: 'semantic-vector',
+      };
+    } catch {
+      // manifest corrupted or unreadable
+    }
+  }
+
   return NextResponse.json({
     status: 'ok',
     model: process.env.RESONANCE_LLM_MODEL || 'deepseek/deepseek-v4-pro',
-    vectorsLoaded: existsSync(VECTORS_PATH),
-    resonanceFallback: existsSync(VECTORS_PATH) ? 'semantic-vector' : 'lexical-transparent-fallback',
-    passageCount: 0,
+    vectors: vectorInfo,
   });
 }

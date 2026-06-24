@@ -1,9 +1,10 @@
 /**
  * POST /api/resonance — find the most resonant Library passages
- * for a given journal text vector.
+ * for a given journal text vector or raw text.
  *
- * Loads pre-computed library vectors (388MB binary) + passage metadata
- * asynchronously at module level, then serves cosine similarity queries.
+ * Loads quantized int8 vector shards from disk, de-quantizes to float32,
+ * and computes cosine similarity. Falls back to transparent lexical
+ * matching when vectors are unavailable.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -11,7 +12,8 @@ import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { lexicalResonance } from '../../../lib/resonance-fallback';
 
-const VECTORS_PATH = './data/seeded_library/vectors_gte-small.bin';
+const VECTORS_DIR = './data/seeded_library/vectors';
+const MANIFEST_PATH = `${VECTORS_DIR}/manifest.json`;
 const BIBLE_PASSAGES_PATH = './data/seeded_library/bible_passages.json';
 const VOICE_PASSAGES_PATH = './data/seeded_library/voice_passages.json';
 
@@ -29,6 +31,19 @@ interface PassageMeta {
   translation: string | null;
 }
 
+interface VectorManifest {
+  model: string;
+  dim: number;
+  dtype: string;
+  passage_count: number;
+  global_min: number;
+  global_max: number;
+  range: number;
+  quantization: string;
+  shards: { file: string; start: number; count: number }[];
+  passage_order: string;
+}
+
 // ── Async module-level loading ─────────────────────────────────────────────
 
 let vectorsLoaded = false;
@@ -36,14 +51,6 @@ let loadPromise: Promise<void> | null = null;
 let passageVectors: Float32Array | null = null;
 let passageCount = 0;
 let passageMetadata: PassageMeta[] = [];
-
-function isVectorsLoaded(): boolean {
-  return vectorsLoaded;
-}
-
-function getPassageCount(): number {
-  return passageCount;
-}
 
 function startLoading() {
   if (loadPromise) return loadPromise;
@@ -53,12 +60,7 @@ function startLoading() {
 
 async function loadVectors() {
   try {
-    if (existsSync(VECTORS_PATH)) {
-      const buffer = await readFile(VECTORS_PATH);
-      passageVectors = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4);
-      passageCount = passageVectors.length / DIM;
-    }
-
+    // ── Load passage metadata ────────────────────────────────────────────
     if (existsSync(BIBLE_PASSAGES_PATH)) {
       const bibleData = JSON.parse(await readFile(BIBLE_PASSAGES_PATH, 'utf-8'));
       for (const p of bibleData) {
@@ -89,9 +91,48 @@ async function loadVectors() {
       }
     }
 
+    // ── Load quantized vector shards ─────────────────────────────────────
+    if (!existsSync(MANIFEST_PATH)) {
+      vectorsLoaded = true; // metadata only — fallback will be used
+      return;
+    }
+
+    const manifest: VectorManifest = JSON.parse(
+      await readFile(MANIFEST_PATH, 'utf-8'),
+    );
+
+    if (manifest.dim !== DIM) {
+      console.warn(`[resonance] expected dim ${DIM}, got ${manifest.dim}`);
+      vectorsLoaded = true;
+      return;
+    }
+
+    // Allocate the full de-quantized float32 buffer
+    const totalFloats = manifest.passage_count * DIM;
+    const buffer = new Float32Array(totalFloats);
+
+    const gmin = manifest.global_min;
+    const range = manifest.range;
+
+    for (const shard of manifest.shards) {
+      const shardPath = `${VECTORS_DIR}/${shard.file}`;
+      if (!existsSync(shardPath)) {
+        console.warn(`[resonance] missing shard: ${shard.file}`);
+        continue;
+      }
+      const raw = await readFile(shardPath);
+      const offset = shard.start * DIM;
+      for (let i = 0; i < raw.length; i++) {
+        buffer[offset + i] = gmin + (raw[i] / 255.0) * range;
+      }
+    }
+
+    passageVectors = buffer;
+    passageCount = manifest.passage_count;
     vectorsLoaded = true;
-  } catch {
-    // Graceful — resonance returns empty results
+  } catch (err) {
+    console.error('[resonance] vector load failed:', err);
+    vectorsLoaded = true; // metadata loaded, vectors failed — fallback will be used
   }
 }
 
@@ -113,70 +154,100 @@ export async function POST(req: NextRequest) {
   try {
     // Ensure loading has started
     const load = startLoading();
-    // Wait up to 10 seconds for vectors to load
+    // Wait up to 30 seconds for vectors to load (shards are ~97 MB total)
     await Promise.race([
       load,
-      new Promise<void>((resolve) => setTimeout(resolve, 10000)),
+      new Promise<void>((resolve) => setTimeout(resolve, 30000)),
     ]);
 
-    const { vector, text, limit = 10 } = (await req.json()) as { vector?: number[]; text?: string; limit?: number };
+    const { vector, text } = (await req.json()) as {
+      vector?: number[];
+      text?: string;
+    };
 
     if ((!vector || vector.length !== DIM) && (!text || text.trim().length < 12)) {
-      return NextResponse.json({ error: `Provide either a ${DIM}-dimension vector or journal text` }, { status: 400 });
+      return NextResponse.json(
+        { error: `Provide either a ${DIM}-dimension vector or journal text` },
+        { status: 400 },
+      );
     }
 
-    if (!vectorsLoaded || !passageVectors || passageMetadata.length === 0 || !vector || vector.length !== DIM) {
-      const fallback = lexicalResonance(
-        text?.trim() ?? '',
-        passageMetadata.filter((p) => p.translation != null),
-        passageMetadata.filter((p) => p.translation == null),
-        MAX_PER_CATEGORY,
-      );
+    // ── Semantic vector path ─────────────────────────────────────────────
+    if (passageVectors && passageCount > 0 && vector && vector.length === DIM) {
+      const scored: { idx: number; sim: number }[] = [];
+      for (let i = 0; i < passageCount; i++) {
+        const sim = cosineSim(passageVectors, i * DIM, vector, DIM);
+        if (sim >= MIN_SIMILARITY) {
+          scored.push({ idx: i, sim });
+        }
+      }
+
+      scored.sort((a, b) => b.sim - a.sim);
+
+      const topScripture = scored
+        .filter((s) => passageMetadata[s.idx]?.translation != null)
+        .slice(0, MAX_PER_CATEGORY)
+        .map((s) => toCard(passageMetadata[s.idx], s.sim, 'scripture'));
+
+      const topVoices = scored
+        .filter((s) => passageMetadata[s.idx]?.translation == null)
+        .slice(0, MAX_PER_CATEGORY)
+        .map((s) => toCard(passageMetadata[s.idx], s.sim, 'voice'));
+
       return NextResponse.json({
-        ...fallback,
+        scripture: topScripture,
+        voices: topVoices,
         pastEntries: [],
-        method: 'lexical-fallback',
-        note: 'Semantic vector index unavailable; using transparent lexical fallback until vector shards are deployed.',
+        method: 'semantic-vector',
+        model: 'gte-small',
+        passageCount,
       });
     }
 
-    const scored: { idx: number; sim: number }[] = [];
-    for (let i = 0; i < passageCount; i++) {
-      const sim = cosineSim(passageVectors!, i * DIM, vector, DIM);
-      if (sim >= MIN_SIMILARITY) {
-        scored.push({ idx: i, sim });
-      }
+    // ── Lexical fallback ─────────────────────────────────────────────────
+    const scriptureMeta = passageMetadata.filter((p) => p.translation != null);
+    const voiceMeta = passageMetadata.filter((p) => p.translation == null);
+
+    if (scriptureMeta.length === 0 && voiceMeta.length === 0) {
+      return NextResponse.json({
+        scripture: [],
+        voices: [],
+        pastEntries: [],
+        method: 'metadata-missing',
+        note: 'Passage metadata not yet loaded. Try again in a moment.',
+      });
     }
 
-    scored.sort((a, b) => b.sim - a.sim);
-
-    const topScripture = scored
-      .filter((s) => passageMetadata[s.idx]?.translation != null)
-      .slice(0, MAX_PER_CATEGORY)
-      .map((s) => toCard(passageMetadata[s.idx], s.sim, 'scripture'));
-
-    const topVoices = scored
-      .filter((s) => passageMetadata[s.idx]?.translation == null)
-      .slice(0, MAX_PER_CATEGORY)
-      .map((s) => toCard(passageMetadata[s.idx], s.sim, 'voice'));
+    const fallback = lexicalResonance(
+      text?.trim() ?? '',
+      scriptureMeta,
+      voiceMeta,
+      MAX_PER_CATEGORY,
+    );
 
     return NextResponse.json({
-      scripture: topScripture,
-      voices: topVoices,
+      ...fallback,
       pastEntries: [],
+      method: 'lexical-fallback',
+      note: 'Semantic vector index unavailable; using transparent lexical fallback until vector shards are deployed.',
     });
   } catch {
     return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }
 
-function toCard(meta: PassageMeta, similarity: number, kind: 'scripture' | 'voice') {
+function toCard(
+  meta: PassageMeta,
+  similarity: number,
+  kind: 'scripture' | 'voice',
+) {
   let source: string;
   if (meta.translation) {
     const bookName = meta.book_id.replace(/^[a-z]+_/, '').replace(/_/g, ' ');
-    const ref = meta.verse_start != null
-      ? `${bookName} ${meta.chapter ?? ''}:${meta.verse_start}`
-      : `${bookName} ${meta.chapter ?? ''}`;
+    const ref =
+      meta.verse_start != null
+        ? `${bookName} ${meta.chapter ?? ''}:${meta.verse_start}`
+        : `${bookName} ${meta.chapter ?? ''}`;
     source = `${ref} (${meta.translation.toUpperCase()})`;
   } else {
     source = meta.book_id;

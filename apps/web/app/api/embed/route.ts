@@ -1,57 +1,82 @@
 /**
- * POST /api/embed — embed journal text into a vector.
+ * POST /api/embed — embed journal text into a 384-dim vector
+ * using GTE-small via Transformers.js.
  *
- * Uses a lightweight hash-based embedding (deterministic, no external API)
- * that produces a 384-dim vector compatible with the pre-computed library
- * vectors. This is intentionally simple — it's only for the user's journal
- * text (a few calls per day). Production should swap this for a real
- * embedding model API call.
+ * The model is loaded once at module level (~33 MB download from
+ * HuggingFace on first request). Subsequent calls are fast.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 
 const DIM = 384;
 
+// ── Singleton model loader ────────────────────────────────────────────────
+
+let pipeline: unknown = null;
+let modelReady = false;
+let loadPromise: Promise<void> | null = null;
+
+async function ensureModel(): Promise<void> {
+  if (modelReady) return;
+  if (loadPromise) return loadPromise;
+
+  loadPromise = (async () => {
+    const { pipeline: createPipeline } = await import('@xenova/transformers');
+    pipeline = await createPipeline('feature-extraction', 'Xenova/gte-small');
+    modelReady = true;
+  })();
+
+  return loadPromise;
+}
+
+// ── Route handler ─────────────────────────────────────────────────────────
+
 export async function POST(req: NextRequest) {
   try {
     const { text } = (await req.json()) as { text: string };
 
-    if (!text || text.trim().length < 12) {
+    if (!text || text.trim().length < 3) {
       return NextResponse.json({ error: 'Text too short' }, { status: 400 });
     }
 
-    const vector = hashEmbed(text.trim(), DIM);
-    return NextResponse.json({ vector, dim: DIM });
-  } catch {
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
-  }
-}
+    // Start or wait for model loading (first call downloads ~33 MB)
+    await Promise.race([
+      ensureModel(),
+      new Promise<void>((resolve) => setTimeout(resolve, 60000)),
+    ]);
 
-/**
- * Deterministic hash-based embedding. Produces a 384-dim L2-normalized
- * vector from text. Not semantically meaningful like a real model, but
- * gives stable vectors for development/testing.
- */
-function hashEmbed(text: string, dim: number): number[] {
-  const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2);
-  const vec = new Array(dim).fill(0);
-
-  for (const word of words) {
-    let hash = 0;
-    for (let i = 0; i < word.length; i++) {
-      hash = ((hash << 5) - hash + word.charCodeAt(i)) | 0;
+    if (!modelReady || !pipeline) {
+      return NextResponse.json(
+        { error: 'Embedding model still loading', retryAfter: 30 },
+        { status: 503 },
+      );
     }
-    const idx = Math.abs(hash) % dim;
-    vec[idx] += 1;
-  }
 
-  // L2 normalize
-  let norm = 0;
-  for (let i = 0; i < dim; i++) norm += vec[i] * vec[i];
-  norm = Math.sqrt(norm);
-  if (norm > 0) {
-    for (let i = 0; i < dim; i++) vec[i] /= norm;
-  }
+    const result = await (pipeline as (text: string, opts: Record<string, unknown>) => Promise<{ data: Float32Array }>)(
+      text.trim(),
+      { pooling: 'mean', normalize: true },
+    );
 
-  return vec;
+    if (!result?.data || result.data.length !== DIM) {
+      return NextResponse.json(
+        { error: 'Embedding produced unexpected output' },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({
+      vector: Array.from(result.data),
+      dim: DIM,
+      model: 'gte-small',
+    });
+  } catch (err) {
+    return NextResponse.json(
+      {
+        error: 'Internal error',
+        detail:
+          err instanceof Error ? err.message.slice(0, 300) : String(err),
+      },
+      { status: 500 },
+    );
+  }
 }
