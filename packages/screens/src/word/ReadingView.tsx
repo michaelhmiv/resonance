@@ -510,6 +510,7 @@ export function ReadingView({
           ref={scrollRef}
           data={passages}
           keyExtractor={(item, idx) => `${item.id}-${idx}`}
+          style={styles.passageList}
           contentContainerStyle={[listContentContainer, styles.passageListContent]}
           renderItem={({ item: passage }) => {
             const ref = verseRefFor(passage);
@@ -589,6 +590,7 @@ export function ReadingView({
         />
       ) : (
         <SectionList
+          style={styles.passageList}
           sections={[librarySections[librarySection] ?? { title: 'Part 1', data: [] }]}
           keyExtractor={(item, idx) => `${item.id}-${idx}`}
           contentContainerStyle={[listContentContainer, styles.passageListContent]}
@@ -852,6 +854,9 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 60, // roughly matches back+translation width to keep title centered
   },
+  passageList: {
+    flex: 1,
+  },
   passageListContent: {
     paddingBottom: spacing.xl,
   },
@@ -886,8 +891,9 @@ const styles = StyleSheet.create({
     ...serifText,
     flex: 1,
     color: colors.textPrimary,
-    // @ts-expect-error — web-only CSS property to prevent native text selection
-    userSelect: 'none',
+    // Web-only CSS property to prevent native text selection
+    // eslint-disable-next-line react-native/no-raw-text
+    userSelect: 'none' as any,
   },
   annotationWrap: {
     marginLeft: 30,
