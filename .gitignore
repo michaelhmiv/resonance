@@ -52,3 +52,6 @@ Thumbs.db
 # TypeScript build cache
 tsconfig.tsbuildinfo
 *.tsbuildinfo
+apps/web/data/seeded_library/vectors/
+build/output/seeded_library/vectors_gte-small.bin
+build/output/seeded_library/vectors_pplx/
