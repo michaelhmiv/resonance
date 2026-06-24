@@ -128,7 +128,7 @@ export function JournalScreen({ fetchVerseOfDay }: JournalScreenProps): ReactNod
 
       // Auto-load resonance for the new entry and expand the footnote
       loadResonance(serverId, savedSegment.text!);
-      setExpandedFootnotes(prev => new Set(prev).add(serverId));
+      // Don't auto-expand — let the user tap ✦ when they want to see matches
     } finally {
       setSaving(false);
     }
@@ -194,10 +194,6 @@ export function JournalScreen({ fetchVerseOfDay }: JournalScreenProps): ReactNod
                   <Text style={[styles.footnoteMark, isExpanded && styles.footnoteMarkActive]}>
                     ✦
                   </Text>
-                </Pressable>
-                {/* Delete */}
-                <Pressable onPress={() => handleDelete(seg.id)} style={styles.deleteBtn} hitSlop={8}>
-                  <Text style={styles.deleteText}>×</Text>
                 </Pressable>
               </View>
             </View>
