@@ -1,6 +1,7 @@
 export { PassageCard } from './PassageCard';
 export type { PassageCardProps } from './PassageCard';
 export { HighlightToolbar } from './HighlightToolbar';
+export { HighlightPill } from './HighlightPill';
 export { TranslationSelector } from './TranslationSelector';
 export { CrossReferenceLinks } from './CrossReferenceLinks';
 export { CollapsibleCrossRefs } from './CollapsibleCrossRefs';
@@ -20,4 +21,5 @@ export {
   LibraryIcon,
   ChevronRightIcon,
   SettingsIcon,
+  HighlighterPenIcon,
 } from './icons';

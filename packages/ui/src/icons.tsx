@@ -129,3 +129,15 @@ export function SettingsIcon(props: IconProps): ReactNode {
     </SvgWrap>
   );
 }
+
+/** Highlighter pen — angled marker tip with a color band. */
+export function HighlighterPenIcon(props: IconProps): ReactNode {
+  return (
+    <SvgWrap {...props}>
+      {/* Pen body */}
+      <path d="M15 3l6 6-10 10H5v-6l10-10z" />
+      {/* Color tip band */}
+      <path d="M17 5l-9 9" strokeWidth="4" strokeLinecap="butt" opacity="0.5" />
+    </SvgWrap>
+  );
+}

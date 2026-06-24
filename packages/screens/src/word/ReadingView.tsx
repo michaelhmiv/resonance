@@ -2,12 +2,14 @@
  * Reading view — the sacred reading surface.
  *
  * Renders Scripture verses or Library passages in serif with verse numbers
- * as superscripts. Long-press a verse to open the highlight toolbar
- * (3 soft tones + margin note). Cross-references appear as quiet marginal
- * links after verses. Prev/next chapter navigation for Scripture.
+ * as superscripts. A highlight-mode toggle (floating pill) lets the reader
+ * tap pairs of verses to highlight a range, or annotate selected verses.
+ * Cross-references appear as quiet marginal links after verses.
+ *
+ * Bottom nav bar keeps chapter navigation at thumb level on mobile.
  *
  * (design spec §6.3 — highlight, annotate, bookmark, cross-references;
- *  §6.4 — search results; §6.1 — translation selector and chapter nav)
+ *  §6.1 — translation selector and chapter nav)
  */
 
 import {
@@ -50,7 +52,7 @@ import {
   type AnnotationMap,
 } from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
-import { HighlightToolbar } from '@resonance/ui';
+import { HighlightPill } from '@resonance/ui';
 import { ChapterPicker } from '@resonance/ui';
 import { TranslationSelector } from '@resonance/ui';
 import { BookmarkButton } from '@resonance/ui';
@@ -106,15 +108,17 @@ export function ReadingView({
   const [bookmarked, setBookmarked] = useState(false);
   const [fontSize, setFontSize] = useState<string>('medium');
 
-  // Highlight toolbar state
-  const [activeVerseRef, setActiveVerseRef] = useState<string | null>(null);
-  const [activeVerseText, setActiveVerseText] = useState<string>('');
+  // ── Highlight-mode toggle + range selection ──────────────────────────
+  const [highlightMode, setHighlightMode] = useState(false);
+  const [activeColor, setActiveColor] = useState<string>(colors.highlightGold);
+  const [rangeStart, setRangeStart] = useState<string | null>(null);
+
+  // ── Annotation modal ─────────────────────────────────────────────────
   const [annotationModal, setAnnotationModal] = useState<{
     ref: string;
     text: string;
   } | null>(null);
   const [annotationDraft, setAnnotationDraft] = useState('');
-  const [sendingToJournal, setSendingToJournal] = useState(false);
 
   // Collapsible annotations — hidden by default, tap to reveal
   const [expandedAnnotations, setExpandedAnnotations] = useState<Set<string>>(new Set());
@@ -139,6 +143,8 @@ export function ReadingView({
     setHighlightMap({});
     setAnnotationMap({});
     setExpandedAnnotations(new Set());
+    setHighlightMode(false);
+    setRangeStart(null);
 
     const loadData = async () => {
       let resultPassages: (VersePassage | LibraryPassage)[] = [];
@@ -152,7 +158,6 @@ export function ReadingView({
           mode.translation
         );
         // Merge verse chunks: clauses with same verse_start become one continuous block.
-        // Bible data stores semantic clauses separately (e.g. verse 1 → 2-3 chunks).
         if (resultPassages.length > 0) {
           const merged = new Map<number, VersePassage>();
           for (const p of resultPassages as VersePassage[]) {
@@ -186,12 +191,10 @@ export function ReadingView({
       setLoading(false);
 
       // 3. Load highlights and annotations in parallel (non-blocking)
-      // For scripture, use verse ref strings. For library, use passage IDs.
       const refsToLoad: string[] = [];
       if (mode.kind === 'scripture') {
         refsToLoad.push(...verseRefs);
       } else {
-        // Library: use passage IDs as highlight keys
         refsToLoad.push(...resultPassages.map((p) => String(p.id)));
       }
 
@@ -206,8 +209,7 @@ export function ReadingView({
           }
         }).catch(() => {});
 
-        // 4. Load cross-references in background (non-blocking, fire-and-forget)
-        // Phase 2 will make these lazy on expand, but preload for now
+        // 4. Load cross-references in background (non-blocking)
         const xrefMap: Record<string, string[]> = {};
         Promise.all(
           verseRefs.map(async (ref) => {
@@ -248,7 +250,6 @@ export function ReadingView({
     if (!loading && initialVerse != null && !scrolledToInitial.current && isScripture) {
       const idx = passages.findIndex((p) => p.verse_start === initialVerse);
       if (idx >= 0) {
-        // Small delay to let FlatList layout finish
         setTimeout(() => {
           scrollRef.current?.scrollToIndex({ index: idx, animated: false, viewPosition: 0.1 });
         }, 100);
@@ -257,7 +258,7 @@ export function ReadingView({
     }
   }, [loading, initialVerse, passages, isScripture]);
 
-  // ── Actions ──────────────────────────────────────────────────────────────
+  // ── Helpers ──────────────────────────────────────────────────────────────
 
   const verseRefFor = useCallback(
     (passage: VersePassage | LibraryPassage): string => {
@@ -269,18 +270,22 @@ export function ReadingView({
           passage.verse_end
         );
       }
-      // Library: use passage ID as key for highlights/annotations
       return String(passage.id);
     },
     [mode]
   );
 
+  // Find index of a ref in the passages array
+  const indexOfRef = useCallback(
+    (ref: string): number => {
+      return passages.findIndex((p) => verseRefFor(p) === ref);
+    },
+    [passages, verseRefFor]
+  );
+
   const handleCrossRefPress = useCallback(
     (ref: string) => {
       if (!onNavigateChapter) return;
-      // Parse "Book Name Chapter:Verse" or "Book Name Chapter:Verse-End"
-      // e.g. "Proverbs 8:22-30" → book="Proverbs", chapter=8
-      // e.g. "1 Chronicles 16:26" → book="1 Chronicles", chapter=16
       const match = ref.match(/^(.+?)\s+(\d+):/);
       if (!match) return;
       const bookName = match[1].trim();
@@ -291,60 +296,66 @@ export function ReadingView({
     [onNavigateChapter]
   );
 
-  const handleApplyHighlight = useCallback(
-    async (color: string) => {
-      if (!activeVerseRef) return;
-      // Optimistic update — show the color immediately
-      const prevColor = highlightMap[activeVerseRef];
-      setHighlightMap((prev) => ({ ...prev, [activeVerseRef]: color }));
+  // ── Range highlight ─────────────────────────────────────────────────────
+
+  const applyRangeHighlight = useCallback(
+    async (startRef: string, endRef: string) => {
+      const startIdx = indexOfRef(startRef);
+      const endIdx = indexOfRef(endRef);
+      if (startIdx < 0 || endIdx < 0) return;
+
+      const lo = Math.min(startIdx, endIdx);
+      const hi = Math.max(startIdx, endIdx);
+
+      // Optimistic: update all verses in range immediately
+      const newMap: HighlightMap = { ...highlightMap };
+      const refs: string[] = [];
+      for (let i = lo; i <= hi; i++) {
+        const r = verseRefFor(passages[i]);
+        newMap[r] = activeColor;
+        refs.push(r);
+      }
+      setHighlightMap(newMap);
+
+      // Persist in background
       try {
-        await dataLayer.saveHighlight(activeVerseRef, color);
+        await Promise.all(refs.map((r) => dataLayer.saveHighlight(r, activeColor)));
       } catch (err) {
-        console.error('[ReadingView] saveHighlight failed:', err);
-        // Revert on failure
-        setHighlightMap((prev) => {
-          const next = { ...prev };
-          if (prevColor) next[activeVerseRef] = prevColor;
-          else delete next[activeVerseRef];
-          return next;
-        });
+        console.error('[ReadingView] range highlight save failed:', err);
       }
     },
-    [activeVerseRef, highlightMap, dataLayer]
+    [passages, highlightMap, activeColor, verseRefFor, indexOfRef, dataLayer]
   );
 
-  const handleClearHighlight = useCallback(async () => {
-    if (!activeVerseRef) return;
-    // Optimistic removal
-    const prevColor = highlightMap[activeVerseRef];
-    setHighlightMap((prev) => {
-      const next = { ...prev };
-      delete next[activeVerseRef];
-      return next;
-    });
-    try {
-      await dataLayer.removeHighlight(activeVerseRef);
-    } catch (err) {
-      console.error('[ReadingView] removeHighlight failed:', err);
-      // Revert on failure
-      if (prevColor) {
-        setHighlightMap((prev) => ({ ...prev, [activeVerseRef]: prevColor }));
-      }
-    }
-  }, [activeVerseRef, highlightMap, dataLayer]);
+  const handleVerseTap = useCallback(
+    (ref: string) => {
+      if (!highlightMode) return;
 
-  const handleOpenAnnotation = useCallback(() => {
-    if (!activeVerseRef) return;
-    const existing = annotationMap[activeVerseRef] ?? '';
+      if (rangeStart === null) {
+        // First tap — set range start
+        setRangeStart(ref);
+      } else {
+        // Second tap — complete the range
+        applyRangeHighlight(rangeStart, ref);
+        setRangeStart(null);
+      }
+    },
+    [highlightMode, rangeStart, applyRangeHighlight]
+  );
+
+  // ── Annotation ──────────────────────────────────────────────────────────
+
+  const handleAnnotate = useCallback(() => {
+    if (!rangeStart) return; // nothing targeted yet
+    const existing = annotationMap[rangeStart] ?? '';
     setAnnotationDraft(existing);
-    setAnnotationModal({ ref: activeVerseRef, text: existing });
-  }, [activeVerseRef, annotationMap]);
+    setAnnotationModal({ ref: rangeStart, text: existing });
+  }, [rangeStart, annotationMap]);
 
   const handleSaveAnnotation = useCallback(async () => {
     if (!annotationModal) return;
     const ref = annotationModal.ref;
     const prevAnnotation = annotationMap[ref];
-    // Optimistic update
     setAnnotationMap((prev) => {
       const next = { ...prev };
       if (annotationDraft.trim().length > 0) {
@@ -357,7 +368,6 @@ export function ReadingView({
     setAnnotationModal(null);
     try {
       await dataLayer.saveAnnotation(ref, translation, annotationDraft);
-      // Auto-expand the newly created/updated annotation
       setExpandedAnnotations((prev) => {
         const next = new Set(prev);
         next.add(ref);
@@ -365,7 +375,6 @@ export function ReadingView({
       });
     } catch (err) {
       console.error('[ReadingView] saveAnnotation failed:', err);
-      // Revert on failure
       setAnnotationMap((prev) => {
         const next = { ...prev };
         if (prevAnnotation) next[ref] = prevAnnotation;
@@ -375,22 +384,17 @@ export function ReadingView({
     }
   }, [annotationModal, annotationDraft, translation, annotationMap, dataLayer]);
 
-  const handleSendToJournal = useCallback(async () => {
-    if (!activeVerseRef || !activeVerseText || sendingToJournal) return;
-    setSendingToJournal(true);
-    try {
-      await dataLayer.appendQuoteToJournal(activeVerseText, activeVerseRef);
-      // Brief feedback, then close toolbar
-      setTimeout(() => {
-        setSendingToJournal(false);
-        setActiveVerseRef(null);
-      }, 1500);
-    } catch {
-      setSendingToJournal(false);
-    }
-  }, [activeVerseRef, activeVerseText, sendingToJournal, dataLayer]);
+  // ── Toggle highlight mode ───────────────────────────────────────────────
 
-  const fontSizeMap: Record<string, number> = { small: 15, medium: 17, large: 19 };
+  const handleToggleHighlight = useCallback(() => {
+    setHighlightMode((prev) => !prev);
+    setRangeStart(null);
+  }, []);
+
+  const handleExitHighlight = useCallback(() => {
+    setHighlightMode(false);
+    setRangeStart(null);
+  }, []);
 
   // ── Library sections (pseudo-chapters, batches of 25) ──────────────────
   const librarySections = useMemo(() => {
@@ -454,6 +458,16 @@ export function ReadingView({
     }
   }, [bookmarked, bookmarkRef, headerTitle, dataLayer]);
 
+  // ── Chapter nav state ───────────────────────────────────────────────────
+
+  const prevChapter = isScripture && mode.chapter > 1 ? mode.chapter - 1 : 0;
+  const nextChapter = isScripture && mode.chapter < mode.totalChapters ? mode.chapter + 1 : 0;
+
+  const fontSizeMap: Record<string, number> = { small: 15, medium: 17, large: 19 };
+
+  // ── Range-start label for pill ──────────────────────────────────────────
+  const rangeStartLabel = rangeStart ?? undefined;
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -466,7 +480,7 @@ export function ReadingView({
 
   return (
     <View style={styles.container}>
-      {/* ── Reading header ─────────────────────────────────────────── */}
+      {/* ── Reading header (context only) ─────────────────────────────── */}
       <View style={styles.readingHeader}>
         <Pressable
           onPress={onBack}
@@ -477,7 +491,6 @@ export function ReadingView({
           <Text style={styles.backText}>← Browse</Text>
         </Pressable>
 
-        {/* Translation switcher (scripture mode) */}
         {isScripture && onChangeTranslation ? (
           <TranslationSelector
             value={mode.translation}
@@ -486,49 +499,9 @@ export function ReadingView({
         ) : null}
 
         <Text style={styles.headerTitle}>{headerTitle}</Text>
-        <View style={styles.headerActions}>
-          {isScripture ? (
-            <ChapterNavButtons
-              mode={mode}
-              onNavigate={onNavigateChapter!}
-              onOpenPicker={() => setChapterPickerOpen(true)}
-            />
-          ) : (
-            <View style={styles.chapterNav}>
-              {canPrevSection ? (
-                <Pressable
-                  onPress={() => setLibrarySection((prev) => Math.max(0, prev - 1))}
-                  hitSlop={4}
-                  accessibilityRole="button"
-                  accessibilityLabel="Previous section"
-                >
-                  <Text style={styles.chapterNavText}>‹</Text>
-                </Pressable>
-              ) : (
-                <View style={{ width: 20 }} />
-              )}
-              <Text style={styles.chapterPos}>
-                {librarySection + 1} / {totalLibrarySections}
-              </Text>
-              {canNextSection ? (
-                <Pressable
-                  onPress={() => setLibrarySection((prev) => Math.min(totalLibrarySections - 1, prev + 1))}
-                  hitSlop={4}
-                  accessibilityRole="button"
-                  accessibilityLabel="Next section"
-                >
-                  <Text style={styles.chapterNavText}>›</Text>
-                </Pressable>
-              ) : (
-                <View style={{ width: 20 }} />
-              )}
-            </View>
-          )}
-          <BookmarkButton
-            bookmarked={bookmarked}
-            onPress={handleToggleBookmark}
-          />
-        </View>
+
+        {/* Spacer to balance the row (back + translation on left) */}
+        <View style={styles.headerSpacer} />
       </View>
 
       {/* ── Passage list ────────────────────────────────────────────── */}
@@ -537,204 +510,254 @@ export function ReadingView({
           ref={scrollRef}
           data={passages}
           keyExtractor={(item, idx) => `${item.id}-${idx}`}
-          contentContainerStyle={listContentContainer}
+          contentContainerStyle={[listContentContainer, styles.passageListContent]}
           renderItem={({ item: passage }) => {
-          const ref = verseRefFor(passage);
-          const highlight = highlightMap[ref];
-          const annotation = annotationMap[ref];
+            const ref = verseRefFor(passage);
+            const highlight = highlightMap[ref];
+            const annotation = annotationMap[ref];
+            const isRangeStart = highlightMode && rangeStart === ref;
 
-          return (
-            <View style={styles.verseBlock}>
-              <Pressable
-                onPress={() => {
-                  if (activeVerseRef) setActiveVerseRef(null);
-                }}
-                onLongPress={() => {
-                  setActiveVerseRef(ref);
-                  setActiveVerseText(passage.text);
-                }}
-                delayLongPress={350}
-              >
-                <View
-                  style={[
-                    styles.verseContent,
-                    highlight ? { backgroundColor: highlight + '33' } : null,
-                  ]}
+            return (
+              <View style={styles.verseBlock}>
+                <Pressable
+                  onPress={() => handleVerseTap(ref)}
+                  disabled={!highlightMode}
                 >
-                  {isScripture && passage.verse_start != null && (
+                  <View
+                    style={[
+                      styles.verseContent,
+                      highlight ? { backgroundColor: highlight + '33' } : null,
+                      isRangeStart && styles.verseRangeStart,
+                      highlightMode && styles.verseHighlightable,
+                    ]}
+                  >
+                    {isScripture && passage.verse_start != null && (
+                      <Text
+                        selectable={false}
+                        style={styles.verseNumber}
+                      >
+                        {passage.verse_start}
+                        {passage.verse_end != null &&
+                        passage.verse_end !== passage.verse_start
+                          ? `–${passage.verse_end}`
+                          : ''}
+                      </Text>
+                    )}
                     <Text
                       selectable={false}
-                      style={styles.verseNumber}
+                      style={[styles.verseText, { fontSize: fontSizeMap[fontSize] || 17 }]}
                     >
-                      {passage.verse_start}
-                      {passage.verse_end != null &&
-                      passage.verse_end !== passage.verse_start
-                        ? `–${passage.verse_end}`
-                        : ''}
+                      {passage.text}
                     </Text>
-                  )}
-                  <Text
-                    selectable={false}
-                    style={[styles.verseText, { fontSize: fontSizeMap[fontSize] || 17 }]}
-                  >
-                    {passage.text}
-                  </Text>
-                </View>
-              </Pressable>
-              {/* ✦ highlight handle — outside the long-press wrapper so
-                  tap events don't conflict with the parent Pressable's
-                  gesture handlers. */}
-              <Pressable
-                onPress={() => {
-                  setActiveVerseRef(ref);
-                  setActiveVerseText(passage.text);
-                }}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Highlight or annotate this verse"
-                style={styles.highlightHandle}
-              >
-                <Text style={styles.highlightHandleText}>✦</Text>
-              </Pressable>
+                  </View>
+                </Pressable>
 
-              {annotation ? (
-                <View style={styles.annotationWrap}>
-                  <Pressable
-                    onPress={() => {
-                      setExpandedAnnotations((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(ref)) next.delete(ref);
-                        else next.add(ref);
-                        return next;
-                      });
-                    }}
-                    hitSlop={6}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.annotationToggle}>
-                      {expandedAnnotations.has(ref) ? '▾' : '▸'} note
-                    </Text>
-                  </Pressable>
-                  {expandedAnnotations.has(ref) ? (
-                    <Text style={styles.annotationText}>{annotation}</Text>
-                  ) : null}
-                </View>
-              ) : null}
+                {annotation ? (
+                  <View style={styles.annotationWrap}>
+                    <Pressable
+                      onPress={() => {
+                        setExpandedAnnotations((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(ref)) next.delete(ref);
+                          else next.add(ref);
+                          return next;
+                        });
+                      }}
+                      hitSlop={6}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.annotationToggle}>
+                        {expandedAnnotations.has(ref) ? '▾' : '▸'} note
+                      </Text>
+                    </Pressable>
+                    {expandedAnnotations.has(ref) ? (
+                      <Text style={styles.annotationText}>{annotation}</Text>
+                    ) : null}
+                  </View>
+                ) : null}
 
-              {/* Inline cross-ref marker + expandable refs */}
-              <CrossRefInline
-                verseRef={ref}
-                cache={crossRefs}
-                loadRefs={async (refs: string[]) => dataLayer.getCrossReferencesBatch(refs)}
-                onNavigate={handleCrossRefPress}
-              />
+                <CrossRefInline
+                  verseRef={ref}
+                  cache={crossRefs}
+                  loadRefs={async (refs: string[]) => dataLayer.getCrossReferencesBatch(refs)}
+                  onNavigate={handleCrossRefPress}
+                />
+              </View>
+            );
+          }}
+          ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
+        />
+      ) : (
+        <SectionList
+          sections={[librarySections[librarySection] ?? { title: 'Part 1', data: [] }]}
+          keyExtractor={(item, idx) => `${item.id}-${idx}`}
+          contentContainerStyle={[listContentContainer, styles.passageListContent]}
+          renderSectionHeader={({ section: { title } }) => (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionHeaderText}>{title}</Text>
             </View>
-          );
-        }}
-        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
-      />
-    ) : (
-      <SectionList
-        sections={[librarySections[librarySection] ?? { title: 'Part 1', data: [] }]}
-        keyExtractor={(item, idx) => `${item.id}-${idx}`}
-        contentContainerStyle={listContentContainer}
-        renderSectionHeader={({ section: { title } }) => (
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderText}>{title}</Text>
-          </View>
-        )}
-        renderItem={({ item: passage }) => {
-          const ref = verseRefFor(passage);
-          const highlight = highlightMap[ref];
-          const annotation = annotationMap[ref];
+          )}
+          renderItem={({ item: passage }) => {
+            const ref = verseRefFor(passage);
+            const highlight = highlightMap[ref];
+            const annotation = annotationMap[ref];
+            const isRangeStart = highlightMode && rangeStart === ref;
 
-          return (
-            <View style={styles.verseBlock}>
-              <Pressable
-                onPress={() => {
-                  if (activeVerseRef) setActiveVerseRef(null);
-                }}
-                onLongPress={() => {
-                  setActiveVerseRef(ref);
-                  setActiveVerseText(passage.text);
-                }}
-                delayLongPress={350}
-              >
-                <View
-                  style={[
-                    styles.verseContent,
-                    highlight ? { backgroundColor: highlight + '33' } : null,
-                  ]}
+            return (
+              <View style={styles.verseBlock}>
+                <Pressable
+                  onPress={() => handleVerseTap(ref)}
+                  disabled={!highlightMode}
                 >
-                  <Text
-                    selectable={false}
-                    style={[styles.verseText, { fontSize: fontSizeMap[fontSize] || 17 }]}
+                  <View
+                    style={[
+                      styles.verseContent,
+                      highlight ? { backgroundColor: highlight + '33' } : null,
+                      isRangeStart && styles.verseRangeStart,
+                      highlightMode && styles.verseHighlightable,
+                    ]}
                   >
-                    {passage.text}
-                  </Text>
-                </View>
-              </Pressable>
-              {/* ✦ highlight handle — outside the long-press wrapper so
-                  tap events don't conflict with the parent Pressable's
-                  gesture handlers. */}
-              <Pressable
-                onPress={() => {
-                  setActiveVerseRef(ref);
-                  setActiveVerseText(passage.text);
-                }}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Highlight or annotate this verse"
-                style={styles.highlightHandle}
-              >
-                <Text style={styles.highlightHandleText}>✦</Text>
-              </Pressable>
-
-              {annotation ? (
-                <View style={styles.annotationWrap}>
-                  <Pressable
-                    onPress={() => {
-                      setExpandedAnnotations((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(ref)) next.delete(ref);
-                        else next.add(ref);
-                        return next;
-                      });
-                    }}
-                    hitSlop={6}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.annotationToggle}>
-                      {expandedAnnotations.has(ref) ? '▾' : '▸'} note
+                    <Text
+                      selectable={false}
+                      style={[styles.verseText, { fontSize: fontSizeMap[fontSize] || 17 }]}
+                    >
+                      {passage.text}
                     </Text>
-                  </Pressable>
-                  {expandedAnnotations.has(ref) ? (
-                    <Text style={styles.annotationText}>{annotation}</Text>
-                  ) : null}
-                </View>
-              ) : null}
-            </View>
-          );
-        }}
-        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
-      />
-    )}
+                  </View>
+                </Pressable>
 
-      {/* ── Highlight toolbar ───────────────────────────────────────── */}
-      {activeVerseRef && (
-        <View style={styles.toolbarWrap}>
-          <HighlightToolbar
-            verseRef={activeVerseRef}
-            currentColor={highlightMap[activeVerseRef]}
-            onApply={handleApplyHighlight}
-            onAddNote={handleOpenAnnotation}
-            onClear={handleClearHighlight}
-            onDismiss={() => setActiveVerseRef(null)}
-            onSendToJournal={handleSendToJournal}
-            sendingToJournal={sendingToJournal}
+                {annotation ? (
+                  <View style={styles.annotationWrap}>
+                    <Pressable
+                      onPress={() => {
+                        setExpandedAnnotations((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(ref)) next.delete(ref);
+                          else next.add(ref);
+                          return next;
+                        });
+                      }}
+                      hitSlop={6}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.annotationToggle}>
+                        {expandedAnnotations.has(ref) ? '▾' : '▸'} note
+                      </Text>
+                    </Pressable>
+                    {expandedAnnotations.has(ref) ? (
+                      <Text style={styles.annotationText}>{annotation}</Text>
+                    ) : null}
+                  </View>
+                ) : null}
+              </View>
+            );
+          }}
+          ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
+        />
+      )}
+
+      {/* ── Bottom chrome: pill + nav bar ─────────────────────────────── */}
+      <View style={styles.bottomChrome}>
+        {/* Floating tool pill */}
+        <View style={styles.pillContainer}>
+          <HighlightPill
+            active={highlightMode}
+            activeColor={activeColor}
+            rangeStartLabel={rangeStartLabel}
+            onToggle={handleToggleHighlight}
+            onSelectColor={setActiveColor}
+            onAnnotate={handleAnnotate}
+            onDismiss={handleExitHighlight}
           />
         </View>
-      )}
+
+        {/* Bottom navigation bar */}
+        <View style={styles.bottomNav}>
+          {/* Chapter / section navigation */}
+          {isScripture ? (
+            <View style={styles.chapterNav}>
+              {prevChapter > 0 ? (
+                <Pressable
+                  onPress={() => onNavigateChapter?.(mode.bookName, prevChapter)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Previous chapter"
+                  style={styles.chapterNavBtn}
+                >
+                  <Text style={styles.chapterNavText}>◀</Text>
+                  <Text style={styles.chapterNavLabel}>Ch</Text>
+                </Pressable>
+              ) : (
+                <View style={styles.chapterNavPlaceholder} />
+              )}
+
+              <Pressable
+                onPress={() => setChapterPickerOpen(true)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Open chapter picker"
+              >
+                <Text style={styles.chapterPos}>
+                  {mode.chapter} / {mode.totalChapters}
+                </Text>
+              </Pressable>
+
+              {nextChapter > 0 ? (
+                <Pressable
+                  onPress={() => onNavigateChapter?.(mode.bookName, nextChapter)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Next chapter"
+                  style={styles.chapterNavBtn}
+                >
+                  <Text style={styles.chapterNavText}>▶</Text>
+                  <Text style={styles.chapterNavLabel}>Ch</Text>
+                </Pressable>
+              ) : (
+                <View style={styles.chapterNavPlaceholder} />
+              )}
+            </View>
+          ) : (
+            <View style={styles.chapterNav}>
+              {canPrevSection ? (
+                <Pressable
+                  onPress={() => setLibrarySection((prev) => Math.max(0, prev - 1))}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Previous section"
+                  style={styles.chapterNavBtn}
+                >
+                  <Text style={styles.chapterNavText}>◀</Text>
+                </Pressable>
+              ) : (
+                <View style={styles.chapterNavPlaceholder} />
+              )}
+              <Text style={styles.chapterPos}>
+                {librarySection + 1} / {totalLibrarySections}
+              </Text>
+              {canNextSection ? (
+                <Pressable
+                  onPress={() => setLibrarySection((prev) => Math.min(totalLibrarySections - 1, prev + 1))}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Next section"
+                  style={styles.chapterNavBtn}
+                >
+                  <Text style={styles.chapterNavText}>▶</Text>
+                </Pressable>
+              ) : (
+                <View style={styles.chapterNavPlaceholder} />
+              )}
+            </View>
+          )}
+
+          {/* Bookmark */}
+          <BookmarkButton
+            bookmarked={bookmarked}
+            onPress={handleToggleBookmark}
+          />
+        </View>
+      </View>
 
       {/* ── Chapter picker modal ────────────────────────────────────── */}
       {isScripture ? (
@@ -794,63 +817,12 @@ export function ReadingView({
   );
 }
 
-// ── Chapter navigation buttons ─────────────────────────────────────────────
-
-function ChapterNavButtons({
-  mode,
-  onNavigate,
-  onOpenPicker,
-}: {
-  mode: Extract<ReadingMode, { kind: 'scripture' }>;
-  onNavigate: (bookName: string, chapter: number) => void;
-  onOpenPicker: () => void;
-}): ReactNode {
-  const prevCh = mode.chapter > 1 ? mode.chapter - 1 : 0;
-  const nextCh =
-    mode.chapter < mode.totalChapters ? mode.chapter + 1 : 0;
-
-  return (
-    <View style={styles.chapterNav}>
-      {prevCh > 0 ? (
-        <Pressable
-          onPress={() => onNavigate(mode.bookName, prevCh)}
-          hitSlop={4}
-          accessibilityRole="button"
-          accessibilityLabel="Previous chapter"
-        >
-          <Text style={styles.chapterNavText}>‹</Text>
-        </Pressable>
-      ) : (
-        <View style={{ width: 20 }} />
-      )}
-      <Pressable onPress={onOpenPicker} hitSlop={4}>
-        <Text style={styles.chapterPos}>
-          {mode.chapter} / {mode.totalChapters}
-        </Text>
-      </Pressable>
-      {nextCh > 0 ? (
-        <Pressable
-          onPress={() => onNavigate(mode.bookName, nextCh)}
-          hitSlop={4}
-          accessibilityRole="button"
-          accessibilityLabel="Next chapter"
-        >
-          <Text style={styles.chapterNavText}>›</Text>
-        </Pressable>
-      ) : (
-        <View style={{ width: 20 }} />
-      )}
-    </View>
-  );
-}
-
 // ── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    position: 'relative',
   },
   centerLoading: {
     justifyContent: 'center',
@@ -861,7 +833,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: layout.screenPaddingX,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
@@ -877,27 +849,11 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: spacing.md,
-    minWidth: 96,
+  headerSpacer: {
+    width: 60, // roughly matches back+translation width to keep title centered
   },
-  chapterNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  chapterNavText: {
-    fontFamily: fontFamilies.sansMedium,
-    fontSize: 22,
-    color: colors.accent,
-  },
-  chapterPos: {
-    fontFamily: fontFamilies.sans,
-    fontSize: 12,
-    color: colors.textTertiary,
+  passageListContent: {
+    paddingBottom: spacing.xl,
   },
   verseBlock: {
     paddingHorizontal: 0,
@@ -907,6 +863,15 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     paddingHorizontal: spacing.xs,
     paddingVertical: spacing.xs,
+  },
+  verseHighlightable: {
+    // Subtle indicator that verses are tappable in highlight mode
+  },
+  verseRangeStart: {
+    borderLeftWidth: 2,
+    borderLeftColor: colors.accent,
+    borderTopLeftRadius: radii.sm,
+    borderBottomLeftRadius: radii.sm,
   },
   verseNumber: {
     fontFamily: fontFamilies.sans,
@@ -945,15 +910,57 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     marginBottom: 2,
   },
-  toolbarWrap: {
-    position: 'absolute',
-    bottom: spacing.lg,
-    left: layout.screenPaddingX,
-    right: layout.screenPaddingX,
-    zIndex: 100,
-    // @ts-expect-error — web-only elevation
-    elevation: 10,
+  // ── Bottom chrome ──────────────────────────────────────────────────
+  bottomChrome: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
+    paddingTop: spacing.xs,
   },
+  pillContainer: {
+    alignItems: 'flex-end',
+    paddingHorizontal: layout.screenPaddingX,
+    paddingBottom: spacing.xs,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: layout.screenPaddingX,
+    paddingVertical: spacing.sm,
+  },
+  chapterNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  chapterNavBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xs,
+  },
+  chapterNavText: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 16,
+    color: colors.accent,
+  },
+  chapterNavLabel: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 11,
+    color: colors.textTertiary,
+    letterSpacing: 0.3,
+  },
+  chapterPos: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  chapterNavPlaceholder: {
+    width: 52,
+  },
+  // ── Modals ──────────────────────────────────────────────────────────
   annotationOverlay: {
     flex: 1,
     justifyContent: 'center',
@@ -1015,10 +1022,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.surface,
   },
-  sendToJournalRow: {
-    marginTop: spacing.xs,
-    paddingLeft: spacing.xs,
-  },
   sectionHeader: {
     paddingHorizontal: layout.screenPaddingX,
     paddingVertical: spacing.sm,
@@ -1032,17 +1035,5 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     color: colors.textTertiary,
     textTransform: 'uppercase',
-  },
-  highlightHandle: {
-    alignSelf: 'flex-end',
-    marginTop: -18,
-    marginRight: spacing.xs,
-    paddingLeft: spacing.sm,
-    paddingVertical: 2,
-  },
-  highlightHandleText: {
-    fontSize: 13,
-    color: colors.textTertiary,
-    opacity: 0.35,
   },
 });
