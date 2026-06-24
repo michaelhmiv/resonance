@@ -91,11 +91,41 @@ export async function POST(req: NextRequest) {
     const text = data.choices?.[0]?.message?.content?.trim();
 
     if (!text) {
-      return NextResponse.json({ error: 'Empty response from model' }, { status: 500 });
+      return NextResponse.json({
+        text: fallbackReflectionText(action, excerpts, period1Excerpts, period2Excerpts),
+        model: DEFAULT_MODEL,
+        fallback: true,
+        note: 'Model returned empty content; used deterministic no-advice fallback.',
+      });
     }
 
-    return NextResponse.json({ text, model: DEFAULT_MODEL });
+    return NextResponse.json({ text, model: DEFAULT_MODEL, fallback: false });
   } catch {
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal error', model: DEFAULT_MODEL }, { status: 500 });
   }
+}
+
+function fallbackReflectionText(
+  action: string,
+  excerpts?: string[],
+  period1Excerpts?: string[],
+  period2Excerpts?: string[],
+): string {
+  if (action === 'cluster_label') {
+    const text = (excerpts ?? []).join(' ').toLowerCase();
+    if (/tired|exhausted|weary|rest/.test(text)) return 'Weariness and rest';
+    if (/worry|worried|anxious|tomorrow/.test(text)) return 'Anxiety and tomorrow';
+    if (/alone|lonely|forsaken/.test(text)) return 'Loneliness and presence';
+    return 'Recurring reflections';
+  }
+  if (action === 'shift_narrative') {
+    const earlier = (period1Excerpts ?? []).filter(Boolean).length;
+    const later = (period2Excerpts ?? []).filter(Boolean).length;
+    return `Earlier entries and later entries are both present (${earlier} earlier, ${later} later). What do you notice changing between them?`;
+  }
+  const text = (excerpts ?? []).join(' ').toLowerCase();
+  if (/tired|exhausted|weary|rest/.test(text)) return 'Where do you notice the need for rest most clearly?';
+  if (/worry|worried|anxious|tomorrow/.test(text)) return 'What does tomorrow seem to be carrying for you today?';
+  if (/alone|lonely|forsaken/.test(text)) return 'Where does loneliness feel most present right now?';
+  return 'What are you noticing beneath the surface today?';
 }

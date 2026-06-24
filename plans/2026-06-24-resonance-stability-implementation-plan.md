@@ -68,6 +68,6 @@ Date: 2026-06-24
   - auth cookie creation
   - health reports DeepSeek model and transparent resonance fallback
   - settings reports `llmModel: deepseek-v4-pro`
-  - `/api/reflect` returns text from `deepseek/deepseek-v4-pro`
+  - `/api/reflect` returns text from `deepseek/deepseek-v4-pro`; if the provider returns empty content, the route returns an explicit deterministic fallback with `fallback: true` instead of a broken 500
   - `/api/resonance` returns non-empty Scripture + voice cards via fallback
   - journal upsert/fetch persists the smoke segment
