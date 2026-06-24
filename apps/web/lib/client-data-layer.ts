@@ -245,9 +245,33 @@ export class WebDataLayer implements DataLayer {
 
   async findResonance(journalText: string): Promise<ResonanceResult | null> {
     if (journalText.trim().length < 12) return null;
+
+    // 1. Embed the journal text via /api/embed (Xenova/gte-small in-browser or server-side)
+    let vector: number[] | undefined;
+    let model = 'gte-small';
+    try {
+      const embedResult = await api<{ vector: number[]; dim: number; model: string }>('/api/embed', {
+        method: 'POST',
+        body: JSON.stringify({ text: journalText }),
+      });
+      if (embedResult.vector && embedResult.vector.length > 0) {
+        vector = embedResult.vector;
+        model = embedResult.model || model;
+      }
+    } catch (err) {
+      console.warn('[resonance] Embedding call failed, will use lexical fallback:', err);
+    }
+
+    // 2. Send vector + text to /api/resonance — semantic when vector is available, lexical fallback otherwise
+    const body: Record<string, unknown> = { text: journalText };
+    if (vector) {
+      body.vector = vector;
+      body.model = model;
+    }
+
     const data = await api<ResonanceResult>('/api/resonance', {
       method: 'POST',
-      body: JSON.stringify({ text: journalText }),
+      body: JSON.stringify(body),
     });
     return data;
   }
