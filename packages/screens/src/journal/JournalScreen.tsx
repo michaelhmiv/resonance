@@ -31,9 +31,11 @@ interface VerseOfDay {
 interface JournalScreenProps {
   /** Callback to fetch verse of the day (platform-specific: web hits /api, mobile hits local DB) */
   fetchVerseOfDay?: () => Promise<VerseOfDay | null>;
+  /** Navigate to a book in the Word tab (web: router.push, mobile: tab switch) */
+  onNavigateToBook?: (bookId: string) => void;
 }
 
-export function JournalScreen({ fetchVerseOfDay }: JournalScreenProps): ReactNode {
+export function JournalScreen({ fetchVerseOfDay, onNavigateToBook }: JournalScreenProps): ReactNode {
   const dataLayer = useDataLayer();
   const [segments, setSegments] = useState<JournalSegment[]>([]);
   const [verseOfDay, setVerseOfDay] = useState<VerseOfDay | null>(null);
@@ -207,7 +209,7 @@ export function JournalScreen({ fetchVerseOfDay }: JournalScreenProps): ReactNod
                     <Text style={styles.resonanceText}>Finding resonance…</Text>
                   </View>
                 ) : hasResonance ? (
-                  <ResonanceCardGroup result={hasResonance} />
+                  <ResonanceCardGroup result={hasResonance} onNavigateToBook={onNavigateToBook} />
                 ) : (
                   <Text style={styles.resonanceText}>No matching passages found.</Text>
                 )}
@@ -245,7 +247,7 @@ export function JournalScreen({ fetchVerseOfDay }: JournalScreenProps): ReactNod
 
 // ── Resonance card group (rendered beneath each expanded ✦) ──────────────
 
-function ResonanceCardGroup({ result }: { result: ResonanceResult }): ReactNode {
+function ResonanceCardGroup({ result, onNavigateToBook }: { result: ResonanceResult; onNavigateToBook?: (bookId: string) => void }): ReactNode {
   const scripture = result.scripture ?? [];
   const voices = result.voices ?? [];
   const pastEntries = result.pastEntries ?? [];
@@ -256,14 +258,14 @@ function ResonanceCardGroup({ result }: { result: ResonanceResult }): ReactNode 
 
   return (
     <View style={styles.cardGroup}>
-      <CardSection label="Scripture" cards={scripture.slice(0, 1)} />
-      <CardSection label="Voices" cards={voices.slice(0, 1)} />
-      <CardSection label="Where you were" cards={pastEntries.slice(0, 1)} />
+      <CardSection label="Scripture" cards={scripture.slice(0, 1)} onNavigateToBook={onNavigateToBook} />
+      <CardSection label="Voices" cards={voices.slice(0, 1)} onNavigateToBook={onNavigateToBook} />
+      <CardSection label="Where you were" cards={pastEntries.slice(0, 1)} onNavigateToBook={onNavigateToBook} />
     </View>
   );
 }
 
-function CardSection({ label, cards }: { label: string; cards: ResonanceCard[] }): ReactNode | null {
+function CardSection({ label, cards, onNavigateToBook }: { label: string; cards: ResonanceCard[]; onNavigateToBook?: (bookId: string) => void }): ReactNode | null {
   if (cards.length === 0) return null;
   return (
     <View style={styles.cardSection}>
@@ -272,6 +274,11 @@ function CardSection({ label, cards }: { label: string; cards: ResonanceCard[] }
         <View key={i} style={styles.resonanceCard}>
           <Text style={styles.resonanceQuote}>"{card.text}"</Text>
           <Text style={styles.resonanceSource}>{card.source}</Text>
+          {onNavigateToBook && card.bookId ? (
+            <Pressable onPress={() => onNavigateToBook(card.bookId)} style={styles.readMoreBtn}>
+              <Text style={styles.readMoreText}>Read in Word →</Text>
+            </Pressable>
+          ) : null}
         </View>
       ))}
     </View>
@@ -310,6 +317,8 @@ const styles = StyleSheet.create({
   resonanceCard: { borderWidth: 1, borderColor: '#e8e5e0', backgroundColor: '#ffffff', borderRadius: 8, padding: 12, gap: 4 },
   resonanceQuote: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontStyle: 'italic', fontSize: 14, lineHeight: 20, color: '#3a3530' },
   resonanceSource: { fontFamily: 'Inter, sans-serif', fontSize: 10, color: '#9a9388' },
+  readMoreBtn: { alignSelf: 'flex-end', paddingTop: 4 },
+  readMoreText: { fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#8b7355', fontWeight: '500' },
   resonanceHint: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   resonanceText: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontStyle: 'italic', fontSize: 13, color: '#9a9388' },
 
