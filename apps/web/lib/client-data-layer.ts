@@ -171,15 +171,22 @@ export class WebDataLayer implements DataLayer {
 
   async saveSegment(segment: JournalSegment): Promise<void> {
     if (segment.segment_type !== 'text') return;
-    await api('/api/journal/entries', {
-      method: 'POST',
-      body: JSON.stringify({
-        id: segment.id,
-        text: segment.text ?? '',
-        created_at: Math.floor(segment.created_at / 1000),
-        updated_at: Math.floor(segment.updated_at / 1000),
-      }),
-    });
+    // NOTE: id is omitted — Supabase journal_entries.id is UUID type.
+    // Client-generated string IDs (e.g. "1750834593-k4jf8x2a") are rejected.
+    // Let Supabase auto-generate the UUID; the response includes it.
+    const entry = await api<{ id: string; text: string; created_at: string; updated_at: string }>(
+      '/api/journal/entries',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          text: segment.text ?? '',
+          created_at: Math.floor(segment.created_at / 1000),
+          updated_at: Math.floor(segment.updated_at / 1000),
+        }),
+      },
+    );
+    // Return the server-generated UUID so the caller can update optimistic state
+    return entry as unknown as void;
   }
 
   async deleteSegment(id: string): Promise<void> {

@@ -114,13 +114,21 @@ export function JournalScreen({ fetchVerseOfDay }: JournalScreenProps): ReactNod
         position_index: 0,
         parent_date: new Date(now).toISOString().slice(0, 10),
       };
-      await dataLayer.saveSegment(segment);
-      setSegments([segment, ...segments]);
+
+      // Save to backend — Supabase generates the real UUID.
+      // Cast the response: saveSegment returns void in the interface but
+      // WebDataLayer actually resolves with the saved entry object.
+      const saved = await (dataLayer.saveSegment(segment) as Promise<{ id: string } | undefined>);
+      const serverId = saved?.id ?? segId;
+
+      // Use server ID for state keying
+      const savedSegment: JournalSegment = { ...segment, id: serverId };
+      setSegments([savedSegment, ...segments]);
       setCurrentText('');
 
       // Auto-load resonance for the new entry and expand the footnote
-      loadResonance(segId, segment.text!);
-      setExpandedFootnotes(prev => new Set(prev).add(segId));
+      loadResonance(serverId, savedSegment.text!);
+      setExpandedFootnotes(prev => new Set(prev).add(serverId));
     } finally {
       setSaving(false);
     }
