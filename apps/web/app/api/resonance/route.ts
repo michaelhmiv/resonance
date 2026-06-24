@@ -136,11 +136,15 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
         for (let i = 0; i < raw.length; i++) {
           buffer[offset + i] = gmin + (raw[i] / 255.0) * range;
         }
-      } else {
+      } else if (manifest.dtype === 'int8') {
         // Native int8: de-quantize by dividing by 127 (Perplexity native format)
         for (let i = 0; i < raw.length; i++) {
           buffer[offset + i] = raw[i] / 127.0;
         }
+      } else {
+        // float32 (default, e.g. GTE-small): read buffer directly as Float32Array
+        const floats = new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4);
+        buffer.set(floats, offset);
       }
     }
 
