@@ -559,7 +559,10 @@ export function ReadingView({
                   ]}
                 >
                   {isScripture && passage.verse_start != null && (
-                    <Text style={styles.verseNumber}>
+                    <Text
+                      selectable={false}
+                      style={styles.verseNumber}
+                    >
                       {passage.verse_start}
                       {passage.verse_end != null &&
                       passage.verse_end !== passage.verse_start
@@ -567,7 +570,12 @@ export function ReadingView({
                         : ''}
                     </Text>
                   )}
-                  <Text style={[styles.verseText, { fontSize: fontSizeMap[fontSize] || 17 }]}>{passage.text}</Text>
+                  <Text
+                    selectable={false}
+                    style={[styles.verseText, { fontSize: fontSizeMap[fontSize] || 17 }]}
+                  >
+                    {passage.text}
+                  </Text>
                 </View>
               </Pressable>
 
@@ -637,7 +645,12 @@ export function ReadingView({
                     highlight ? { backgroundColor: highlight + '33' } : null,
                   ]}
                 >
-                  <Text style={[styles.verseText, { fontSize: fontSizeMap[fontSize] || 17 }]}>{passage.text}</Text>
+                  <Text
+                    selectable={false}
+                    style={[styles.verseText, { fontSize: fontSizeMap[fontSize] || 17 }]}
+                  >
+                    {passage.text}
+                  </Text>
                 </View>
               </Pressable>
 
@@ -871,6 +884,8 @@ const styles = StyleSheet.create({
     ...serifText,
     flex: 1,
     color: colors.textPrimary,
+    // @ts-expect-error — web-only CSS property to prevent native text selection
+    userSelect: 'none',
   },
   annotationWrap: {
     marginLeft: 30,
