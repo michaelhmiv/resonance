@@ -1,24 +1,18 @@
 /**
  * Journal page — the primary writing surface (web version).
  *
- * Persists entries via /api/journal/entries. Verse of the day loads from
- * /api/bible/verse-of-day. Resonance cards appear after saving, calling
- * /api/embed then /api/resonance. Reflection prompts via /api/reflect.
+ * All data access goes through the DataLayer contract — no direct API
+ * calls. Persists via saveSegment, loads via loadSegments, reflects via
+ * generateReflectionPrompt, resonance via findResonance.
  */
 
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { StyleSheet, Text, TextInput, View, Pressable, ActivityIndicator } from 'react-native-web';
-import { DataLayerProvider } from '@resonance/core/data-layer-context';
-import { useDataLayer } from '@resonance/core/data-layer-context';
+import { DataLayerProvider, useDataLayer } from '@resonance/core/data-layer-context';
+import type { JournalSegment, ResonanceCard } from '@resonance/core';
 import { WebDataLayer } from '../../lib/client-data-layer';
-
-interface JournalEntry {
-  id: string;
-  text: string;
-  created_at: number;
-}
 
 interface VerseOfDay {
   book: string;
@@ -29,18 +23,9 @@ interface VerseOfDay {
   ref: string;
 }
 
-interface ResonanceCard {
-  passageId: number;
-  text: string;
-  source: string;
-  translation: string | null;
-  similarity: number;
-  kind: 'scripture' | 'voice' | 'past_entry';
-}
-
-export default function JournalPage(): ReactNode {
-  const dataLayer = useMemo(() => new WebDataLayer(), []);
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
+function JournalInner(): ReactNode {
+  const dataLayer = useDataLayer();
+  const [segments, setSegments] = useState<JournalSegment[]>([]);
   const [verseOfDay, setVerseOfDay] = useState<VerseOfDay | null>(null);
   const [currentText, setCurrentText] = useState('');
   const [loading, setLoading] = useState(true);
@@ -54,14 +39,14 @@ export default function JournalPage(): ReactNode {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/journal/entries').then(r => r.json()).then(d => d.entries || []).catch(() => []),
+      dataLayer.loadSegments(),
       fetch('/api/bible/verse-of-day').then(r => r.json()).catch(() => null),
-    ]).then(([ents, vod]) => {
-      setEntries(ents);
+    ]).then(([segs, vod]) => {
+      setSegments(segs);
       if (vod) setVerseOfDay(vod);
       setLoading(false);
     });
-  }, []);
+  }, [dataLayer]);
 
   const handleSave = useCallback(async () => {
     if (currentText.trim().length === 0) return;
@@ -69,19 +54,24 @@ export default function JournalPage(): ReactNode {
     setResonance(null);
     setReflection(null);
     try {
-      const res = await fetch('/api/journal/entries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: currentText.trim() }),
-      });
-      const entry = await res.json();
-      setEntries([entry, ...entries]);
+      const now = Date.now();
+      const segment: JournalSegment = {
+        id: crypto.randomUUID?.() ?? `${now}-${Math.random().toString(36).slice(2, 10)}`,
+        created_at: now,
+        updated_at: now,
+        segment_type: 'text',
+        text: currentText.trim(),
+        position_index: 0,
+        parent_date: new Date(now).toISOString().slice(0, 10),
+      };
+      await dataLayer.saveSegment(segment);
+      setSegments([segment, ...segments]);
       setCurrentText('');
 
       // Fire resonance via DataLayer (embeds text first for semantic search)
       setFindingResonance(true);
       try {
-        const data = await dataLayer.findResonance(entry.text);
+        const data = await dataLayer.findResonance(segment.text!);
         setResonance(data);
       } catch {
         // Resonance is best-effort
@@ -91,34 +81,32 @@ export default function JournalPage(): ReactNode {
     } finally {
       setSaving(false);
     }
-  }, [currentText, entries]);
+  }, [currentText, segments, dataLayer]);
 
   const handleDelete = useCallback(async (id: string) => {
-    await fetch(`/api/journal/entries/${id}`, { method: 'DELETE' });
-    setEntries(entries.filter(e => e.id !== id));
-  }, [entries]);
+    await dataLayer.deleteSegment(id);
+    setSegments(segments.filter(s => s.id !== id));
+  }, [segments, dataLayer]);
 
   const handleReflect = useCallback(async () => {
-    if (entries.length === 0) return;
+    if (segments.length === 0) return;
     setReflecting(true);
     setReflection(null);
     try {
-      const recentTexts = entries.slice(0, 3).map(e => e.text);
-      const res = await fetch('/api/reflect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reflection_prompt', excerpts: recentTexts }),
-      });
-      const data = await res.json();
-      if (data.text) setReflection(data.text);
+      const excerpts = segments.filter(s => s.text).slice(0, 3).map(s => s.text!);
+      const result = await dataLayer.generateReflectionPrompt(excerpts);
+      if (result?.prompt) setReflection(result.prompt);
     } catch {
       // Best-effort
     } finally {
       setReflecting(false);
     }
-  }, [entries]);
+  }, [segments, dataLayer]);
 
   if (loading) return <LoadingState />;
+
+  const hasEntries = segments.length > 0;
+  const textSegments = segments.filter(s => s.segment_type === 'text' && s.text);
 
   return (
     <View style={styles.container}>
@@ -138,10 +126,10 @@ export default function JournalPage(): ReactNode {
       )}
 
       {/* ── Past entries ─────────────────────────────────────── */}
-      {entries.map((entry) => (
-        <View key={entry.id} style={styles.entryBlock}>
-          <Text style={styles.entryText}>{entry.text}</Text>
-          <Pressable onPress={() => handleDelete(entry.id)} style={styles.deleteBtn}>
+      {textSegments.map((seg) => (
+        <View key={seg.id} style={styles.entryBlock}>
+          <Text style={styles.entryText}>{seg.text}</Text>
+          <Pressable onPress={() => handleDelete(seg.id)} style={styles.deleteBtn}>
             <Text style={styles.deleteText}>Delete</Text>
           </Pressable>
         </View>
@@ -173,7 +161,7 @@ export default function JournalPage(): ReactNode {
       )}
 
       {/* ── Reflection prompt ─────────────────────────────────── */}
-      {entries.length > 0 && (
+      {hasEntries && (
         <Pressable onPress={handleReflect} style={styles.reflectButton} disabled={reflecting}>
           <Text style={styles.reflectText}>
             {reflecting ? 'Reflecting…' : reflection ? 'Reflect again' : 'Reflect'}
@@ -202,6 +190,15 @@ export default function JournalPage(): ReactNode {
         </Pressable>
       )}
     </View>
+  );
+}
+
+export default function JournalPage(): ReactNode {
+  const dataLayer = useMemo(() => new WebDataLayer(), []);
+  return (
+    <DataLayerProvider layer={dataLayer}>
+      <JournalInner />
+    </DataLayerProvider>
   );
 }
 

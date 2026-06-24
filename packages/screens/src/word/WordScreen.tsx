@@ -42,6 +42,16 @@ export function WordScreen({ onOpenSettings }: WordScreenProps): ReactNode {
   const [totalChapters, setTotalChapters] = useState(1);
   const dataLayer = useDataLayer();
 
+  // Load saved translation preference on mount
+  useEffect(() => {
+    dataLayer.getSettings().then((settings) => {
+      const savedTranslation = settings?.translation;
+      if (savedTranslation === 'kjv' || savedTranslation === 'web') {
+        setTranslation(savedTranslation.toUpperCase() as Translation);
+      }
+    }).catch(() => {});
+  }, [dataLayer]);
+
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const openScriptureChapter = useCallback(

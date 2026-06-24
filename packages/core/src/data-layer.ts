@@ -59,10 +59,13 @@ export interface DataLayer {
   removeBookmark(verseRef: string): Promise<void>;
   getBookmarks(): Promise<Bookmark[]>;
   getCrossReferences(verseRef: string): Promise<string[]>;
+  recordReadingEvent(bookId: string, chapter: number, verseRef: string, timestamp: number): Promise<void>;
+  getReadingHistory(startDate: string, endDate: string): Promise<{ date: string; count: number }[]>;
 
   // ── Resonance ──────────────────────────────────────────────────────────
   findResonance(journalText: string): Promise<ResonanceResult | null>;
   storeSegmentVector(segmentId: string, text: string): Promise<void>;
+  appendQuoteToJournal(quote: string, source: string): Promise<void>;
 
   // ── Patterns ───────────────────────────────────────────────────────────
   clusterEntries(segments: JournalSegment[]): Promise<EntryCluster[]>;
@@ -78,4 +81,5 @@ export interface DataLayer {
   // ── Settings ───────────────────────────────────────────────────────────
   getActiveEmbeddingModel(): Promise<EmbeddingModelId>;
   setActiveEmbeddingModel(id: EmbeddingModelId): Promise<void>;
+  getSettings(): Promise<Record<string, string>>;
 }

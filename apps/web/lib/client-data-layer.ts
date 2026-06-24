@@ -281,6 +281,28 @@ export class WebDataLayer implements DataLayer {
     // cloud/Supabase DataLayer replaces the temporary JSON store.
   }
 
+  async appendQuoteToJournal(quote: string, source: string): Promise<void> {
+    const formatted = `"${quote}"\n\n— ${source}`;
+    await api('/api/journal/entries', {
+      method: 'POST',
+      body: JSON.stringify({ text: formatted }),
+    });
+  }
+
+  async recordReadingEvent(bookId: string, chapter: number, verseRef: string, timestamp: number): Promise<void> {
+    await api('/api/reading/events', {
+      method: 'POST',
+      body: JSON.stringify({ bookId, chapter, verseRef, timestamp }),
+    });
+  }
+
+  async getReadingHistory(startDate: string, endDate: string): Promise<{ date: string; count: number }[]> {
+    const data = await api<{ events: { date: string; count: number }[] }>(
+      `/api/reading/events?start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}`
+    );
+    return data.events || [];
+  }
+
   async clusterEntries(segments: JournalSegment[]): Promise<EntryCluster[]> {
     const textSegments = segments.filter((s) => s.segment_type === 'text' && (s.text ?? '').trim().length > 12);
     const byWord = new Map<string, JournalSegment[]>();
@@ -345,4 +367,10 @@ export class WebDataLayer implements DataLayer {
   }
   async getActiveEmbeddingModel(): Promise<EmbeddingModelId> { return 'gte-small'; }
   async setActiveEmbeddingModel(_id: EmbeddingModelId): Promise<void> {}
+  async getSettings(): Promise<Record<string, string>> {
+    try {
+      const data = await api<Record<string, string>>('/api/settings');
+      return data || {};
+    } catch { return {}; }
+  }
 }

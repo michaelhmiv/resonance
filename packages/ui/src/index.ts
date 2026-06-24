@@ -4,6 +4,7 @@ export { HighlightToolbar } from './HighlightToolbar';
 export { TranslationSelector } from './TranslationSelector';
 export { CrossReferenceLinks } from './CrossReferenceLinks';
 export { BookmarkButton } from './BookmarkButton';
+export { SendToJournalButton } from './SendToJournalButton';
 export { ResonanceCardGroup } from './ResonanceCardGroup';
 export {
   WindIcon,

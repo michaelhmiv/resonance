@@ -52,6 +52,7 @@ import { useDataLayer } from '@resonance/core/data-layer-context';
 import { HighlightToolbar } from '@resonance/ui';
 import { CrossReferenceLinks } from '@resonance/ui';
 import { BookmarkButton } from '@resonance/ui';
+import { SendToJournalButton } from '@resonance/ui';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -168,6 +169,13 @@ export function ReadingView({
     return () => {
       cancelled = true;
     };
+  }, [mode, dataLayer]);
+
+  // ── Record reading event (background, fire-and-forget) ─────────────────
+  useEffect(() => {
+    if (mode.kind !== 'scripture') return;
+    const ref = `${mode.bookName} ${mode.chapter}`;
+    dataLayer.recordReadingEvent(mode.bookName, mode.chapter, ref, Date.now()).catch(() => {});
   }, [mode, dataLayer]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
@@ -365,6 +373,9 @@ export function ReadingView({
               {xrefs.length > 0 && (
                 <CrossReferenceLinks refs={xrefs} onPress={handleCrossRefPress} />
               )}
+              <View style={styles.sendToJournalRow}>
+                <SendToJournalButton quote={passage.text} source={ref} />
+              </View>
             </View>
           );
         }}
@@ -634,5 +645,9 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.sansSemibold,
     fontSize: 15,
     color: colors.surface,
+  },
+  sendToJournalRow: {
+    marginTop: spacing.xs,
+    paddingLeft: spacing.xs,
   },
 });
