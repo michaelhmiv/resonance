@@ -118,7 +118,14 @@ export interface Bookmark {
 }
 
 export type HighlightMap = Record<string, string>;
-export type AnnotationMap = Record<string, string>;
+
+export interface AnnotationNote {
+  id: string;
+  text: string;
+  created_at: string;
+}
+
+export type AnnotationMap = Record<string, AnnotationNote[]>;
 
 // ── Resonance ───────────────────────────────────────────────────────────────
 

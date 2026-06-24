@@ -6,7 +6,8 @@
  * tap pairs of verses to highlight a range, or annotate selected verses.
  * Cross-references appear as quiet marginal links after verses.
  *
- * Bottom nav bar keeps chapter navigation at thumb level on mobile.
+ * Bottom chrome is fixed to the viewport so navigation and tools are
+ * always accessible regardless of scroll position.
  *
  * (design spec §6.3 — highlight, annotate, bookmark, cross-references;
  *  §6.1 — translation selector and chapter nav)
@@ -49,6 +50,7 @@ import {
   type LibraryPassage,
   type LibraryBook,
   type HighlightMap,
+  type AnnotationNote,
   type AnnotationMap,
 } from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
@@ -59,7 +61,6 @@ import { BookmarkButton } from '@resonance/ui';
 import { CrossRefInline } from './CrossRefInline';
 
 // ── Types ───────────────────────────────────────────────────────────────────
-
 
 function scriptureRef(
   bookName: string,
@@ -112,10 +113,13 @@ export function ReadingView({
   const [highlightMode, setHighlightMode] = useState(false);
   const [activeColor, setActiveColor] = useState<string>(colors.highlightGold);
   const [rangeStart, setRangeStart] = useState<string | null>(null);
+  /** The currently "selected" verse for annotation — persists after highlight completes. */
+  const [activeTarget, setActiveTarget] = useState<string | null>(null);
 
   // ── Annotation modal ─────────────────────────────────────────────────
   const [annotationModal, setAnnotationModal] = useState<{
     ref: string;
+    noteId?: string;
     text: string;
   } | null>(null);
   const [annotationDraft, setAnnotationDraft] = useState('');
@@ -145,6 +149,7 @@ export function ReadingView({
     setExpandedAnnotations(new Set());
     setHighlightMode(false);
     setRangeStart(null);
+    setActiveTarget(null);
 
     const loadData = async () => {
       let resultPassages: (VersePassage | LibraryPassage)[] = [];
@@ -332,12 +337,20 @@ export function ReadingView({
       if (!highlightMode) return;
 
       if (rangeStart === null) {
-        // First tap — set range start
+        // First tap — set range start + active target
         setRangeStart(ref);
+        setActiveTarget(ref);
+      } else if (rangeStart === ref) {
+        // Same verse tapped again — highlight single verse
+        applyRangeHighlight(ref, ref);
+        setRangeStart(null);
+        // activeTarget stays on this verse so ✏️ works
       } else {
-        // Second tap — complete the range
+        // Second tap on different verse — complete the range
         applyRangeHighlight(rangeStart, ref);
         setRangeStart(null);
+        // Keep activeTarget on the first verse of the range
+        setActiveTarget(rangeStart);
       }
     },
     [highlightMode, rangeStart, applyRangeHighlight]
@@ -346,54 +359,112 @@ export function ReadingView({
   // ── Annotation ──────────────────────────────────────────────────────────
 
   const handleAnnotate = useCallback(() => {
-    if (!rangeStart) return; // nothing targeted yet
-    const existing = annotationMap[rangeStart] ?? '';
-    setAnnotationDraft(existing);
-    setAnnotationModal({ ref: rangeStart, text: existing });
-  }, [rangeStart, annotationMap]);
+    if (!activeTarget) return;
+    // Open modal for a NEW note on the active target
+    setAnnotationDraft('');
+    setAnnotationModal({ ref: activeTarget, text: '' });
+  }, [activeTarget]);
+
+  const handleEditNote = useCallback((ref: string, noteId: string, text: string) => {
+    setAnnotationDraft(text);
+    setAnnotationModal({ ref, noteId, text });
+  }, []);
 
   const handleSaveAnnotation = useCallback(async () => {
     if (!annotationModal) return;
-    const ref = annotationModal.ref;
-    const prevAnnotation = annotationMap[ref];
+    const { ref, noteId } = annotationModal;
+    const text = annotationDraft.trim();
+    if (text.length === 0) {
+      if (!noteId) return; // Don't save empty new notes
+    }
+
+    const isEdit = !!noteId;
+
+    // Optimistic update
     setAnnotationMap((prev) => {
       const next = { ...prev };
-      if (annotationDraft.trim().length > 0) {
-        next[ref] = annotationDraft;
+      const existing = [...(next[ref] || [])];
+
+      if (isEdit) {
+        // Update existing note
+        const idx = existing.findIndex((n) => n.id === noteId);
+        if (idx >= 0) {
+          if (text.length > 0) {
+            existing[idx] = { ...existing[idx], text };
+          } else {
+            existing.splice(idx, 1); // Empty text = delete
+          }
+        }
+      } else {
+        // Append new note (optimistic ID)
+        existing.push({
+          id: 'pending-' + Date.now(),
+          text,
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      next[ref] = existing;
+      if (existing.length === 0) delete next[ref];
+      return next;
+    });
+
+    setAnnotationModal(null);
+    setExpandedAnnotations((prev) => {
+      const next = new Set(prev);
+      next.add(ref);
+      return next;
+    });
+
+    // Persist in background
+    try {
+      if (isEdit) {
+        if (text.length > 0) {
+          await dataLayer.updateAnnotation(noteId, text);
+        } else {
+          await dataLayer.deleteAnnotation(noteId);
+        }
+      } else {
+        await dataLayer.saveAnnotation(ref, translation, text);
+      }
+    } catch (err) {
+      console.error('[ReadingView] saveAnnotation failed:', err);
+    }
+  }, [annotationModal, annotationDraft, translation, dataLayer]);
+
+  const handleDeleteNote = useCallback(async (ref: string, noteId: string) => {
+    // Optimistic removal
+    setAnnotationMap((prev) => {
+      const next = { ...prev };
+      const existing = (next[ref] || []).filter((n) => n.id !== noteId);
+      if (existing.length > 0) {
+        next[ref] = existing;
       } else {
         delete next[ref];
       }
       return next;
     });
-    setAnnotationModal(null);
+
+    // Persist in background
     try {
-      await dataLayer.saveAnnotation(ref, translation, annotationDraft);
-      setExpandedAnnotations((prev) => {
-        const next = new Set(prev);
-        next.add(ref);
-        return next;
-      });
+      await dataLayer.deleteAnnotation(noteId);
     } catch (err) {
-      console.error('[ReadingView] saveAnnotation failed:', err);
-      setAnnotationMap((prev) => {
-        const next = { ...prev };
-        if (prevAnnotation) next[ref] = prevAnnotation;
-        else delete next[ref];
-        return next;
-      });
+      console.error('[ReadingView] deleteNote failed:', err);
     }
-  }, [annotationModal, annotationDraft, translation, annotationMap, dataLayer]);
+  }, [dataLayer]);
 
   // ── Toggle highlight mode ───────────────────────────────────────────────
 
   const handleToggleHighlight = useCallback(() => {
     setHighlightMode((prev) => !prev);
     setRangeStart(null);
+    setActiveTarget(null);
   }, []);
 
   const handleExitHighlight = useCallback(() => {
     setHighlightMode(false);
     setRangeStart(null);
+    setActiveTarget(null);
   }, []);
 
   // ── Library sections (pseudo-chapters, batches of 25) ──────────────────
@@ -465,8 +536,11 @@ export function ReadingView({
 
   const fontSizeMap: Record<string, number> = { small: 15, medium: 17, large: 19 };
 
-  // ── Range-start label for pill ──────────────────────────────────────────
+  // ── Derive display values ────────────────────────────────────────────────
+
   const rangeStartLabel = rangeStart ?? undefined;
+  /** Minimum 44px touch target size (Apple HIG). */
+  const TOUCH_MIN = 44;
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -477,6 +551,72 @@ export function ReadingView({
       </View>
     );
   }
+
+  /** Render annotation notes for a verse ref. */
+  const renderAnnotations = (ref: string) => {
+    const notes = annotationMap[ref];
+    if (!notes || notes.length === 0) return null;
+
+    const isExpanded = expandedAnnotations.has(ref);
+    const noteCount = notes.length;
+
+    return (
+      <View style={styles.annotationWrap}>
+        <Pressable
+          onPress={() => {
+            setExpandedAnnotations((prev) => {
+              const next = new Set(prev);
+              if (next.has(ref)) next.delete(ref);
+              else next.add(ref);
+              return next;
+            });
+          }}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={isExpanded ? 'Collapse notes' : `Expand ${noteCount} note${noteCount > 1 ? 's' : ''}`}
+        >
+          <Text style={styles.annotationToggle}>
+            {isExpanded ? '▾' : '▸'} {noteCount > 1 ? `${noteCount} notes` : 'note'}
+          </Text>
+        </Pressable>
+
+        {isExpanded ? (
+          <View style={styles.notesList}>
+            {notes.map((note) => (
+              <View key={note.id} style={styles.noteCard}>
+                <View style={styles.noteContent}>
+                  <Text style={styles.annotationText}>{note.text}</Text>
+                  <Text style={styles.noteTimestamp}>
+                    {formatNoteDate(note.created_at)}
+                  </Text>
+                </View>
+                <View style={styles.noteActions}>
+                  <Pressable
+                    onPress={() => handleEditNote(ref, note.id, note.text)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit note"
+                    style={styles.noteActionBtn}
+                  >
+                    <Text style={styles.noteActionIcon}>✏️</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleDeleteNote(ref, note.id)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Delete note"
+                    style={styles.noteActionBtn}
+                  >
+                    <Text style={styles.noteActionIcon}>✕</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -515,8 +655,9 @@ export function ReadingView({
           renderItem={({ item: passage }) => {
             const ref = verseRefFor(passage);
             const highlight = highlightMap[ref];
-            const annotation = annotationMap[ref];
+            const isActiveTarget = highlightMode && activeTarget === ref;
             const isRangeStart = highlightMode && rangeStart === ref;
+            const hasAnnotations = annotationMap[ref] && annotationMap[ref].length > 0;
 
             return (
               <View style={styles.verseBlock}>
@@ -529,6 +670,7 @@ export function ReadingView({
                       styles.verseContent,
                       highlight ? { backgroundColor: highlight + '33' } : null,
                       isRangeStart && styles.verseRangeStart,
+                      isActiveTarget && !isRangeStart && styles.verseActiveTarget,
                       highlightMode && styles.verseHighlightable,
                     ]}
                   >
@@ -553,29 +695,7 @@ export function ReadingView({
                   </View>
                 </Pressable>
 
-                {annotation ? (
-                  <View style={styles.annotationWrap}>
-                    <Pressable
-                      onPress={() => {
-                        setExpandedAnnotations((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(ref)) next.delete(ref);
-                          else next.add(ref);
-                          return next;
-                        });
-                      }}
-                      hitSlop={6}
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.annotationToggle}>
-                        {expandedAnnotations.has(ref) ? '▾' : '▸'} note
-                      </Text>
-                    </Pressable>
-                    {expandedAnnotations.has(ref) ? (
-                      <Text style={styles.annotationText}>{annotation}</Text>
-                    ) : null}
-                  </View>
-                ) : null}
+                {renderAnnotations(ref)}
 
                 <CrossRefInline
                   verseRef={ref}
@@ -602,7 +722,7 @@ export function ReadingView({
           renderItem={({ item: passage }) => {
             const ref = verseRefFor(passage);
             const highlight = highlightMap[ref];
-            const annotation = annotationMap[ref];
+            const isActiveTarget = highlightMode && activeTarget === ref;
             const isRangeStart = highlightMode && rangeStart === ref;
 
             return (
@@ -616,6 +736,7 @@ export function ReadingView({
                       styles.verseContent,
                       highlight ? { backgroundColor: highlight + '33' } : null,
                       isRangeStart && styles.verseRangeStart,
+                      isActiveTarget && !isRangeStart && styles.verseActiveTarget,
                       highlightMode && styles.verseHighlightable,
                     ]}
                   >
@@ -628,29 +749,7 @@ export function ReadingView({
                   </View>
                 </Pressable>
 
-                {annotation ? (
-                  <View style={styles.annotationWrap}>
-                    <Pressable
-                      onPress={() => {
-                        setExpandedAnnotations((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(ref)) next.delete(ref);
-                          else next.add(ref);
-                          return next;
-                        });
-                      }}
-                      hitSlop={6}
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.annotationToggle}>
-                        {expandedAnnotations.has(ref) ? '▾' : '▸'} note
-                      </Text>
-                    </Pressable>
-                    {expandedAnnotations.has(ref) ? (
-                      <Text style={styles.annotationText}>{annotation}</Text>
-                    ) : null}
-                  </View>
-                ) : null}
+                {renderAnnotations(ref)}
               </View>
             );
           }}
@@ -658,7 +757,7 @@ export function ReadingView({
         />
       )}
 
-      {/* ── Bottom chrome: pill + nav bar ─────────────────────────────── */}
+      {/* ── Bottom chrome: fixed pill + nav bar ───────────────────────── */}
       <View style={styles.bottomChrome}>
         {/* Floating tool pill */}
         <View style={styles.pillContainer}>
@@ -684,7 +783,7 @@ export function ReadingView({
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Previous chapter"
-                  style={styles.chapterNavBtn}
+                  style={[styles.chapterNavBtn, { minWidth: TOUCH_MIN, minHeight: TOUCH_MIN }]}
                 >
                   <Text style={styles.chapterNavText}>◀</Text>
                   <Text style={styles.chapterNavLabel}>Ch</Text>
@@ -698,6 +797,7 @@ export function ReadingView({
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel="Open chapter picker"
+                style={{ minWidth: TOUCH_MIN, minHeight: TOUCH_MIN, justifyContent: 'center', alignItems: 'center' }}
               >
                 <Text style={styles.chapterPos}>
                   {mode.chapter} / {mode.totalChapters}
@@ -710,7 +810,7 @@ export function ReadingView({
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Next chapter"
-                  style={styles.chapterNavBtn}
+                  style={[styles.chapterNavBtn, { minWidth: TOUCH_MIN, minHeight: TOUCH_MIN }]}
                 >
                   <Text style={styles.chapterNavText}>▶</Text>
                   <Text style={styles.chapterNavLabel}>Ch</Text>
@@ -727,7 +827,7 @@ export function ReadingView({
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Previous section"
-                  style={styles.chapterNavBtn}
+                  style={[styles.chapterNavBtn, { minWidth: TOUCH_MIN, minHeight: TOUCH_MIN }]}
                 >
                   <Text style={styles.chapterNavText}>◀</Text>
                 </Pressable>
@@ -743,7 +843,7 @@ export function ReadingView({
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Next section"
-                  style={styles.chapterNavBtn}
+                  style={[styles.chapterNavBtn, { minWidth: TOUCH_MIN, minHeight: TOUCH_MIN }]}
                 >
                   <Text style={styles.chapterNavText}>▶</Text>
                 </Pressable>
@@ -786,7 +886,7 @@ export function ReadingView({
         >
           <View style={styles.annotationSheet}>
             <Text style={styles.annotationTitle}>
-              {annotationModal?.ref}
+              {annotationModal?.noteId ? 'Edit note' : 'New note'} — {annotationModal?.ref}
             </Text>
             <TextInput
               style={styles.annotationInput}
@@ -817,6 +917,26 @@ export function ReadingView({
       </Modal>
     </View>
   );
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatNoteDate(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = now.getTime() - d.getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch {
+    return '';
+  }
 }
 
 // ── Styles ───────────────────────────────────────────────────────────────────
@@ -852,13 +972,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   headerSpacer: {
-    width: 60, // roughly matches back+translation width to keep title centered
+    width: 60,
   },
   passageList: {
     flex: 1,
   },
   passageListContent: {
-    paddingBottom: spacing.xl,
+    paddingBottom: 120, // room for fixed bottom chrome (~100px + breathing room)
   },
   verseBlock: {
     paddingHorizontal: 0,
@@ -873,8 +993,14 @@ const styles = StyleSheet.create({
     // Subtle indicator that verses are tappable in highlight mode
   },
   verseRangeStart: {
-    borderLeftWidth: 2,
+    borderLeftWidth: 3,
     borderLeftColor: colors.accent,
+    borderTopLeftRadius: radii.sm,
+    borderBottomLeftRadius: radii.sm,
+  },
+  verseActiveTarget: {
+    borderLeftWidth: 3,
+    borderLeftColor: colors.textTertiary,
     borderTopLeftRadius: radii.sm,
     borderBottomLeftRadius: radii.sm,
   },
@@ -895,12 +1021,25 @@ const styles = StyleSheet.create({
     // eslint-disable-next-line react-native/no-raw-text
     userSelect: 'none' as any,
   },
+  // ── Annotations ────────────────────────────────────────────────────────
   annotationWrap: {
     marginLeft: 30,
     marginTop: spacing.xs,
     paddingLeft: spacing.sm,
     borderLeftWidth: 2,
-    borderLeftColor: 'transparent',
+    borderLeftColor: colors.border,
+  },
+  notesList: {
+    marginTop: spacing.xs,
+    gap: spacing.xs,
+  },
+  noteCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: spacing.xs,
+  },
+  noteContent: {
+    flex: 1,
   },
   annotationText: {
     fontFamily: fontFamilies.serifItalic,
@@ -909,6 +1048,28 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: colors.textSecondary,
   },
+  noteTimestamp: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 10,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  noteActions: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginLeft: spacing.sm,
+    paddingTop: 2,
+  },
+  noteActionBtn: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: radii.sm,
+  },
+  noteActionIcon: {
+    fontSize: 14,
+  },
   annotationToggle: {
     fontFamily: fontFamilies.sans,
     fontSize: 11,
@@ -916,12 +1077,18 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     marginBottom: 2,
   },
-  // ── Bottom chrome ──────────────────────────────────────────────────
+  // ── Bottom chrome (fixed to viewport) ──────────────────────────────────
   bottomChrome: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
     backgroundColor: colors.background,
     paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
   },
   pillContainer: {
     alignItems: 'flex-end',
@@ -943,6 +1110,7 @@ const styles = StyleSheet.create({
   chapterNavBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.xs,

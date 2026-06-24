@@ -148,17 +148,27 @@ export async function getAnnotations(verseRefPrefix?: string, translation?: stri
 export async function createAnnotation(verseRef: string, translation: string, text: string) {
   const sb = getSupabase();
   const uid = await getDevUserId();
-  if (text.trim().length === 0) {
-    await sb.from('annotations').delete()
-      .eq('user_id', uid)
-      .eq('verse_ref', verseRef)
-      .eq('translation', translation);
-    return { ok: true };
-  }
+  if (text.trim().length === 0) return null;
+  // Always INSERT — never replace. Multi-note per verse is the contract.
   const { data } = await sb.from('annotations')
-    .upsert({ user_id: uid, verse_ref: verseRef, translation, text, updated_at: new Date().toISOString() }, 
-      { onConflict: 'user_id,verse_ref,translation' })
+    .insert({ user_id: uid, verse_ref: verseRef, translation, text, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .select().single();
+  return data;
+}
+
+export async function updateAnnotation(id: string, text: string) {
+  const sb = getSupabase();
+  if (text.trim().length === 0) {
+    // Empty text = delete
+    const { error } = await sb.from('annotations').delete().eq('id', id);
+    if (error) throw error;
+    return { ok: true, deleted: true };
+  }
+  const { data, error } = await sb.from('annotations')
+    .update({ text, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select().single();
+  if (error) throw error;
   return data;
 }
 

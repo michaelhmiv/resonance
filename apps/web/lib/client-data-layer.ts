@@ -219,19 +219,34 @@ export class WebDataLayer implements DataLayer {
   async getAnnotationsForRefs(refs: string[], translation: Translation): Promise<AnnotationMap> {
     if (refs.length === 0) return {};
     const prefix = refs[0].replace(/:\d+.*$/, '');
-    const data = await api<{ annotations: { verse_ref: string; text: string }[] }>(
+    const data = await api<{ annotations: { id: string; verse_ref: string; text: string; created_at: string }[] }>(
       `/api/reading/annotations?verseRef=${encodeURIComponent(prefix)}&translation=${translation}`,
     );
     const wanted = new Set(refs);
     const map: AnnotationMap = {};
     for (const annotation of data.annotations) {
-      if (wanted.has(annotation.verse_ref)) map[annotation.verse_ref] = annotation.text;
+      if (wanted.has(annotation.verse_ref)) {
+        if (!map[annotation.verse_ref]) map[annotation.verse_ref] = [];
+        map[annotation.verse_ref].push({
+          id: annotation.id,
+          text: annotation.text,
+          created_at: annotation.created_at,
+        });
+      }
     }
     return map;
   }
 
   async saveAnnotation(verseRef: string, translation: Translation, text: string): Promise<void> {
     await api('/api/reading/annotations', { method: 'POST', body: JSON.stringify({ verseRef, translation, text }) });
+  }
+
+  async updateAnnotation(annotationId: string, text: string): Promise<void> {
+    await api(`/api/reading/annotations/${annotationId}`, { method: 'PUT', body: JSON.stringify({ text }) });
+  }
+
+  async deleteAnnotation(annotationId: string): Promise<void> {
+    await fetch(`/api/reading/annotations/${annotationId}`, { method: 'DELETE' });
   }
 
   async saveBookmark(verseRef: string, label?: string): Promise<void> {

@@ -20,6 +20,7 @@ import type {
   JournalSegment,
   Highlight,
   Annotation,
+  AnnotationNote,
   Bookmark,
   HighlightMap,
   AnnotationMap,
@@ -55,6 +56,8 @@ export interface DataLayer {
   removeHighlight(verseRef: string): Promise<void>;
   getAnnotationsForRefs(refs: string[], translation: Translation): Promise<AnnotationMap>;
   saveAnnotation(verseRef: string, translation: Translation, text: string): Promise<void>;
+  updateAnnotation(annotationId: string, text: string): Promise<void>;
+  deleteAnnotation(annotationId: string): Promise<void>;
   saveBookmark(verseRef: string, label?: string): Promise<void>;
   removeBookmark(verseRef: string): Promise<void>;
   getBookmarks(): Promise<Bookmark[]>;
