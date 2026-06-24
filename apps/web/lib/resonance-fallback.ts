@@ -22,6 +22,7 @@ export interface ResonanceFallbackCard {
   passageId: number;
   text: string;
   source: string;
+  bookId: string;
   translation: string | null;
   similarity: number;
   kind: 'scripture' | 'voice';
@@ -121,6 +122,7 @@ export function lexicalResonance(
     passageId: p.id,
     text: p.text,
     source: sourceFor(p, kind),
+    bookId: p.book_id ?? '',
     translation: p.translation,
     similarity: boostedScore(queryText, p.text, cosine(q, tf(p.text))),
     kind,

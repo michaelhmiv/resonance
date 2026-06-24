@@ -126,6 +126,7 @@ export interface ResonanceCard {
   passageId: number;
   text: string;
   source: string;
+  bookId: string;
   translation: string | null;
   similarity: number;
   kind: 'scripture' | 'voice' | 'past_entry';

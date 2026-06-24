@@ -30,6 +30,8 @@ interface PassageMeta {
   verse_end: number | null;
   text: string;
   translation: string | null;
+  author: string | null;
+  work: string | null;
 }
 
 interface VectorManifest {
@@ -74,12 +76,14 @@ async function ensureMetadata(): Promise<void> {
       for (const p of data) {
         meta.push({
           id: p.id,
-          book_id: `${p.translation}_${p.book.replace(/\s+/g, '_')}`,
+          book_id: `${p.translation}_${p.book.replace(/\\s+/g, '_')}`,
           chapter: p.chapter,
           verse_start: p.verse_start,
           verse_end: p.verse_end,
           text: p.text,
           translation: p.translation,
+          author: null,
+          work: null,
         });
       }
     }
@@ -96,6 +100,8 @@ async function ensureMetadata(): Promise<void> {
           verse_end: null,
           text: p.text,
           translation: null,
+          author: p.author ?? null,
+          work: p.work ?? null,
         });
       }
     }
@@ -290,6 +296,7 @@ function toCard(
   kind: 'scripture' | 'voice',
 ) {
   let source: string;
+  let bookId: string;
   if (meta.translation) {
     const bookName = meta.book_id.replace(/^[a-z]+_/, '').replace(/_/g, ' ');
     const ref =
@@ -297,14 +304,19 @@ function toCard(
         ? `${bookName} ${meta.chapter ?? ''}:${meta.verse_start}`
         : `${bookName} ${meta.chapter ?? ''}`;
     source = `${ref} (${meta.translation.toUpperCase()})`;
+    bookId = meta.book_id;
   } else {
-    source = meta.book_id;
+    // Voice passage: use author + work for human-readable source
+    const parts = [meta.author, meta.work].filter(Boolean);
+    source = parts.length > 0 ? parts.join(' — ') : meta.book_id;
+    bookId = meta.book_id;
   }
 
   return {
     passageId: meta.id,
     text: meta.text,
     source,
+    bookId,
     translation: meta.translation,
     similarity,
     kind,

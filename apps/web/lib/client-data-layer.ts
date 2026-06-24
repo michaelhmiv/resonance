@@ -254,7 +254,7 @@ export class WebDataLayer implements DataLayer {
   }
 
   async findResonance(journalText: string): Promise<ResonanceResult | null> {
-    if (journalText.trim().length < 12) return null;
+    if (journalText.trim().length < 3) return null;
 
     // 1. Embed the journal text via /api/embed (Xenova/gte-small in-browser or server-side)
     let vector: number[] | undefined;
