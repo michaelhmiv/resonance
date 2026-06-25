@@ -128,6 +128,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // L2-normalize the vector. OpenRouter returns values in [-1, 1] but
+    // does NOT normalize the vector to unit length. The resonance route's
+    // cosine similarity assumes both sides are unit vectors, so we
+    // normalize here at the boundary.
+    let norm = 0;
+    for (const v of vec) norm += v * v;
+    norm = Math.sqrt(norm);
+    if (norm > 0) {
+      for (let i = 0; i < vec.length; i++) vec[i] = vec[i] / norm;
+    }
+
     return NextResponse.json({
       vector: vec,
       dim: DIM,
@@ -137,6 +148,7 @@ export async function POST(req: NextRequest) {
         prompt_tokens: result.usage.prompt_tokens,
         total_tokens: result.usage.total_tokens,
       },
+      normalized: true,
     });
   } catch (err) {
     return NextResponse.json(
