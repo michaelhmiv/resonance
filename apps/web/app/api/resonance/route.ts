@@ -180,7 +180,9 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
           buffer[offset + i] = gmin + (raw[i] / 255.0) * range;
         }
       } else if (manifest.dtype === 'int8') {
-        // Perplexity native int8: signed -128..127, normalize to ~[-1, 1]
+        // Perplexity native int8: signed -128..127, normalize to ~[-1, 1].
+        // Each row is L2-normalized in OpenRouter's float32 output; the
+        // int8 quantization scales by 127. We undo the scale here.
         for (let i = 0; i < raw.length; i++) {
           buffer[offset + i] = raw[i] / 127.0;
         }
@@ -190,6 +192,26 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
         const ab = raw.buffer.slice(raw.byteOffset, raw.byteOffset + byteLen);
         const floats = new Float32Array(ab);
         buffer.set(floats, offset);
+      }
+    }
+
+    // Re-L2-normalize each row in-place. After /127.0 dequantization, the
+    // per-row norm is no longer 1.0 (it was the norm of the float32 vector
+    // scaled by 127). For correct cosine similarity — and bounded
+    // similarities in [-1, 1] — we renormalize once at load time. This is
+    // O(N*dim) but happens once per model load, not per request.
+    for (let row = 0; row < manifest.passage_count; row++) {
+      const base = row * manifest.dim;
+      let norm = 0;
+      for (let d = 0; d < manifest.dim; d++) {
+        norm += buffer[base + d] * buffer[base + d];
+      }
+      norm = Math.sqrt(norm);
+      if (norm > 0) {
+        const inv = 1 / norm;
+        for (let d = 0; d < manifest.dim; d++) {
+          buffer[base + d] *= inv;
+        }
       }
     }
 
@@ -228,14 +250,14 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
 }
 
 function cosineSim(a: Float32Array, aOffset: number, b: number[], dim: number): number {
+  // Both sides are L2-normalized (document rows are renormalized at load time;
+  // the query vector is L2-normalized by OpenRouter), so this is a true dot
+  // product in [-1, 1].
   let dot = 0;
-  let normB = 0;
   for (let i = 0; i < dim; i++) {
     dot += a[aOffset + i] * b[i];
-    normB += b[i] * b[i];
   }
-  if (normB === 0) return 0;
-  return dot / Math.sqrt(normB);
+  return dot;
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────
