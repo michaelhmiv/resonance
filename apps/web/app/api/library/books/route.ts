@@ -2,9 +2,9 @@
  * GET /api/library/books — return the catalog of voice library works,
  * grouped into packages.
  *
- * Reads voice_books.json (the ~18 voice works) and groups entries by
- * package_id, preserving order. The "seeded" package is labelled
- * "Seeded Library".
+ * Reads voice_books.json. The Railway volume is the source of truth in
+ * production; the bundled copy in ./data/seeded_library/ is the dev fallback
+ * (so local dev without a volume still works).
  *
  * Response:
  *   {
@@ -17,9 +17,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 
-const VOICE_BOOKS = './data/seeded_library/voice_books.json';
+const VOLUME_PATH = '/data/seeded_library/voice_books.json';
+const BUNDLED_PATH = './data/seeded_library/voice_books.json';
 
 interface VoiceBook {
   id: string;
@@ -35,9 +36,10 @@ interface VoiceBook {
 let cachedVoiceBooks: VoiceBook[] | null = null;
 
 function loadVoiceBooks(): VoiceBook[] {
-  if (!cachedVoiceBooks) {
-    cachedVoiceBooks = JSON.parse(readFileSync(VOICE_BOOKS, 'utf-8'));
-  }
+  if (cachedVoiceBooks) return cachedVoiceBooks;
+  // Prefer the Railway volume; fall back to bundled copy
+  const path = existsSync(VOLUME_PATH) ? VOLUME_PATH : BUNDLED_PATH;
+  cachedVoiceBooks = JSON.parse(readFileSync(path, 'utf-8'));
   return cachedVoiceBooks as VoiceBook[];
 }
 

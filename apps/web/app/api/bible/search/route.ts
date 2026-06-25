@@ -18,10 +18,19 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 
-const BIBLE_PASSAGES = './data/seeded_library/bible_passages.json';
-const VOICE_PASSAGES = './data/seeded_library/voice_passages.json';
+const BIBLE_PASSAGES_VOLUME = '/data/seeded_library/bible_passages.json';
+const BIBLE_PASSAGES_BUNDLED = './data/seeded_library/bible_passages.json';
+const VOICE_PASSAGES_VOLUME = '/data/seeded_library/voice_passages.json';
+const VOICE_PASSAGES_BUNDLED = './data/seeded_library/voice_passages.json';
+
+function pickPath(volumePath: string, bundledPath: string): string {
+  return existsSync(volumePath) ? volumePath : bundledPath;
+}
+
+const BIBLE_PASSAGES = pickPath(BIBLE_PASSAGES_VOLUME, BIBLE_PASSAGES_BUNDLED);
+const VOICE_PASSAGES = pickPath(VOICE_PASSAGES_VOLUME, VOICE_PASSAGES_BUNDLED);
 
 const MAX_SCRIPTURE = 50;
 const MAX_LIBRARY = 100;

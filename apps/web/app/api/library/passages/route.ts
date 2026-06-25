@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 
-const VOICE_PASSAGES = './data/seeded_library/voice_passages.json';
+const VOLUME_PASSAGES = '/data/seeded_library/voice_passages.json';
+const BUNDLED_PASSAGES = './data/seeded_library/voice_passages.json';
 
 interface VoicePassage {
   id: number;
@@ -16,9 +17,10 @@ interface VoicePassage {
 let cachedVoicePassages: VoicePassage[] | null = null;
 
 function loadVoicePassages(): VoicePassage[] {
-  if (!cachedVoicePassages) {
-    cachedVoicePassages = JSON.parse(readFileSync(VOICE_PASSAGES, 'utf-8'));
-  }
+  if (cachedVoicePassages) return cachedVoicePassages;
+  // Prefer the Railway volume; fall back to bundled copy
+  const path = existsSync(VOLUME_PASSAGES) ? VOLUME_PASSAGES : BUNDLED_PASSAGES;
+  cachedVoicePassages = JSON.parse(readFileSync(path, 'utf-8'));
   return cachedVoicePassages as VoicePassage[];
 }
 

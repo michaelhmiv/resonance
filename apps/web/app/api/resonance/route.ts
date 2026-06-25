@@ -71,8 +71,12 @@ let passageMetadata: PassageMeta[] | null = null;
 let metadataPromise: Promise<void> | null = null;
 const modelCache = new Map<string, LoadedModel>();
 
-const BIBLE_PASSAGES_PATH = './data/seeded_library/bible_passages.json';
-const VOICE_PASSAGES_PATH = './data/seeded_library/voice_passages.json';
+const BIBLE_PASSAGES_PATH = existsSync('/data/seeded_library/bible_passages.json')
+  ? '/data/seeded_library/bible_passages.json'
+  : './data/seeded_library/bible_passages.json';
+const VOICE_PASSAGES_PATH = existsSync('/data/seeded_library/voice_passages.json')
+  ? '/data/seeded_library/voice_passages.json'
+  : './data/seeded_library/voice_passages.json';
 
 async function ensureMetadata(): Promise<void> {
   if (passageMetadata) return;
