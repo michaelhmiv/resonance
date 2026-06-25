@@ -16,9 +16,13 @@ import { readFile } from 'fs/promises';
 import { existsSync, readdirSync } from 'fs';
 import { lexicalResonance } from '../../../lib/resonance-fallback';
 import {
-  getUserAnnotationEmbeddings,
+  getUserHighlightEmbeddings,
   getHighlights,
+  ensureHighlightVectorsTable,
 } from '../../../lib/db';
+
+// Run migration on first import
+ensureHighlightVectorsTable().catch(() => {});
 
 const VECTORS_BASE =
   process.env.VECTORS_PATH || '/data/vectors';
@@ -225,12 +229,12 @@ export async function POST(req: NextRequest) {
         await ensureMetadata();
         const meta = passageMetadata || [];
 
-        // Fetch user highlights and annotation embeddings (non-blocking fallback)
-        let annotationVecs: number[][] = [];
+        // Fetch user highlights and their note embeddings (non-blocking fallback)
+        let highlightNoteVecs: number[][] = [];
         let highlightRefs = new Set<string>();
         try {
-          [annotationVecs, highlightRefs] = await Promise.all([
-            getUserAnnotationEmbeddings().catch(() => [] as number[][]),
+          [highlightNoteVecs, highlightRefs] = await Promise.all([
+            getUserHighlightEmbeddings().catch(() => [] as number[][]),
             getHighlights().then(
               (rows: { verse_ref: string }[]) =>
                 new Set(rows.map((r) => normalizeVerseRef(r.verse_ref))),
@@ -257,10 +261,10 @@ export async function POST(req: NextRequest) {
         // 1. Score with the main journal query vector
         scoreAgainst(vector, 1.0);
 
-        // 2. Score with each annotation embedding (same weight as main query)
-        for (const annVec of annotationVecs) {
-          if (annVec.length === loaded.dim) {
-            scoreAgainst(annVec, 1.0);
+        // 2. Score with each highlight-note embedding (same weight as main query)
+        for (const noteVec of highlightNoteVecs) {
+          if (noteVec.length === loaded.dim) {
+            scoreAgainst(noteVec, 1.0);
           }
         }
 
@@ -290,7 +294,7 @@ export async function POST(req: NextRequest) {
           scripture: topScripture,
           voices: topVoices,
           pastEntries: [],
-          method: annotationVecs.length > 0 ? 'semantic-vector+annotations' : 'semantic-vector',
+          method: highlightNoteVecs.length > 0 ? 'semantic-vector+highlight-notes' : 'semantic-vector',
           model: modelId,
           dim: loaded.dim,
           passageCount: loaded.passageCount,

@@ -109,16 +109,70 @@ export async function getHighlights(verseRefPrefix?: string) {
   if (verseRefPrefix) {
     query = query.ilike('verse_ref', `${verseRefPrefix}%`);
   }
-  const { data } = await query;
+  const { data } = await query.order('created_at', { ascending: true });
   return data || [];
 }
 
-export async function createHighlight(verseRef: string, color: string) {
+export interface CreateHighlightInput {
+  verseRef: string;
+  color: string;
+  startOffset: number;
+  endOffset: number;
+  selectedText: string;
+  noteText?: string | null;
+}
+
+export async function createHighlight(input: CreateHighlightInput) {
   const sb = getSupabase();
   const uid = await getDevUserId();
-  const { data } = await sb.from('highlights')
-    .upsert({ user_id: uid, verse_ref: verseRef, color }, { onConflict: 'user_id,verse_ref' })
-    .select().single();
+  const now = new Date().toISOString();
+  const noteText = input.noteText && input.noteText.trim().length > 0 ? input.noteText : null;
+  const { data, error } = await sb.from('highlights')
+    .insert({
+      user_id: uid,
+      verse_ref: input.verseRef,
+      color: input.color,
+      start_offset: input.startOffset,
+      end_offset: input.endOffset,
+      selected_text: input.selectedText,
+      note_text: noteText,
+      note_updated_at: noteText ? now : null,
+      updated_at: now,
+      created_at: now,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export interface UpdateHighlightPatch {
+  color?: string;
+  startOffset?: number;
+  endOffset?: number;
+  selectedText?: string;
+  noteText?: string | null;  // null/empty => clear the note
+}
+
+export async function updateHighlight(id: string, patch: UpdateHighlightPatch) {
+  const sb = getSupabase();
+  const now = new Date().toISOString();
+  const update: Record<string, unknown> = { updated_at: now };
+  if (patch.color !== undefined) update.color = patch.color;
+  if (patch.startOffset !== undefined) update.start_offset = patch.startOffset;
+  if (patch.endOffset !== undefined) update.end_offset = patch.endOffset;
+  if (patch.selectedText !== undefined) update.selected_text = patch.selectedText;
+  if (patch.noteText !== undefined) {
+    const cleaned = patch.noteText && String(patch.noteText).trim().length > 0 ? patch.noteText : null;
+    update.note_text = cleaned;
+    update.note_updated_at = cleaned ? now : null;
+  }
+  const { data, error } = await sb.from('highlights')
+    .update(update)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
   return data;
 }
 
@@ -129,80 +183,46 @@ export async function deleteHighlight(id: string) {
   return { ok: true };
 }
 
-// ── Annotations ───────────────────────────────────────────────────────────
+// ── Highlight note embedding (for resonance) ───────────────────────────
 
-export async function getAnnotations(verseRefPrefix?: string, translation?: string) {
+export async function storeHighlightEmbedding(highlightId: string, vector: number[]) {
   const sb = getSupabase();
-  const uid = await getDevUserId();
-  let query = sb.from('annotations').select('*').eq('user_id', uid);
-  if (verseRefPrefix) {
-    query = query.ilike('verse_ref', `${verseRefPrefix}%`);
-  }
-  if (translation) {
-    query = query.ilike('translation', translation);
-  }
-  const { data } = await query.order('created_at', { ascending: false });
-  return data || [];
-}
-
-export async function createAnnotation(verseRef: string, translation: string, text: string) {
-  const sb = getSupabase();
-  const uid = await getDevUserId();
-  if (text.trim().length === 0) return null;
-  // Always INSERT — never replace. Multi-note per verse is the contract.
-  const { data } = await sb.from('annotations')
-    .insert({ user_id: uid, verse_ref: verseRef, translation, text, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .select().single();
-  return data;
-}
-
-export async function updateAnnotation(id: string, text: string) {
-  const sb = getSupabase();
-  if (text.trim().length === 0) {
-    // Empty text = delete
-    const { error } = await sb.from('annotations').delete().eq('id', id);
-    if (error) throw error;
-    return { ok: true, deleted: true };
-  }
-  const { data, error } = await sb.from('annotations')
-    .update({ text, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select().single();
-  if (error) throw error;
-  return data;
-}
-
-export async function deleteAnnotation(id: string) {
-  const sb = getSupabase();
-  const { error } = await sb.from('annotations').delete().eq('id', id);
-  if (error) throw error;
-  return { ok: true };
-}
-
-export async function storeAnnotationEmbedding(id: string, vector: number[]) {
-  const sb = getSupabase();
-  const { error } = await sb.from('annotations')
-    .update({ embedding: vector })
-    .eq('id', id);
+  // Upsert — embedding is regenerated on every note update
+  const { error } = await sb.from('highlight_vectors')
+    .upsert(
+      { highlight_id: highlightId, vector, model_id: 'gte-small', generated_at: new Date().toISOString() },
+      { onConflict: 'highlight_id' },
+    );
   if (error) {
-    console.error('[db] storeAnnotationEmbedding failed:', error);
+    console.error('[db] storeHighlightEmbedding failed:', error);
     return { ok: false };
   }
   return { ok: true };
 }
 
-export async function getUserAnnotationEmbeddings(userId?: string) {
+export async function deleteHighlightEmbedding(highlightId: string) {
+  const sb = getSupabase();
+  await sb.from('highlight_vectors').delete().eq('highlight_id', highlightId);
+}
+
+export async function getUserHighlightEmbeddings(userId?: string): Promise<number[][]> {
+  return getUserHighlightEmbeddingsViaJoin(userId);
+}
+
+export async function getUserHighlightEmbeddingsViaJoin(userId?: string): Promise<number[][]> {
+  // Supabase doesn't have a clean way to join → filter by user_id from a
+  // related table without a foreign-key view. We do it via two queries.
   const sb = getSupabase();
   const uid = userId || (await getDevUserId());
-  const { data, error } = await sb.from('annotations')
-    .select('embedding')
-    .eq('user_id', uid)
-    .not('embedding', 'is', null);
-  if (error) {
-    console.error('[db] getUserAnnotationEmbeddings failed:', error);
-    return [];
-  }
-  return (data || []).map((row: { embedding: number[] }) => row.embedding);
+  const { data: hlData } = await sb.from('highlights').select('id').eq('user_id', uid);
+  if (!hlData || hlData.length === 0) return [];
+  const ids = hlData.map((h: { id: string }) => h.id);
+  const { data: vecData, error } = await sb.from('highlight_vectors')
+    .select('vector')
+    .in('highlight_id', ids)
+    .not('vector', 'is', null);
+  if (error) return [];
+  return (vecData || []).map((row: { vector: number[] }) => row.vector);
 }
 
 // ── Settings ──────────────────────────────────────────────────────────────
@@ -280,5 +300,36 @@ export async function ensureReadingEventsTable(): Promise<void> {
     await sb.rpc('create_reading_events_table_if_needed');
   } catch {
     // Best-effort — table will be created manually or via migration
+  }
+}
+
+// Auto-create the highlight_vectors table on first import
+export async function ensureHighlightVectorsTable(): Promise<void> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/run_sql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+      },
+      body: JSON.stringify({
+        sql: `
+          CREATE TABLE IF NOT EXISTS public.highlight_vectors (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            highlight_id UUID NOT NULL REFERENCES public.highlights(id) ON DELETE CASCADE,
+            vector vector(384) NOT NULL,
+            model_id TEXT NOT NULL DEFAULT 'gte-small',
+            generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            UNIQUE (highlight_id)
+          );
+        `
+      }),
+    });
+    if (!res.ok) {
+      console.warn('[db] ensureHighlightVectorsTable failed:', res.status, await res.text().catch(() => ''));
+    }
+  } catch (err) {
+    console.warn('[db] ensureHighlightVectorsTable error:', err);
   }
 }

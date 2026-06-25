@@ -1,5 +1,8 @@
 import type {
   DataLayer,
+  SaveHighlightInput,
+  UpdateHighlightPatch,
+  Highlight,
   Translation,
   SearchScope,
   JournalSegment,
@@ -14,11 +17,9 @@ import type {
 import { getBooks, getChapters, getVerses, searchPassages } from '../db/queries/bibleQueries';
 import { getLibraryPackages, getLibraryBook, getLibraryPassages } from '../db/queries/libraryQueries';
 import {
-  getHighlightsForRefs,
-  saveHighlight,
-  removeHighlight,
-  getAnnotationsForRefs,
-  saveAnnotation,
+  getHighlightsForRefs as _getHighlightsForRefsMobile,
+  saveHighlight as _saveHighlightMobile,
+  removeHighlight as _removeHighlightMobile,
   saveBookmark,
   removeBookmark,
   getBookmarks,
@@ -74,24 +75,65 @@ export class MobileDataLayer implements DataLayer {
 
   async deleteSegment(_id: string): Promise<void> {}
 
-  async getHighlightsForRefs(refs: string[]) {
-    return getHighlightsForRefs(refs);
+  async getHighlightsForRefs(refs: string[]): Promise<Highlight[]> {
+    // Mobile still uses whole-verse highlights — convert the legacy map to
+    // a Highlight[] with null offsets.
+    const map = await _getHighlightsForRefsMobile(refs);
+    return Object.entries(map).map(([verse_ref, color]) => ({
+      id: `legacy-${verse_ref}`,
+      verse_ref,
+      color,
+      start_offset: null,
+      end_offset: null,
+      selected_text: null,
+      note_text: null,
+      note_updated_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
   }
 
-  async saveHighlight(verseRef: string, color: string) {
-    return saveHighlight(verseRef, color);
+  async saveHighlight(input: SaveHighlightInput): Promise<Highlight> {
+    // Mobile doesn't yet support phrase-level highlights — save the color
+    // for the whole verse and return a legacy-shaped row.
+    await _saveHighlightMobile(input.verseRef, input.color);
+    return {
+      id: `mobile-${Date.now()}`,
+      verse_ref: input.verseRef,
+      color: input.color,
+      start_offset: input.startOffset,
+      end_offset: input.endOffset,
+      selected_text: input.selectedText,
+      note_text: input.noteText ?? null,
+      note_updated_at: input.noteText ? new Date().toISOString() : null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
   }
 
-  async removeHighlight(verseRef: string) {
-    return removeHighlight(verseRef);
+  async updateHighlight(id: string, patch: UpdateHighlightPatch): Promise<Highlight> {
+    // Mobile: best-effort — only color updates land in the local DB.
+    if (patch.color) {
+      const verseRef = id.replace(/^mobile-/, '').replace(/^legacy-/, '');
+      await _saveHighlightMobile(verseRef, patch.color);
+    }
+    return {
+      id,
+      verse_ref: id.replace(/^mobile-/, '').replace(/^legacy-/, ''),
+      color: patch.color ?? '#d4a574',
+      start_offset: patch.startOffset ?? null,
+      end_offset: patch.endOffset ?? null,
+      selected_text: patch.selectedText ?? null,
+      note_text: patch.noteText ?? null,
+      note_updated_at: patch.noteText ? new Date().toISOString() : null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
   }
 
-  async getAnnotationsForRefs(refs: string[], translation: Translation) {
-    return getAnnotationsForRefs(refs, translation);
-  }
-
-  async saveAnnotation(verseRef: string, translation: Translation, text: string) {
-    return saveAnnotation(verseRef, translation, text);
+  async deleteHighlight(id: string): Promise<void> {
+    const verseRef = id.replace(/^mobile-/, '').replace(/^legacy-/, '');
+    await _removeHighlightMobile(verseRef);
   }
 
   async saveBookmark(verseRef: string, label?: string) {

@@ -2,6 +2,8 @@
 
 import type {
   DataLayer,
+  SaveHighlightInput,
+  UpdateHighlightPatch,
   Translation,
   BookSummary,
   VersePassage,
@@ -11,8 +13,7 @@ import type {
   LibraryBook,
   LibraryPassage,
   JournalSegment,
-  HighlightMap,
-  AnnotationMap,
+  Highlight,
   Bookmark,
   ResonanceResult,
   EntryCluster,
@@ -194,59 +195,32 @@ export class WebDataLayer implements DataLayer {
     await fetch(`/api/journal/entries/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 
-  async getHighlightsForRefs(refs: string[]): Promise<HighlightMap> {
-    if (refs.length === 0) return {};
+  async getHighlightsForRefs(refs: string[]): Promise<Highlight[]> {
+    if (refs.length === 0) return [];
     const prefix = refs[0].replace(/:\d+.*$/, '');
-    const data = await api<{ highlights: { verse_ref: string; color: string }[] }>(`/api/reading/highlights?verseRef=${encodeURIComponent(prefix)}`);
+    const data = await api<{ highlights: Highlight[] }>(`/api/reading/highlights?verseRef=${encodeURIComponent(prefix)}`);
     const wanted = new Set(refs);
-    const map: HighlightMap = {};
-    for (const highlight of data.highlights) {
-      if (wanted.has(highlight.verse_ref)) map[highlight.verse_ref] = highlight.color;
-    }
-    return map;
+    return (data.highlights || []).filter((h) => wanted.has(h.verse_ref));
   }
 
-  async saveHighlight(verseRef: string, color: string): Promise<void> {
-    await api('/api/reading/highlights', { method: 'POST', body: JSON.stringify({ verseRef, color }) });
+  async saveHighlight(input: SaveHighlightInput): Promise<Highlight> {
+    const created = await api<Highlight>('/api/reading/highlights', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return created;
   }
 
-  async removeHighlight(verseRef: string): Promise<void> {
-    const data = await api<{ highlights: { id: string; verse_ref: string }[] }>(`/api/reading/highlights?verseRef=${encodeURIComponent(verseRef)}`);
-    const existing = data.highlights.find((h) => h.verse_ref === verseRef);
-    if (existing) await fetch(`/api/reading/highlights/${existing.id}`, { method: 'DELETE' });
+  async updateHighlight(id: string, patch: UpdateHighlightPatch): Promise<Highlight> {
+    const updated = await api<Highlight>(`/api/reading/highlights/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    });
+    return updated;
   }
 
-  async getAnnotationsForRefs(refs: string[], translation: Translation): Promise<AnnotationMap> {
-    if (refs.length === 0) return {};
-    const prefix = refs[0].replace(/:\d+.*$/, '');
-    const data = await api<{ annotations: { id: string; verse_ref: string; text: string; created_at: string }[] }>(
-      `/api/reading/annotations?verseRef=${encodeURIComponent(prefix)}&translation=${translation}`,
-    );
-    const wanted = new Set(refs);
-    const map: AnnotationMap = {};
-    for (const annotation of data.annotations) {
-      if (wanted.has(annotation.verse_ref)) {
-        if (!map[annotation.verse_ref]) map[annotation.verse_ref] = [];
-        map[annotation.verse_ref].push({
-          id: annotation.id,
-          text: annotation.text,
-          created_at: annotation.created_at,
-        });
-      }
-    }
-    return map;
-  }
-
-  async saveAnnotation(verseRef: string, translation: Translation, text: string): Promise<void> {
-    await api('/api/reading/annotations', { method: 'POST', body: JSON.stringify({ verseRef, translation, text }) });
-  }
-
-  async updateAnnotation(annotationId: string, text: string): Promise<void> {
-    await api(`/api/reading/annotations/${annotationId}`, { method: 'PUT', body: JSON.stringify({ text }) });
-  }
-
-  async deleteAnnotation(annotationId: string): Promise<void> {
-    await fetch(`/api/reading/annotations/${annotationId}`, { method: 'DELETE' });
+  async deleteHighlight(id: string): Promise<void> {
+    await fetch(`/api/reading/highlights/${id}`, { method: 'DELETE', credentials: 'same-origin' });
   }
 
   async saveBookmark(verseRef: string, label?: string): Promise<void> {

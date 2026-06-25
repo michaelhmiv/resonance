@@ -26,12 +26,10 @@ import {
   FlatList,
   SectionList,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
@@ -49,15 +47,14 @@ import {
   type VersePassage,
   type LibraryPassage,
   type LibraryBook,
-  type HighlightMap,
-  type AnnotationNote,
-  type AnnotationMap,
+  type Highlight,
 } from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
 import { HighlightPill, HighlightToggleButton } from '@resonance/ui';
 import { ChapterPicker } from '@resonance/ui';
 import { TranslationSelector } from '@resonance/ui';
 import { BookmarkButton } from '@resonance/ui';
+import { NoteModal } from '@resonance/ui';
 import { CrossRefInline } from './CrossRefInline';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -103,8 +100,7 @@ export function ReadingView({
   >([]);
   const [libraryBook, setLibraryBook] = useState<LibraryBook | null>(null);
   const [loading, setLoading] = useState(true);
-  const [highlightMap, setHighlightMap] = useState<HighlightMap>({});
-  const [annotationMap, setAnnotationMap] = useState<AnnotationMap>({});
+  const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [crossRefs, setCrossRefs] = useState<Record<string, string[]>>({});
   const [bookmarked, setBookmarked] = useState(false);
   const [fontSize, setFontSize] = useState<string>('medium');
@@ -116,16 +112,12 @@ export function ReadingView({
   /** The currently "selected" verse for annotation — persists after highlight completes. */
   const [activeTarget, setActiveTarget] = useState<string | null>(null);
 
-  // ── Annotation modal ─────────────────────────────────────────────────
-  const [annotationModal, setAnnotationModal] = useState<{
-    ref: string;
-    noteId?: string;
-    text: string;
+  // ── Note modal (replaces old annotation modal) ────────────────────────
+  const [noteModal, setNoteModal] = useState<{
+    highlight: Highlight;
+    verseRef: string;
+    quoteContext: string | null;
   } | null>(null);
-  const [annotationDraft, setAnnotationDraft] = useState('');
-
-  // Collapsible annotations — hidden by default, tap to reveal
-  const [expandedAnnotations, setExpandedAnnotations] = useState<Set<string>>(new Set());
 
   // Chapter picker
   const [chapterPickerOpen, setChapterPickerOpen] = useState(false);
@@ -144,9 +136,7 @@ export function ReadingView({
     setLoading(true);
     setPassages([]);
     setCrossRefs({});
-    setHighlightMap({});
-    setAnnotationMap({});
-    setExpandedAnnotations(new Set());
+    setHighlights([]);
     setHighlightMode(false);
     setRangeStart(null);
     setActiveTarget(null);
@@ -195,7 +185,7 @@ export function ReadingView({
       setPassages(resultPassages);
       setLoading(false);
 
-      // 3. Load highlights and annotations in parallel (non-blocking)
+      // 3. Load highlights (includes notes via note_text on Highlight)
       const refsToLoad: string[] = [];
       if (mode.kind === 'scripture') {
         refsToLoad.push(...verseRefs);
@@ -204,14 +194,8 @@ export function ReadingView({
       }
 
       if (refsToLoad.length > 0) {
-        Promise.all([
-          dataLayer.getHighlightsForRefs(refsToLoad),
-          dataLayer.getAnnotationsForRefs(refsToLoad, mode.kind === 'scripture' ? mode.translation : 'WEB'),
-        ]).then(([hMap, aMap]) => {
-          if (!cancelled) {
-            setHighlightMap(hMap);
-            setAnnotationMap(aMap);
-          }
+        dataLayer.getHighlightsForRefs(refsToLoad).then((hl) => {
+          if (!cancelled) setHighlights(hl);
         }).catch(() => {});
 
         // 4. Load cross-references in background (non-blocking)
@@ -288,6 +272,14 @@ export function ReadingView({
     [passages, verseRefFor]
   );
 
+  // Find a highlight for a given verse ref (whole-verse lookup)
+  const highlightForRef = useCallback(
+    (ref: string): Highlight | undefined => {
+      return highlights.find((h) => h.verse_ref === ref);
+    },
+    [highlights]
+  );
+
   const handleCrossRefPress = useCallback(
     (ref: string) => {
       if (!onNavigateChapter) return;
@@ -313,23 +305,55 @@ export function ReadingView({
       const hi = Math.max(startIdx, endIdx);
 
       // Optimistic: update all verses in range immediately
-      const newMap: HighlightMap = { ...highlightMap };
       const refs: string[] = [];
+      const now = new Date().toISOString();
+      const newHighlights = [...highlights];
+
       for (let i = lo; i <= hi; i++) {
         const r = verseRefFor(passages[i]);
-        newMap[r] = activeColor;
+        const verseText = passages[i].text;
         refs.push(r);
+
+        // Remove any existing highlight for this ref
+        const existingIdx = newHighlights.findIndex((h) => h.verse_ref === r);
+        if (existingIdx >= 0) newHighlights.splice(existingIdx, 1);
+
+        // Add optimistic highlight
+        newHighlights.push({
+          id: `opt-${Date.now()}-${i}`,
+          verse_ref: r,
+          color: activeColor,
+          start_offset: 0,
+          end_offset: verseText.length,
+          selected_text: verseText,
+          note_text: null,
+          note_updated_at: null,
+          created_at: now,
+          updated_at: now,
+        });
       }
-      setHighlightMap(newMap);
+      setHighlights(newHighlights);
 
       // Persist in background
       try {
-        await Promise.all(refs.map((r) => dataLayer.saveHighlight(r, activeColor)));
+        await Promise.all(
+          refs.map((r) => {
+            const passage = passages.find((p) => verseRefFor(p) === r);
+            const verseText = passage?.text ?? '';
+            return dataLayer.saveHighlight({
+              verseRef: r,
+              color: activeColor,
+              startOffset: 0,
+              endOffset: verseText.length,
+              selectedText: verseText,
+            });
+          })
+        );
       } catch (err) {
         console.error('[ReadingView] range highlight save failed:', err);
       }
     },
-    [passages, highlightMap, activeColor, verseRefFor, indexOfRef, dataLayer]
+    [passages, highlights, activeColor, verseRefFor, indexOfRef, dataLayer]
   );
 
   const handleVerseTap = useCallback(
@@ -356,102 +380,96 @@ export function ReadingView({
     [highlightMode, rangeStart, applyRangeHighlight]
   );
 
-  // ── Annotation ──────────────────────────────────────────────────────────
+  // ── Note on highlight ──────────────────────────────────────────────────
 
   const handleAnnotate = useCallback(() => {
     if (!activeTarget) return;
-    // Open modal for a NEW note on the active target
-    setAnnotationDraft('');
-    setAnnotationModal({ ref: activeTarget, text: '' });
-  }, [activeTarget]);
+    const existing = highlightForRef(activeTarget);
+    const passage = passages.find((p) => verseRefFor(p) === activeTarget);
+    const quoteContext = passage?.text ?? null;
 
-  const handleEditNote = useCallback((ref: string, noteId: string, text: string) => {
-    setAnnotationDraft(text);
-    setAnnotationModal({ ref, noteId, text });
-  }, []);
+    setNoteModal({
+      highlight: existing ?? {
+        id: '',
+        verse_ref: activeTarget,
+        color: activeColor,
+        start_offset: null,
+        end_offset: null,
+        selected_text: null,
+        note_text: null,
+        note_updated_at: null,
+        created_at: '',
+        updated_at: '',
+      },
+      verseRef: activeTarget,
+      quoteContext,
+    });
+  }, [activeTarget, highlightForRef, passages, verseRefFor, activeColor]);
 
-  const handleSaveAnnotation = useCallback(async () => {
-    if (!annotationModal) return;
-    const { ref, noteId } = annotationModal;
-    const text = annotationDraft.trim();
-    if (text.length === 0) {
-      if (!noteId) return; // Don't save empty new notes
-    }
+  const handleNoteSave = useCallback(async (text: string) => {
+    if (!noteModal) return;
+    const { highlight, verseRef, quoteContext } = noteModal;
 
-    const isEdit = !!noteId;
+    setNoteModal(null);
+
+    if (text.length === 0 && !highlight.note_text) return; // nothing to save, nothing to clear
+
+    const isEdit = !!highlight.id && highlight.id !== '';
 
     // Optimistic update
-    setAnnotationMap((prev) => {
-      const next = { ...prev };
-      const existing = [...(next[ref] || [])];
-
-      if (isEdit) {
-        // Update existing note
-        const idx = existing.findIndex((n) => n.id === noteId);
-        if (idx >= 0) {
-          if (text.length > 0) {
-            existing[idx] = { ...existing[idx], text };
-          } else {
-            existing.splice(idx, 1); // Empty text = delete
-          }
+    setHighlights((prev) =>
+      prev.map((h) => {
+        if (isEdit && h.id === highlight.id) {
+          return { ...h, note_text: text || null, note_updated_at: text ? new Date().toISOString() : null };
         }
+        return h;
+      })
+    );
+
+    // Persist
+    try {
+      if (isEdit) {
+        await dataLayer.updateHighlight(highlight.id, { noteText: text || null });
       } else {
-        // Append new note (optimistic ID)
-        existing.push({
-          id: 'pending-' + Date.now(),
-          text,
-          created_at: new Date().toISOString(),
+        // No highlight exists yet — create one with a note
+        const passage = passages.find((p) => verseRefFor(p) === verseRef);
+        const verseText = passage?.text ?? quoteContext ?? '';
+        const created = await dataLayer.saveHighlight({
+          verseRef,
+          color: activeColor,
+          startOffset: 0,
+          endOffset: verseText.length,
+          selectedText: verseText,
+          noteText: text || null,
         });
-      }
-
-      next[ref] = existing;
-      if (existing.length === 0) delete next[ref];
-      return next;
-    });
-
-    setAnnotationModal(null);
-    setExpandedAnnotations((prev) => {
-      const next = new Set(prev);
-      next.add(ref);
-      return next;
-    });
-
-    // Persist in background
-    try {
-      if (isEdit) {
-        if (text.length > 0) {
-          await dataLayer.updateAnnotation(noteId, text);
-        } else {
-          await dataLayer.deleteAnnotation(noteId);
-        }
-      } else {
-        await dataLayer.saveAnnotation(ref, translation, text);
+        // Replace the optimistic entry
+        setHighlights((prev) => [...prev.filter((h) => h.verse_ref !== verseRef), created]);
       }
     } catch (err) {
-      console.error('[ReadingView] saveAnnotation failed:', err);
+      console.error('[ReadingView] note save failed:', err);
     }
-  }, [annotationModal, annotationDraft, translation, dataLayer]);
+  }, [noteModal, dataLayer, activeColor, passages, verseRefFor]);
 
-  const handleDeleteNote = useCallback(async (ref: string, noteId: string) => {
-    // Optimistic removal
-    setAnnotationMap((prev) => {
-      const next = { ...prev };
-      const existing = (next[ref] || []).filter((n) => n.id !== noteId);
-      if (existing.length > 0) {
-        next[ref] = existing;
-      } else {
-        delete next[ref];
-      }
-      return next;
-    });
+  const handleNoteDelete = useCallback(async () => {
+    if (!noteModal) return;
+    const { highlight } = noteModal;
+    setNoteModal(null);
 
-    // Persist in background
+    if (!highlight.id) return;
+
+    // Optimistic: clear the note but keep the highlight
+    setHighlights((prev) =>
+      prev.map((h) =>
+        h.id === highlight.id ? { ...h, note_text: null, note_updated_at: null } : h
+      )
+    );
+
     try {
-      await dataLayer.deleteAnnotation(noteId);
+      await dataLayer.updateHighlight(highlight.id, { noteText: null });
     } catch (err) {
-      console.error('[ReadingView] deleteNote failed:', err);
+      console.error('[ReadingView] note delete failed:', err);
     }
-  }, [dataLayer]);
+  }, [noteModal, dataLayer]);
 
   // ── Toggle highlight mode ───────────────────────────────────────────────
 
@@ -551,68 +569,35 @@ export function ReadingView({
     );
   }
 
-  /** Render annotation notes for a verse ref. */
-  const renderAnnotations = (ref: string) => {
-    const notes = annotationMap[ref];
-    if (!notes || notes.length === 0) return null;
-
-    const isExpanded = expandedAnnotations.has(ref);
-    const noteCount = notes.length;
+  /** Render a note chip for a verse that has an annotated highlight. */
+  const renderHighlightNote = (ref: string) => {
+    const hl = highlightForRef(ref);
+    if (!hl || !hl.note_text || hl.note_text.trim().length === 0) return null;
 
     return (
-      <View style={styles.annotationWrap}>
+      <View style={styles.noteChip}>
         <Pressable
           onPress={() => {
-            setExpandedAnnotations((prev) => {
-              const next = new Set(prev);
-              if (next.has(ref)) next.delete(ref);
-              else next.add(ref);
-              return next;
+            const passage = passages.find((p) => verseRefFor(p) === ref);
+            setNoteModal({
+              highlight: hl,
+              verseRef: ref,
+              quoteContext: passage?.text ?? null,
             });
           }}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel={isExpanded ? 'Collapse notes' : `Expand ${noteCount} note${noteCount > 1 ? 's' : ''}`}
+          accessibilityLabel="View or edit note"
         >
-          <Text style={styles.annotationToggle}>
-            {isExpanded ? '▾' : '▸'} {noteCount > 1 ? `${noteCount} notes` : 'note'}
+          <Text style={styles.noteChipText} numberOfLines={3}>
+            {hl.note_text}
           </Text>
+          {hl.note_updated_at ? (
+            <Text style={styles.noteChipTimestamp}>
+              {formatNoteDate(hl.note_updated_at)}
+            </Text>
+          ) : null}
         </Pressable>
-
-        {isExpanded ? (
-          <View style={styles.notesList}>
-            {notes.map((note) => (
-              <View key={note.id} style={styles.noteCard}>
-                <View style={styles.noteContent}>
-                  <Text style={styles.annotationText}>{note.text}</Text>
-                  <Text style={styles.noteTimestamp}>
-                    {formatNoteDate(note.created_at)}
-                  </Text>
-                </View>
-                <View style={styles.noteActions}>
-                  <Pressable
-                    onPress={() => handleEditNote(ref, note.id, note.text)}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel="Edit note"
-                    style={styles.noteActionBtn}
-                  >
-                    <Text style={styles.noteActionIcon}>✏️</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => handleDeleteNote(ref, note.id)}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel="Delete note"
-                    style={styles.noteActionBtn}
-                  >
-                    <Text style={styles.noteActionIcon}>✕</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))}
-          </View>
-        ) : null}
       </View>
     );
   };
@@ -653,10 +638,9 @@ export function ReadingView({
           contentContainerStyle={[listContentContainer, styles.passageListContent]}
           renderItem={({ item: passage }) => {
             const ref = verseRefFor(passage);
-            const highlight = highlightMap[ref];
+            const hl = highlightForRef(ref);
             const isActiveTarget = highlightMode && activeTarget === ref;
             const isRangeStart = highlightMode && rangeStart === ref;
-            const hasAnnotations = annotationMap[ref] && annotationMap[ref].length > 0;
 
             return (
               <View style={styles.verseBlock}>
@@ -667,7 +651,7 @@ export function ReadingView({
                   <View
                     style={[
                       styles.verseContent,
-                      highlight ? { backgroundColor: highlight + '33' } : null,
+                      hl ? { backgroundColor: hl.color + '33' } : null,
                       isRangeStart && styles.verseRangeStart,
                       isActiveTarget && !isRangeStart && styles.verseActiveTarget,
                       highlightMode && styles.verseHighlightable,
@@ -694,7 +678,7 @@ export function ReadingView({
                   </View>
                 </Pressable>
 
-                {renderAnnotations(ref)}
+                {renderHighlightNote(ref)}
 
                 <CrossRefInline
                   verseRef={ref}
@@ -720,7 +704,7 @@ export function ReadingView({
           )}
           renderItem={({ item: passage }) => {
             const ref = verseRefFor(passage);
-            const highlight = highlightMap[ref];
+            const hl = highlightForRef(ref);
             const isActiveTarget = highlightMode && activeTarget === ref;
             const isRangeStart = highlightMode && rangeStart === ref;
 
@@ -733,7 +717,7 @@ export function ReadingView({
                   <View
                     style={[
                       styles.verseContent,
-                      highlight ? { backgroundColor: highlight + '33' } : null,
+                      hl ? { backgroundColor: hl.color + '33' } : null,
                       isRangeStart && styles.verseRangeStart,
                       isActiveTarget && !isRangeStart && styles.verseActiveTarget,
                       highlightMode && styles.verseHighlightable,
@@ -748,7 +732,7 @@ export function ReadingView({
                   </View>
                 </Pressable>
 
-                {renderAnnotations(ref)}
+                {renderHighlightNote(ref)}
               </View>
             );
           }}
@@ -757,7 +741,7 @@ export function ReadingView({
       )}
 
       {/* ── Bottom chrome: one row, chrome expands inline ─────────────── */}
-      <View style={styles.bottomChrome} className="reading-bottom-chrome">
+      <View style={styles.bottomChrome}>
         {/* Row 1: chapter nav + bookmark + highlighter (collapsed/expanded) */}
         <View style={styles.bottomNav}>
           {/* Chapter / section navigation */}
@@ -874,48 +858,17 @@ export function ReadingView({
         />
       ) : null}
 
-      {/* ── Annotation modal ─────────────────────────────────────────── */}
-      <Modal
-        visible={annotationModal !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setAnnotationModal(null)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.annotationOverlay}
-        >
-          <View style={styles.annotationSheet}>
-            <Text style={styles.annotationTitle}>
-              {annotationModal?.noteId ? 'Edit note' : 'New note'} — {annotationModal?.ref}
-            </Text>
-            <TextInput
-              style={styles.annotationInput}
-              value={annotationDraft}
-              onChangeText={setAnnotationDraft}
-              placeholder="A quiet note…"
-              placeholderTextColor={colors.placeholder}
-              multiline
-              autoFocus
-              textAlignVertical="top"
-            />
-            <View style={styles.annotationButtons}>
-              <Pressable
-                onPress={() => setAnnotationModal(null)}
-                style={styles.cancelBtn}
-              >
-                <Text style={styles.cancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                onPress={handleSaveAnnotation}
-                style={styles.saveBtn}
-              >
-                <Text style={styles.saveText}>Save</Text>
-              </Pressable>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      {/* ── Note modal ───────────────────────────────────────────────── */}
+      <NoteModal
+        visible={noteModal !== null}
+        verseRef={noteModal?.verseRef ?? ''}
+        quoteContext={noteModal?.quoteContext ?? null}
+        initialText={noteModal?.highlight.note_text ?? ''}
+        isEdit={!!(noteModal?.highlight.id && noteModal.highlight.id !== '')}
+        onSave={handleNoteSave}
+        onDelete={handleNoteDelete}
+        onClose={() => setNoteModal(null)}
+      />
     </View>
   );
 }
@@ -1025,200 +978,98 @@ const styles = StyleSheet.create({
     // eslint-disable-next-line react-native/no-raw-text
     userSelect: 'none' as any,
   },
-  // ── Annotations ────────────────────────────────────────────────────────
-  annotationWrap: {
+  // ── Highlight notes ─────────────────────────────────────────────────────
+  noteChip: {
     marginLeft: 30,
     marginTop: spacing.xs,
     paddingLeft: spacing.sm,
     borderLeftWidth: 2,
-    borderLeftColor: colors.border,
+    borderLeftColor: colors.accentMuted,
   },
-  notesList: {
-    marginTop: spacing.xs,
-    gap: spacing.xs,
-  },
-  noteCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: spacing.xs,
-  },
-  noteContent: {
-    flex: 1,
-  },
-  annotationText: {
+  noteChipText: {
     fontFamily: fontFamilies.serifItalic,
     fontStyle: 'italic',
     fontSize: 14,
     lineHeight: 20,
     color: colors.textSecondary,
   },
-  noteTimestamp: {
+  noteChipTimestamp: {
     fontFamily: fontFamilies.sans,
     fontSize: 10,
     color: colors.textTertiary,
     marginTop: 2,
   },
-  noteActions: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    marginLeft: spacing.sm,
-    paddingTop: 2,
-  },
-  noteActionBtn: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: radii.sm,
-  },
-  noteActionIcon: {
-    fontSize: 14,
-  },
   annotationToggle: {
-    fontFamily: fontFamilies.sans,
-    fontSize: 11,
-    color: colors.textTertiary,
-    letterSpacing: 0.3,
-    marginBottom: 2,
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 12,
+    color: colors.accent,
+    marginBottom: spacing.xs,
   },
-  // ── Bottom chrome (fixed to viewport) ──────────────────────────────────
+  // ── Bottom chrome ───────────────────────────────────────────────────────
   bottomChrome: {
-    // Must be fixed on web. `absolute` anchors to the long chapter container
-    // on standalone /word routes, which puts the toolbar below the viewport.
     position: 'fixed' as any,
-    // Sit above the mobile tab bar (60px). On desktop there's no bar so
-    // this is cosmetic spacing. RN inline style wins over the CSS rule
-    // we previously relied on, so we hardcode the offset here.
     bottom: 60,
     left: 0,
     right: 0,
-    zIndex: 300,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.background,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
+    paddingTop: 4,
+    paddingBottom: 8,
+    zIndex: 300,
   },
   bottomNav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    rowGap: spacing.xs,
     paddingHorizontal: layout.screenPaddingX,
-    paddingVertical: spacing.sm,
-  },
-  highlightInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
   },
   chapterNav: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   chapterNavBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.xs,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.sm,
+  },
+  chapterNavPlaceholder: {
+    width: 48,
   },
   chapterNavText: {
-    fontFamily: fontFamilies.sansMedium,
-    fontSize: 16,
-    color: colors.accent,
+    fontSize: 12,
+    color: colors.textSecondary,
   },
   chapterNavLabel: {
     fontFamily: fontFamilies.sans,
-    fontSize: 11,
+    fontSize: 10,
     color: colors.textTertiary,
-    letterSpacing: 0.3,
+    marginLeft: 4,
   },
   chapterPos: {
     fontFamily: fontFamilies.sans,
     fontSize: 13,
     color: colors.textSecondary,
   },
-  chapterNavPlaceholder: {
-    width: 52,
-  },
-  // ── Modals ──────────────────────────────────────────────────────────
-  annotationOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    padding: spacing.xl,
-  },
-  annotationSheet: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    padding: spacing.xl,
-    width: '100%',
-    maxWidth: 400,
-  },
-  annotationTitle: {
-    fontFamily: fontFamilies.sansSemibold,
-    fontSize: 13,
-    letterSpacing: 0.4,
-    color: colors.textTertiary,
-    marginBottom: spacing.sm,
-  },
-  annotationInput: {
-    fontFamily: fontFamilies.serif,
-    fontSize: 16,
-    lineHeight: 24,
-    color: colors.textPrimary,
-    minHeight: 80,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    borderRadius: radii.sm,
-    padding: spacing.md,
-    backgroundColor: colors.background,
-  },
-  annotationButtons: {
+  highlightInline: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing.md,
-    marginTop: spacing.md,
-  },
-  cancelBtn: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  cancelText: {
-    fontFamily: fontFamilies.sansMedium,
-    fontSize: 15,
-    color: colors.textSecondary,
-  },
-  saveBtn: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.accent,
-    borderRadius: radii.sm,
-  },
-  saveText: {
-    fontFamily: fontFamilies.sansSemibold,
-    fontSize: 15,
-    color: colors.surface,
+    alignItems: 'center',
   },
   sectionHeader: {
-    paddingHorizontal: layout.screenPaddingX,
     paddingVertical: spacing.sm,
-    marginTop: spacing.sm,
+    paddingHorizontal: layout.screenPaddingX,
+    backgroundColor: colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
   sectionHeaderText: {
-    fontFamily: fontFamilies.sansSemibold,
+    fontFamily: fontFamilies.sansMedium,
     fontSize: 13,
-    letterSpacing: 0.4,
     color: colors.textTertiary,
-    textTransform: 'uppercase',
   },
 });

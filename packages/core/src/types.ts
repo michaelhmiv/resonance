@@ -95,19 +95,31 @@ export interface JournalSegment {
 
 // ── Reading state ───────────────────────────────────────────────────────────
 
+/**
+ * A highlight is a colored mark on a phrase in a verse, with an optional
+ * attached note. Notes are *properties of* a highlight — there is no separate
+ * annotation object. A highlight can have a note or not; the note's existence
+ * is what makes it "annotated."
+ *
+ * start_offset / end_offset are char indices into the verse text (the
+ * `text` field of the matching VersePassage). `selected_text` is the literal
+ * phrase — captured at highlight-creation time so we can render the note
+ * context even if the verse text changes.
+ *
+ * legacy rows (created before phrase-ranges shipped) have start_offset and
+ * end_offset = null. The UI renders those as flat whole-verse highlights.
+ */
 export interface Highlight {
   id: string;
   verse_ref: string;
   color: string;
-  created_at: number;
-}
-
-export interface Annotation {
-  id: string;
-  verse_ref: string;
-  translation: string;
-  text: string;
-  created_at: number;
+  start_offset: number | null;
+  end_offset: number | null;
+  selected_text: string | null;
+  note_text: string | null;
+  note_updated_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Bookmark {
@@ -116,16 +128,6 @@ export interface Bookmark {
   created_at: number;
   label: string | null;
 }
-
-export type HighlightMap = Record<string, string>;
-
-export interface AnnotationNote {
-  id: string;
-  text: string;
-  created_at: string;
-}
-
-export type AnnotationMap = Record<string, AnnotationNote[]>;
 
 // ── Resonance ───────────────────────────────────────────────────────────────
 

@@ -19,11 +19,7 @@ import type {
   LibraryPassage,
   JournalSegment,
   Highlight,
-  Annotation,
-  AnnotationNote,
   Bookmark,
-  HighlightMap,
-  AnnotationMap,
   ResonanceResult,
   EntryCluster,
   WeeklyRoundup,
@@ -50,14 +46,13 @@ export interface DataLayer {
   saveSegment(segment: JournalSegment): Promise<void>;
   deleteSegment(id: string): Promise<void>;
 
-  // ── Reading state (highlights, annotations, bookmarks) ────────────────
-  getHighlightsForRefs(refs: string[]): Promise<HighlightMap>;
-  saveHighlight(verseRef: string, color: string): Promise<void>;
-  removeHighlight(verseRef: string): Promise<void>;
-  getAnnotationsForRefs(refs: string[], translation: Translation): Promise<AnnotationMap>;
-  saveAnnotation(verseRef: string, translation: Translation, text: string): Promise<void>;
-  updateAnnotation(annotationId: string, text: string): Promise<void>;
-  deleteAnnotation(annotationId: string): Promise<void>;
+  // ── Reading state (highlights, bookmarks) ──────────────────────────────
+  // A highlight is a phrase-range mark on a verse, with an optional note.
+  // Notes live on the highlight row (note_text) — no separate annotations.
+  getHighlightsForRefs(refs: string[]): Promise<Highlight[]>;
+  saveHighlight(input: SaveHighlightInput): Promise<Highlight>;
+  updateHighlight(id: string, patch: UpdateHighlightPatch): Promise<Highlight>;
+  deleteHighlight(id: string): Promise<void>;
   saveBookmark(verseRef: string, label?: string): Promise<void>;
   removeBookmark(verseRef: string): Promise<void>;
   getBookmarks(): Promise<Bookmark[]>;
@@ -87,4 +82,32 @@ export interface DataLayer {
   getActiveEmbeddingModel(): Promise<EmbeddingModelId>;
   setActiveEmbeddingModel(id: EmbeddingModelId): Promise<void>;
   getSettings(): Promise<Record<string, string>>;
+}
+
+/**
+ * Input for creating a new phrase highlight.
+ * - startOffset / endOffset are char indices into the verse text
+ * - selectedText is the literal phrase (stored for note context)
+ * - noteText is optional; omit or pass null for a "just a color" highlight
+ */
+export interface SaveHighlightInput {
+  verseRef: string;
+  color: string;
+  startOffset: number;
+  endOffset: number;
+  selectedText: string;
+  noteText?: string | null;
+}
+
+/**
+ * Patch for updating an existing highlight. All fields optional.
+ * - Pass `noteText: null` (or empty string) to remove the note.
+ * - Pass new offsets to resize the range (e.g. drag a handle).
+ */
+export interface UpdateHighlightPatch {
+  color?: string;
+  startOffset?: number;
+  endOffset?: number;
+  selectedText?: string;
+  noteText?: string | null;
 }

@@ -40,6 +40,8 @@ export const colors = {
   highlightSage: '#a8b89e',
   /** Muted rose. */
   highlightRose: '#c9a0a0',
+  /** Cool slate blue — pairs with the warm triad for category color. */
+  highlightSlate: '#7a8db0',
 
   /** Footnote / resonance mark — quiet gold. */
   resonance: '#c9a25a',
@@ -52,6 +54,20 @@ export const highlightPalette = [
   colors.highlightGold,
   colors.highlightSage,
   colors.highlightRose,
+  colors.highlightSlate,
 ] as const;
 
 export type HighlightColor = (typeof highlightPalette)[number];
+
+/**
+ * Convert a hex color (#rrggbb) to an rgba() string with the given alpha.
+ * Used for highlight backgrounds — the base color is too saturated as a
+ * full fill, so we render it at ~28% opacity against the cream paper.
+ */
+export function withAlpha(hex: string, alpha: number): string {
+  const m = hex.replace('#', '');
+  const r = parseInt(m.slice(0, 2), 16);
+  const g = parseInt(m.slice(2, 4), 16);
+  const b = parseInt(m.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}

@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getHighlights, createHighlight } from '../../../../lib/db';
+import {
+  getHighlights,
+  createHighlight,
+  ensureHighlightVectorsTable,
+} from '../../../../lib/db';
+import { embed } from '../../../../lib/embed-helper';
+import { storeHighlightEmbedding, deleteHighlightEmbedding } from '../../../../lib/db';
+
+// Run migration on first import
+ensureHighlightVectorsTable().catch(() => {});
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,12 +21,36 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { verseRef, color } = await req.json();
+    const body = await req.json();
+    const { verseRef, color, startOffset, endOffset, selectedText, noteText } = body;
     if (!verseRef || !color) {
       return NextResponse.json({ error: 'verseRef and color required' }, { status: 400 });
     }
-    return NextResponse.json(await createHighlight(verseRef, color), { status: 201 });
-  } catch {
+    if (typeof startOffset !== 'number' || typeof endOffset !== 'number' || !selectedText) {
+      return NextResponse.json(
+        { error: 'startOffset, endOffset, and selectedText are required' },
+        { status: 400 },
+      );
+    }
+    const highlight = await createHighlight({
+      verseRef,
+      color,
+      startOffset,
+      endOffset,
+      selectedText,
+      noteText: noteText ?? null,
+    });
+
+    // Embed note_text in background (fire-and-forget) — only if a note was provided
+    if (highlight?.id && noteText && String(noteText).trim().length >= 3) {
+      embed(String(noteText)).then((vector) => {
+        if (vector) storeHighlightEmbedding(highlight.id, vector).catch(() => {});
+      }).catch(() => {});
+    }
+
+    return NextResponse.json(highlight, { status: 201 });
+  } catch (err) {
+    console.error('[highlights POST] error:', err);
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
 }
