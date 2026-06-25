@@ -32,27 +32,14 @@ export async function GET(_req: NextRequest) {
   // Force fresh read by using positional read with explicit position
 
   // Read first 5 vectors, dequantize, compute norms
-  const sample: any[] = [];
-  for (let i = 0; i < 5; i++) {
-    const buf = Buffer.alloc(dim);
-    await fd.read(buf, 0, dim, i * dim);
-    const raw = new Int8Array(buf.buffer, buf.byteOffset, dim);
-    const floats = new Float32Array(dim);
-    let normBefore = 0;
-    for (let d = 0; d < dim; d++) {
-      floats[d] = raw[d] / 127.0;
-      normBefore += floats[d] * floats[d];
-    }
-    normBefore = Math.sqrt(normBefore);
-    // Renormalize
-    let normAfter = 0;
-    if (normBefore > 0) {
-      for (let d = 0; d < dim; d++) {
-        floats[d] /= normBefore;
-        normAfter += floats[d] * floats[d];
-      }
-    }
-    normAfter = Math.sqrt(normAfter);
+  if (manifest.dtype === 'int8') {
+    const signed = new Int8Array(raw.buffer, raw.byteOffset, raw.byteLength);
+    for (let i = 0; i < raw.length; i++) {
+      const buf = Buffer.alloc(dim);
+      await fd.read(buf, 0, dim, i * dim);
+      const signed = new Int8Array(buf.buffer, buf.byteOffset, dim);
+      for (let d = 0; d < 3; d++) {
+        floats[d] = signed[d] / 127.0;
     sample.push({
       idx: i,
       passage_id: manifest.passage_ids?.[i],

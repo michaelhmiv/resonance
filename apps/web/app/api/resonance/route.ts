@@ -183,8 +183,12 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
         // Perplexity native int8: signed -128..127, normalize to ~[-1, 1].
         // Each row is L2-normalized in OpenRouter's float32 output; the
         // int8 quantization scales by 127. We undo the scale here.
-        for (let i = 0; i < raw.length; i++) {
-          buffer[offset + i] = raw[i] / 127.0;
+        // CRITICAL: raw is a Node Buffer (Uint8Array, 0..255). We must read
+        // it as signed Int8Array or negative values become positive
+        // (e.g. -59 becomes 197, /127 = 1.55 instead of -0.46).
+        const signed = new Int8Array(raw.buffer, raw.byteOffset, raw.byteLength);
+        for (let i = 0; i < signed.length; i++) {
+          buffer[offset + i] = signed[i] / 127.0;
         }
       } else {
         // float32 (default for non-Perplexity models)
