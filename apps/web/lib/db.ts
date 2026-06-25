@@ -179,6 +179,32 @@ export async function deleteAnnotation(id: string) {
   return { ok: true };
 }
 
+export async function storeAnnotationEmbedding(id: string, vector: number[]) {
+  const sb = getSupabase();
+  const { error } = await sb.from('annotations')
+    .update({ embedding: vector })
+    .eq('id', id);
+  if (error) {
+    console.error('[db] storeAnnotationEmbedding failed:', error);
+    return { ok: false };
+  }
+  return { ok: true };
+}
+
+export async function getUserAnnotationEmbeddings(userId?: string) {
+  const sb = getSupabase();
+  const uid = userId || (await getDevUserId());
+  const { data, error } = await sb.from('annotations')
+    .select('embedding')
+    .eq('user_id', uid)
+    .not('embedding', 'is', null);
+  if (error) {
+    console.error('[db] getUserAnnotationEmbeddings failed:', error);
+    return [];
+  }
+  return (data || []).map((row: { embedding: number[] }) => row.embedding);
+}
+
 // ── Settings ──────────────────────────────────────────────────────────────
 
 export async function getSettings(): Promise<Record<string, string>> {

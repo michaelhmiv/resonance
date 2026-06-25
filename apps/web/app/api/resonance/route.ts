@@ -15,12 +15,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import { existsSync, readdirSync } from 'fs';
 import { lexicalResonance } from '../../../lib/resonance-fallback';
+import {
+  getUserAnnotationEmbeddings,
+  getHighlights,
+} from '../../../lib/db';
 
 const VECTORS_BASE =
   process.env.VECTORS_PATH || '/data/vectors';
 
 const MIN_SIMILARITY = 0.1;
 const MAX_PER_CATEGORY = 3;
+
+/** Boost multiplier for passages the user has highlighted. */
+const HIGHLIGHT_BOOST = 1.12;
 
 interface PassageMeta {
   id: number;
@@ -218,12 +225,54 @@ export async function POST(req: NextRequest) {
         await ensureMetadata();
         const meta = passageMetadata || [];
 
-        const scored: { idx: number; sim: number }[] = [];
-        for (let i = 0; i < loaded.passageCount; i++) {
-          const sim = cosineSim(loaded.vectors, i * loaded.dim, vector, loaded.dim);
-          if (sim >= MIN_SIMILARITY) {
-            scored.push({ idx: i, sim });
+        // Fetch user highlights and annotation embeddings (non-blocking fallback)
+        let annotationVecs: number[][] = [];
+        let highlightRefs = new Set<string>();
+        try {
+          [annotationVecs, highlightRefs] = await Promise.all([
+            getUserAnnotationEmbeddings().catch(() => [] as number[][]),
+            getHighlights().then(
+              (rows: { verse_ref: string }[]) =>
+                new Set(rows.map((r) => normalizeVerseRef(r.verse_ref))),
+            ).catch(() => new Set<string>()),
+          ]);
+        } catch {
+          // Best-effort — personalization is additive, not critical
+        }
+
+        // Build an accumulated similarity map (idx → highest sim across all query vectors)
+        const simMap = new Map<number, number>();
+
+        /** Score all passages against one query vector and merge into simMap. */
+        const scoreAgainst = (queryVec: number[], boost = 1.0) => {
+          for (let i = 0; i < loaded.passageCount; i++) {
+            const sim = cosineSim(loaded.vectors, i * loaded.dim, queryVec, loaded.dim) * boost;
+            if (sim >= MIN_SIMILARITY) {
+              const existing = simMap.get(i) ?? 0;
+              if (sim > existing) simMap.set(i, sim);
+            }
           }
+        };
+
+        // 1. Score with the main journal query vector
+        scoreAgainst(vector, 1.0);
+
+        // 2. Score with each annotation embedding (same weight as main query)
+        for (const annVec of annotationVecs) {
+          if (annVec.length === loaded.dim) {
+            scoreAgainst(annVec, 1.0);
+          }
+        }
+
+        // Convert to scored array, applying highlight boost
+        const scored: { idx: number; sim: number }[] = [];
+        for (const [idx, sim] of simMap) {
+          let finalSim = sim;
+          // Apply 1.12× highlight boost for scripture passages the user highlighted
+          if (highlightRefs.has(normalizeVerseRef(verseRefFromMeta(meta[idx])))) {
+            finalSim = sim * HIGHLIGHT_BOOST;
+          }
+          scored.push({ idx, sim: finalSim });
         }
         scored.sort((a, b) => b.sim - a.sim);
 
@@ -241,7 +290,7 @@ export async function POST(req: NextRequest) {
           scripture: topScripture,
           voices: topVoices,
           pastEntries: [],
-          method: 'semantic-vector',
+          method: annotationVecs.length > 0 ? 'semantic-vector+annotations' : 'semantic-vector',
           model: modelId,
           dim: loaded.dim,
           passageCount: loaded.passageCount,
@@ -321,4 +370,19 @@ function toCard(
     similarity,
     kind,
   };
+}
+
+/** Normalize a verse ref for highlight matching. */
+function normalizeVerseRef(ref: string): string {
+  return ref.replace(/\s+/g, ' ').trim();
+}
+
+/** Build a verse ref string from PassageMeta for highlight boost matching. */
+function verseRefFromMeta(meta: PassageMeta): string {
+  if (!meta.translation) return '';
+  const bookName = meta.book_id.replace(/^[a-z]+_/, '').replace(/_/g, ' ');
+  if (meta.verse_start != null) {
+    return `${bookName} ${meta.chapter ?? ''}:${meta.verse_start}`;
+  }
+  return `${bookName} ${meta.chapter ?? ''}`;
 }
