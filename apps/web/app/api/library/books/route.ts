@@ -17,7 +17,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, statSync } from 'fs';
 
 const VOLUME_PATH = '/data/seeded_library/voice_books.json';
 const BUNDLED_PATH = './data/seeded_library/voice_books.json';
@@ -32,15 +32,24 @@ interface VoiceBook {
   [key: string]: unknown;
 }
 
-// Module-level cache (lazy loaded on first request).
+// Module-level cache, invalidated on file mtime change so a volume upload
+// (via /api/admin/upload-file) is picked up on the next request.
 let cachedVoiceBooks: VoiceBook[] | null = null;
+let cachedMtimeMs = 0;
+let cachedPath = '';
 
 function loadVoiceBooks(): VoiceBook[] {
-  if (cachedVoiceBooks) return cachedVoiceBooks;
   // Prefer the Railway volume; fall back to bundled copy
   const path = existsSync(VOLUME_PATH) ? VOLUME_PATH : BUNDLED_PATH;
-  cachedVoiceBooks = JSON.parse(readFileSync(path, 'utf-8'));
-  return cachedVoiceBooks as VoiceBook[];
+  const stat = statSync(path);
+  const mtimeMs = stat.mtimeMs;
+  if (cachedVoiceBooks && path === cachedPath && mtimeMs === cachedMtimeMs) {
+    return cachedVoiceBooks;
+  }
+  cachedVoiceBooks = JSON.parse(readFileSync(path, 'utf-8')) as VoiceBook[];
+  cachedMtimeMs = mtimeMs;
+  cachedPath = path;
+  return cachedVoiceBooks;
 }
 
 function packageLabel(packageId: string): string {

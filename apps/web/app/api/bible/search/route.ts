@@ -18,7 +18,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, statSync } from 'fs';
 
 const BIBLE_PASSAGES_VOLUME = '/data/seeded_library/bible_passages.json';
 const BIBLE_PASSAGES_BUNDLED = './data/seeded_library/bible_passages.json';
@@ -28,9 +28,6 @@ const VOICE_PASSAGES_BUNDLED = './data/seeded_library/voice_passages.json';
 function pickPath(volumePath: string, bundledPath: string): string {
   return existsSync(volumePath) ? volumePath : bundledPath;
 }
-
-const BIBLE_PASSAGES = pickPath(BIBLE_PASSAGES_VOLUME, BIBLE_PASSAGES_BUNDLED);
-const VOICE_PASSAGES = pickPath(VOICE_PASSAGES_VOLUME, VOICE_PASSAGES_BUNDLED);
 
 const MAX_SCRIPTURE = 50;
 const MAX_LIBRARY = 100;
@@ -67,22 +64,37 @@ interface SearchHit {
   source: string | null;
 }
 
-// Module-level caches (lazy loaded on first request).
+// Module-level caches, invalidated on file mtime change so a volume upload
+// (via /api/admin/upload-file) is picked up on the next request.
 let cachedBiblePassages: BiblePassage[] | null = null;
+let cachedBibleMtime = 0;
+let cachedBiblePath = '';
 let cachedVoicePassages: VoicePassage[] | null = null;
+let cachedVoiceMtime = 0;
+let cachedVoicePath = '';
 
 function loadBiblePassages(): BiblePassage[] {
-  if (!cachedBiblePassages) {
-    cachedBiblePassages = JSON.parse(readFileSync(BIBLE_PASSAGES, 'utf-8'));
+  const path = pickPath(BIBLE_PASSAGES_VOLUME, BIBLE_PASSAGES_BUNDLED);
+  const mtimeMs = statSync(path).mtimeMs;
+  if (cachedBiblePassages && path === cachedBiblePath && mtimeMs === cachedBibleMtime) {
+    return cachedBiblePassages;
   }
-  return cachedBiblePassages as BiblePassage[];
+  cachedBiblePassages = JSON.parse(readFileSync(path, 'utf-8')) as BiblePassage[];
+  cachedBibleMtime = mtimeMs;
+  cachedBiblePath = path;
+  return cachedBiblePassages;
 }
 
 function loadVoicePassages(): VoicePassage[] {
-  if (!cachedVoicePassages) {
-    cachedVoicePassages = JSON.parse(readFileSync(VOICE_PASSAGES, 'utf-8'));
+  const path = pickPath(VOICE_PASSAGES_VOLUME, VOICE_PASSAGES_BUNDLED);
+  const mtimeMs = statSync(path).mtimeMs;
+  if (cachedVoicePassages && path === cachedVoicePath && mtimeMs === cachedVoiceMtime) {
+    return cachedVoicePassages;
   }
-  return cachedVoicePassages as VoicePassage[];
+  cachedVoicePassages = JSON.parse(readFileSync(path, 'utf-8')) as VoicePassage[];
+  cachedVoiceMtime = mtimeMs;
+  cachedVoicePath = path;
+  return cachedVoicePassages;
 }
 
 function searchScripture(qLower: string): SearchHit[] {

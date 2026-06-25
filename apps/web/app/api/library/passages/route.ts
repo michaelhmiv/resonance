@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, statSync } from 'fs';
 
 const VOLUME_PASSAGES = '/data/seeded_library/voice_passages.json';
 const BUNDLED_PASSAGES = './data/seeded_library/voice_passages.json';
@@ -15,13 +15,20 @@ interface VoicePassage {
 }
 
 let cachedVoicePassages: VoicePassage[] | null = null;
+let cachedPassagesMtime = 0;
+let cachedPassagesPath = '';
 
 function loadVoicePassages(): VoicePassage[] {
-  if (cachedVoicePassages) return cachedVoicePassages;
   // Prefer the Railway volume; fall back to bundled copy
   const path = existsSync(VOLUME_PASSAGES) ? VOLUME_PASSAGES : BUNDLED_PASSAGES;
-  cachedVoicePassages = JSON.parse(readFileSync(path, 'utf-8'));
-  return cachedVoicePassages as VoicePassage[];
+  const mtimeMs = statSync(path).mtimeMs;
+  if (cachedVoicePassages && path === cachedPassagesPath && mtimeMs === cachedPassagesMtime) {
+    return cachedVoicePassages;
+  }
+  cachedVoicePassages = JSON.parse(readFileSync(path, 'utf-8')) as VoicePassage[];
+  cachedPassagesMtime = mtimeMs;
+  cachedPassagesPath = path;
+  return cachedVoicePassages;
 }
 
 export async function GET(request: NextRequest) {

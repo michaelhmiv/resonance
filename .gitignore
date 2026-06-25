@@ -34,6 +34,10 @@ corpus_staging_check/
 corpus/staging_v2/**/*.txt  # raw source text — too big for git
 corpus/staging_v2/**/*.passages.json  # per-work chunked output — too big for git
 # Note: *.attribution.json per-work files (audit trail) ARE committed
+
+# Voice library lives on Railway volume, not in git
+apps/web/data/seeded_library/voice_books.json
+apps/web/data/seeded_library/voice_passages.json
 # Belt-and-suspenders for older git versions that don't handle ** properly
 corpus/staging_v2/*/*.txt
 corpus/staging_v2/*/*/*.txt
