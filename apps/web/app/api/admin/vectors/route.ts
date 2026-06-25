@@ -33,18 +33,27 @@ async function findActiveModel(): Promise<string | null> {
   if (!existsSync(VECTORS_ROOT)) return null;
   const entries = readdirSync(VECTORS_ROOT, { withFileTypes: true })
     .filter((d) => d.isDirectory() && !d.name.startsWith('.'));
+  // Prefer the model with the most recent manifest mtime — that's the one
+  // actually being used. Alphabetical order would always pick "gte-small"
+  // when an old index is still on the volume.
+  let best: { name: string; mtime: number } | null = null;
   for (const e of entries) {
     const manifestPath = path.join(VECTORS_ROOT, e.name, 'manifest.json');
-    if (existsSync(manifestPath)) {
-      try {
-        const m = JSON.parse(await readFile(manifestPath, 'utf-8'));
-        if (m.passage_count > 0 && m.dim > 0) return e.name;
-      } catch {
-        // skip
+    if (!existsSync(manifestPath)) continue;
+    try {
+      const m = JSON.parse(await readFile(manifestPath, 'utf-8'));
+      if (m.passage_count > 0 && m.dim > 0) {
+        const s = await import('fs/promises').then(fh => fh.stat(manifestPath));
+        const mtime = s.mtimeMs;
+        if (!best || mtime > best.mtime) {
+          best = { name: e.name, mtime };
+        }
       }
+    } catch {
+      // skip
     }
   }
-  return null;
+  return best?.name ?? null;
 }
 
 export async function DELETE(req: NextRequest) {
