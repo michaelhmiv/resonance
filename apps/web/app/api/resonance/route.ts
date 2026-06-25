@@ -200,6 +200,7 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
     // scaled by 127). For correct cosine similarity — and bounded
     // similarities in [-1, 1] — we renormalize once at load time. This is
     // O(N*dim) but happens once per model load, not per request.
+    let totalNorm = 0;
     for (let row = 0; row < manifest.passage_count; row++) {
       const base = row * manifest.dim;
       let norm = 0;
@@ -212,8 +213,10 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
         for (let d = 0; d < manifest.dim; d++) {
           buffer[base + d] *= inv;
         }
+        totalNorm += norm;
       }
     }
+    console.log(`[resonance] loadModel: renormalized ${manifest.passage_count} rows, avg input norm ${(totalNorm / manifest.passage_count).toFixed(4)}`);
 
     const loaded: LoadedModel = {
       vectors: buffer,
@@ -276,6 +279,12 @@ export async function POST(req: NextRequest) {
       if (loaded && loaded.passageCount > 0 && vector.length === loaded.dim) {
         await ensureMetadata();
         const meta = passageMetadata || [];
+
+        // Quick sanity: check that the loaded vectors for the first passage_id
+        // match the renormalized row in memory
+        const firstPid = orderedPassageIds[0];
+        const firstMeta = meta.find(m => m.id === firstPid);
+        console.log(`[resonance] first vector row corresponds to passage id ${firstPid} (${firstMeta?.book_id ?? 'unknown'})`);
 
         // Fetch user highlights and their note embeddings
         let highlightNoteVecs: number[][] = [];
