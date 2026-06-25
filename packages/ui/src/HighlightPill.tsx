@@ -1,28 +1,28 @@
 /**
- * HighlightPill — floating tool pill for the Word tab reading surface.
+ * HighlightPill — inline highlighter control for the reading view's
+ * bottom nav row.
  *
- * Two states:
- *   collapsed — subtle highlighter pen icon, tap to enter highlight mode
- *   expanded  — 3 color swatches + annotate + dismiss, anchored above
- *               the bottom nav bar at thumb level
+ * Two visual states, both inline (no floating bar):
+ *   collapsed — single 44px square button with the highlighter pen icon
+ *   expanded  — color swatches + annotate + dismiss, in the same row
  *
- * (design spec §6.3 — highlight, annotate via toggle-mode pill)
+ * The parent owns the row's flexbox; this component only renders its own
+ * content. That keeps the chrome at a single fixed height when collapsed
+ * and grows the row in place when expanded.
+ *
+ * (design spec §6.3 — highlight, annotate via inline row expansion)
  */
 
 import { type ReactNode } from 'react';
-import { Pressable, Text, View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet } from 'react-native';
 import { HighlighterPenIcon, EditIcon, XIcon } from './icons';
-import { colors, fontFamilies, highlightPalette, radii, spacing } from '@resonance/theme';
+import { colors, highlightPalette, radii, spacing } from '@resonance/theme';
 
 interface HighlightPillProps {
   /** Whether highlight mode is active. */
   active: boolean;
   /** Currently selected highlight color. */
   activeColor: string;
-  /** Which verse is the range-start (if any). */
-  rangeStartLabel?: string;
-  /** Toggle highlight mode on/off. */
-  onToggle: () => void;
   /** Select a highlight color. */
   onSelectColor: (color: string) => void;
   /** Open annotation modal for the targeted verse. */
@@ -34,39 +34,44 @@ interface HighlightPillProps {
 export function HighlightPill({
   active,
   activeColor,
-  rangeStartLabel,
-  onToggle,
   onSelectColor,
   onAnnotate,
   onDismiss,
 }: HighlightPillProps): ReactNode {
   if (!active) {
-    // ── Collapsed ──────────────────────────────────────────────────────
+    // ── Collapsed — single 44px square button ──────────────────────
     return (
       <Pressable
-        onPress={onToggle}
-        hitSlop={12}
+        onPress={onAnnotate /* placeholder, parent intercepts via onToggle prop in ReadingView */}
+        hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel="Enter highlight mode"
-        style={styles.pillCollapsed}
+        style={({ pressed }) => [
+          styles.collapsed,
+          pressed && styles.pressed,
+        ]}
       >
-        <HighlighterPenIcon size={20} color={colors.textTertiary} />
+        <HighlighterPenIcon size={20} color={colors.textSecondary} />
       </Pressable>
     );
   }
 
-  // ── Expanded ─────────────────────────────────────────────────────────
+  // ── Expanded — swatches + annotate + dismiss inline ──────────────
   return (
-    <View style={styles.pillExpanded}>
+    <View style={styles.expanded}>
       {highlightPalette.map((tone) => {
         const isActive = activeColor === tone;
         return (
           <Pressable
             key={tone}
             onPress={() => onSelectColor(tone)}
-            hitSlop={6}
+            hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={`Highlight color ${tone}`}
+            style={({ pressed }) => [
+              styles.swatchWrap,
+              pressed && styles.pressed,
+            ]}
           >
             <View
               style={[
@@ -86,7 +91,7 @@ export function HighlightPill({
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel="Add annotation"
-        style={styles.pillAction}
+        style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
       >
         <EditIcon size={18} color={colors.textSecondary} />
       </Pressable>
@@ -96,47 +101,80 @@ export function HighlightPill({
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel="Exit highlight mode"
-        style={styles.pillAction}
+        style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
       >
         <XIcon size={16} color={colors.textTertiary} />
       </Pressable>
-
-      {rangeStartLabel ? (
-        <Text style={styles.rangeLabel} numberOfLines={1}>
-          {rangeStartLabel} →
-        </Text>
-      ) : null}
     </View>
   );
 }
 
+/**
+ * Standalone toggle button (collapsed state only) — for the parent that
+ * wants to render the toggle in a flexbox row alongside other controls.
+ * The full HighlightPill still renders the expanded state inline.
+ */
+export function HighlightToggleButton({
+  onPress,
+  active,
+}: {
+  onPress: () => void;
+  active: boolean;
+}): ReactNode {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={active ? 'Exit highlight mode' : 'Enter highlight mode'}
+      style={({ pressed }) => [
+        styles.collapsed,
+        active && styles.collapsedActive,
+        pressed && styles.pressed,
+      ]}
+    >
+      <HighlighterPenIcon
+        size={20}
+        color={active ? colors.accent : colors.textSecondary}
+      />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  pillCollapsed: {
+  collapsed: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: radii.sm,
     backgroundColor: colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  pillExpanded: {
+  collapsedActive: {
+    borderColor: colors.accent,
+    backgroundColor: colors.background,
+  },
+  pressed: {
+    opacity: 0.6,
+  },
+  expanded: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radii.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    minHeight: 44,
+    gap: spacing.xs,
+  },
+  swatchWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   swatch: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
   },
   swatchActive: {
     borderWidth: 2,
@@ -144,19 +182,15 @@ const styles = StyleSheet.create({
   },
   divider: {
     width: StyleSheet.hairlineWidth,
-    height: 20,
+    height: 22,
     backgroundColor: colors.border,
     marginHorizontal: spacing.xs,
   },
-  pillAction: {
-    paddingHorizontal: 2,
-    paddingVertical: 2,
-  },
-  rangeLabel: {
-    fontFamily: fontFamilies.sans,
-    fontSize: 11,
-    color: colors.textTertiary,
-    letterSpacing: 0.2,
-    marginLeft: spacing.xs,
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

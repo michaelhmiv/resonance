@@ -54,7 +54,7 @@ import {
   type AnnotationMap,
 } from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
-import { HighlightPill } from '@resonance/ui';
+import { HighlightPill, HighlightToggleButton } from '@resonance/ui';
 import { ChapterPicker } from '@resonance/ui';
 import { TranslationSelector } from '@resonance/ui';
 import { BookmarkButton } from '@resonance/ui';
@@ -538,7 +538,6 @@ export function ReadingView({
 
   // ── Derive display values ────────────────────────────────────────────────
 
-  const rangeStartLabel = rangeStart ?? undefined;
   /** Minimum 44px touch target size (Apple HIG). */
   const TOUCH_MIN = 44;
 
@@ -757,22 +756,9 @@ export function ReadingView({
         />
       )}
 
-      {/* ── Bottom chrome: fixed pill + nav bar ───────────────────────── */}
+      {/* ── Bottom chrome: one row, chrome expands inline ─────────────── */}
       <View style={styles.bottomChrome} className="reading-bottom-chrome">
-        {/* Floating tool pill */}
-        <View style={styles.pillContainer}>
-          <HighlightPill
-            active={highlightMode}
-            activeColor={activeColor}
-            rangeStartLabel={rangeStartLabel}
-            onToggle={handleToggleHighlight}
-            onSelectColor={setActiveColor}
-            onAnnotate={handleAnnotate}
-            onDismiss={handleExitHighlight}
-          />
-        </View>
-
-        {/* Bottom navigation bar */}
+        {/* Row 1: chapter nav + bookmark + highlighter (collapsed/expanded) */}
         <View style={styles.bottomNav}>
           {/* Chapter / section navigation */}
           {isScripture ? (
@@ -851,6 +837,21 @@ export function ReadingView({
                 <View style={styles.chapterNavPlaceholder} />
               )}
             </View>
+          )}
+
+          {/* Highlighter — toggles inline; expands to swatches+annotate+dismiss */}
+          {highlightMode ? (
+            <View style={styles.highlightInline}>
+              <HighlightPill
+                active
+                activeColor={activeColor}
+                onSelectColor={setActiveColor}
+                onAnnotate={handleAnnotate}
+                onDismiss={handleExitHighlight}
+              />
+            </View>
+          ) : (
+            <HighlightToggleButton active={false} onPress={handleToggleHighlight} />
           )}
 
           {/* Bookmark */}
@@ -1092,17 +1093,19 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
     paddingBottom: spacing.sm,
   },
-  pillContainer: {
-    alignItems: 'flex-end',
-    paddingHorizontal: layout.screenPaddingX,
-    paddingBottom: spacing.xs,
-  },
   bottomNav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    rowGap: spacing.xs,
     paddingHorizontal: layout.screenPaddingX,
     paddingVertical: spacing.sm,
+  },
+  highlightInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   chapterNav: {
     flexDirection: 'row',

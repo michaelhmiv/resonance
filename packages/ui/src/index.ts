@@ -1,7 +1,7 @@
 export { PassageCard } from './PassageCard';
 export type { PassageCardProps } from './PassageCard';
 export { HighlightToolbar } from './HighlightToolbar';
-export { HighlightPill } from './HighlightPill';
+export { HighlightPill, HighlightToggleButton } from './HighlightPill';
 export { BottomTabBar } from './BottomTabBar';
 export type { TabId } from './BottomTabBar';
 export { TranslationSelector } from './TranslationSelector';
