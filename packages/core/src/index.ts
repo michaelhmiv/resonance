@@ -22,3 +22,6 @@ export * from './segmentModel';
 // ── Schema (SQL DDL — same for both SQLite and PostgreSQL) ──────────────────
 export * from './schema';
 
+// ── HTTP cache (web-only; no-op on mobile and server) ───────────────────────
+export * from './http-cache';
+

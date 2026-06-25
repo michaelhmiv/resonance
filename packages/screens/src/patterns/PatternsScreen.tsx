@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import { useDataLayer } from '@resonance/core/data-layer-context';
-import type { JournalSegment, WeeklyRoundup, CalendarDay } from '@resonance/core';
+import { type JournalSegment, type WeeklyRoundup, type CalendarDay, getCachedSync } from '@resonance/core';
 
 interface ThemeItem {
   word: string;
@@ -24,13 +24,24 @@ interface ThemeItem {
 
 export function PatternsScreen(): ReactNode {
   const dataLayer = useDataLayer();
-  const [segments, setSegments] = useState<JournalSegment[]>([]);
+  // Read segments from cache synchronously. If the user previously visited
+  // this tab, the calendar + patterns paint on the first render — no spinner
+  // flash. The effect below refreshes the cache in the background.
+  // NOTE: /api/journal/entries returns `{ entries: [...] }`; loadSegments() unwraps.
+  const [segments, setSegments] = useState<JournalSegment[]>(() => {
+    const cached = getCachedSync<{ entries: JournalSegment[] }>('/api/journal/entries');
+    return cached?.entries ?? [];
+  });
   const [weekly, setWeekly] = useState<WeeklyRoundup | null>(null);
   const [themes, setThemes] = useState<ThemeItem[]>([]);
   const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
   const [readingDates, setReadingDates] = useState<Map<string, number>>(new Map());
   const [reflection, setReflection] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Only show the full-screen spinner on a cold cache. With a warm cache, the
+  // first render already has the empty-state calendar + patterns UI to show.
+  const [loading, setLoading] = useState(() => {
+    return !getCachedSync<{ entries: JournalSegment[] }>('/api/journal/entries');
+  });
   const [reflecting, setReflecting] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 

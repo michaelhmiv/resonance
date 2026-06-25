@@ -22,7 +22,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SearchIcon, SettingsIcon } from '@resonance/ui';
 
 import { colors, fontFamilies, radii, screenContainer, spacing } from '@resonance/theme';
-import { type Translation } from '@resonance/core';
+import { type Translation, getCachedSync } from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
 import { ScriptureBrowser } from './ScriptureBrowser';
 import { LibraryBrowser } from './LibraryBrowser';
@@ -52,14 +52,25 @@ export function WordScreen({
   initialVerse,
 }: WordScreenProps): ReactNode {
   const [surface, setSurface] = useState<'scripture' | 'library'>('scripture');
-  const [translation, setTranslation] = useState<Translation>('WEB');
+  // Translation is read from cache synchronously so the first render of the
+  // ScriptureBrowser uses the right translation immediately (no flash of WEB
+  // then switching to KJV).
+  const [translation, setTranslation] = useState<Translation>(() => {
+    const cached = getCachedSync<{ translation?: string }>('/api/settings');
+    const saved = cached?.translation;
+    if (saved === 'kjv' || saved === 'web') return saved.toUpperCase() as Translation;
+    return 'WEB';
+  });
   const [view, setView] = useState<ScreenView>({ name: 'browse' });
   const [totalChapters, setTotalChapters] = useState(1);
-  const [lastReadPosition, setLastReadPosition] = useState<{ bookId: string; chapter: number; verseRef: string } | null>(null);
+  const [lastReadPosition, setLastReadPosition] = useState<{ bookId: string; chapter: number; verseRef: string } | null>(() => {
+    // No cache for lastReadPosition — it's tiny and rarely shared.
+    return null;
+  });
   const dataLayer = useDataLayer();
   const deepLinkApplied = useRef(false);
 
-  // Load saved translation preference on mount
+  // Load saved translation preference on mount (refreshes cache if stale)
   useEffect(() => {
     dataLayer.getSettings().then((settings) => {
       const savedTranslation = settings?.translation;

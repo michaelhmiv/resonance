@@ -30,7 +30,7 @@ import {
   serifText,
   spacing,
 } from '@resonance/theme';
-import { type LibraryPackage, type LibraryBook } from '@resonance/core';
+import { type LibraryPackage, type LibraryBook, getCachedSync } from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
 
 interface LibraryBrowserProps {
@@ -38,7 +38,13 @@ interface LibraryBrowserProps {
 }
 
 export function LibraryBrowser({ onOpenBook }: LibraryBrowserProps): ReactNode {
-  const [packages, setPackages] = useState<LibraryPackage[] | null>(null);
+  // Lazy initializer reads from cache synchronously. If the user previously
+  // visited this tab, the packages list paints on the first render — no
+  // spinner flash. If the cache is cold, we render null and let the effect
+  // fill it in.
+  const [packages, setPackages] = useState<LibraryPackage[] | null>(() => {
+    return getCachedSync<LibraryPackage[]>('/api/library/packages');
+  });
   const dataLayer = useDataLayer();
   const [expandedPkg, setExpandedPkg] = useState<string | null>(null);
 
@@ -47,9 +53,9 @@ export function LibraryBrowser({ onOpenBook }: LibraryBrowserProps): ReactNode {
     dataLayer.getLibraryPackages().then((pkgs) => {
       if (!cancelled) {
         setPackages(pkgs);
-        // Auto-expand the first package.
+        // Auto-expand the first package on initial load.
         if (pkgs.length > 0) {
-          setExpandedPkg(pkgs[0].package_id);
+          setExpandedPkg((prev) => prev ?? pkgs[0].package_id);
         }
       }
     });

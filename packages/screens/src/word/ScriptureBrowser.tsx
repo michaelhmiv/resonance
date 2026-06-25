@@ -29,6 +29,7 @@ import {
 } from '@resonance/theme';
 import { type BookSummary, type Translation } from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
+import { getCachedSync } from '@resonance/core';
 
 interface ScriptureBrowserProps {
   translation: Translation;
@@ -44,13 +45,17 @@ export function ScriptureBrowser({
   translation,
   onOpenChapter,
 }: ScriptureBrowserProps): ReactNode {
-  const [books, setBooks] = useState<BookSummary[] | null>(null);
+  // Lazy initializer reads from cache synchronously. If the user previously
+  // visited this tab, the books list paints on the first render — no spinner
+  // flash. If the cache is cold, we render null and let the effect fill it in.
+  const [books, setBooks] = useState<BookSummary[] | null>(() => {
+    return getCachedSync<BookSummary[]>(`/api/bible/books?translation=${translation}`);
+  });
   const dataLayer = useDataLayer();
   const [chapterView, setChapterView] = useState<ChapterData | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setBooks(null);
     dataLayer.getBooks(translation).then((nextBooks) => {
       if (!cancelled) setBooks(nextBooks);
     });

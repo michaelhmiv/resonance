@@ -2,8 +2,9 @@
  * BottomTabBar — persistent bottom navigation for mobile.
  *
  * URL-aware: derives `activeTab` from the current pathname and navigates
- * with `useRouter().push()`. Designed to be mounted once at the layout
- * level so every authenticated page inherits the bar.
+ * with `next/link` so the other two tabs are auto-prefetched on mount.
+ * Designed to be mounted once at the layout level so every authenticated
+ * page inherits the bar.
  *
  * Visibility is driven by a JavaScript media-query check (not CSS) because
  * RN-Web's inline `style.display` wins over a CSS `.bottom-tab-bar` rule,
@@ -17,8 +18,9 @@
 'use client';
 
 import { type ReactNode } from 'react';
-import { Pressable, Text, View, StyleSheet } from 'react-native';
-import { usePathname, useRouter } from 'next/navigation';
+import { Text, View, StyleSheet } from 'react-native';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { colors, fontFamilies, spacing, radii } from '@resonance/theme';
 import { SearchIcon, LibraryIcon, WindIcon } from './icons';
 
@@ -46,13 +48,14 @@ function tabFromPath(pathname: string | null): TabId {
 }
 
 export function BottomTabBar({ activeTab: activeOverride, onSelect }: BottomTabBarProps = {}): ReactNode {
-  const router = useRouter();
   const pathname = usePathname();
   const active = activeOverride ?? tabFromPath(pathname);
 
-  const handle = (tab: TabId, href: string) => {
+  const handlePress = (tab: TabId) => {
+    // next/link handles navigation. This callback lets a parent override
+    // behavior (e.g. analytics, or forced remount) without reimplementing
+    // the link itself.
     if (onSelect) onSelect(tab);
-    router.push(href);
   };
 
   return (
@@ -61,19 +64,22 @@ export function BottomTabBar({ activeTab: activeOverride, onSelect }: BottomTabB
         const isActive = active === tab.id;
         const Icon = tab.Icon;
         return (
-          <Pressable
+          <Link
             key={tab.id}
-            onPress={() => handle(tab.id, tab.href)}
-            accessibilityRole="button"
-            accessibilityLabel={tab.label}
-            accessibilityState={{ selected: isActive }}
-            style={({ pressed }) => [styles.tab, isActive && styles.tabActive, pressed && styles.pressed]}
+            href={tab.href}
+            prefetch={true}
+            style={styles.linkReset}
+            onClick={() => handlePress(tab.id)}
+            aria-label={tab.label}
+            aria-current={isActive ? 'page' : undefined}
           >
-            <Icon size={20} color={isActive ? colors.accent : colors.textTertiary} />
-            <Text style={[styles.label, isActive && styles.labelActive]}>
-              {tab.label}
-            </Text>
-          </Pressable>
+            <View style={[styles.tab, isActive && styles.tabActive]}>
+              <Icon size={20} color={isActive ? colors.accent : colors.textTertiary} />
+              <Text style={[styles.label, isActive && styles.labelActive]}>
+                {tab.label}
+              </Text>
+            </View>
+          </Link>
         );
       })}
     </View>
@@ -96,6 +102,11 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 250, // below reading chrome (z 300) so chrome sits above on /word
   },
+  // next/link renders an <a> — strip the default underline / inline display.
+  linkReset: {
+    flex: 1,
+    textDecorationLine: 'none',
+  } as any,
   tab: {
     flex: 1,
     alignItems: 'center',
@@ -106,9 +117,6 @@ const styles = StyleSheet.create({
   },
   tabActive: {
     // Active indicator via label color + icon color
-  },
-  pressed: {
-    opacity: 0.6,
   },
   label: {
     fontFamily: fontFamilies.sans,

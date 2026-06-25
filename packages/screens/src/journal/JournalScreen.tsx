@@ -17,7 +17,7 @@ import {
   View,
 } from 'react-native';
 import { useDataLayer } from '@resonance/core/data-layer-context';
-import type { JournalSegment, ResonanceResult, ResonanceCard } from '@resonance/core';
+import { type JournalSegment, type ResonanceResult, type ResonanceCard, getCachedSync } from '@resonance/core';
 
 interface VerseOfDay {
   book: string;
@@ -38,10 +38,28 @@ interface JournalScreenProps {
 
 export function JournalScreen({ fetchVerseOfDay, onNavigateToBook }: JournalScreenProps): ReactNode {
   const dataLayer = useDataLayer();
-  const [segments, setSegments] = useState<JournalSegment[]>([]);
-  const [verseOfDay, setVerseOfDay] = useState<VerseOfDay | null>(null);
+  // Read both lists from cache synchronously. If the user previously visited
+  // this tab, the journal entries and verse-of-day paint on the first render
+  // — no spinner flash, no "loading" state. The effect below refreshes the
+  // cache in the background and only re-renders if data actually changed.
+  // NOTE: the API returns `{ entries: [...] }`; loadSegments() unwraps it.
+  // The cache stores the raw response, so we unwrap here too.
+  const [segments, setSegments] = useState<JournalSegment[]>(() => {
+    const cached = getCachedSync<{ entries: JournalSegment[] }>('/api/journal/entries');
+    return cached?.entries ?? [];
+  });
+  const [verseOfDay, setVerseOfDay] = useState<VerseOfDay | null>(() => {
+    return getCachedSync<VerseOfDay>('/api/bible/verse-of-day');
+  });
   const [currentText, setCurrentText] = useState('');
-  const [loading, setLoading] = useState(true);
+  // Start in "loading" only if the cache was cold (we have no segments and no
+  // verse yet). If the cache was warm, the first render already shows content
+  // and we don't want to flash a spinner.
+  const [loading, setLoading] = useState(() => {
+    const cachedSegs = getCachedSync<{ entries: JournalSegment[] }>('/api/journal/entries');
+    const cachedVod = getCachedSync<VerseOfDay>('/api/bible/verse-of-day');
+    return !cachedSegs && !cachedVod;
+  });
   const [saving, setSaving] = useState(false);
 
   // Per-entry resonance — keyed by segment ID

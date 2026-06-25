@@ -1,27 +1,34 @@
 'use client';
 
-import type {
-  DataLayer,
-  SaveHighlightInput,
-  UpdateHighlightPatch,
-  Translation,
-  BookSummary,
-  VersePassage,
-  PassageHit,
-  SearchScope,
-  LibraryPackage,
-  LibraryBook,
-  LibraryPassage,
-  JournalSegment,
-  Highlight,
-  Bookmark,
-  ResonanceResult,
-  EntryCluster,
-  WeeklyRoundup,
-  ShiftReport,
-  CalendarDay,
-  ReflectionPrompt,
-  EmbeddingModelId,
+import {
+  type DataLayer,
+  type SaveHighlightInput,
+  type UpdateHighlightPatch,
+  type Translation,
+  type BookSummary,
+  type VersePassage,
+  type PassageHit,
+  type SearchScope,
+  type LibraryPackage,
+  type LibraryBook,
+  type LibraryPassage,
+  type JournalSegment,
+  type Highlight,
+  type Bookmark,
+  type ResonanceResult,
+  type EntryCluster,
+  type WeeklyRoundup,
+  type ShiftReport,
+  type CalendarDay,
+  type ReflectionPrompt,
+  type EmbeddingModelId,
+  cacheGetEntry,
+  cacheSet,
+  cacheSetEntry,
+  cacheDelete,
+  cacheClear,
+  ttlFor,
+  getCachedSync,
 } from '@resonance/core';
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -33,6 +40,92 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
   return res.json();
 }
+
+// ── Client-side cache (shared via @resonance/core/http-cache) ──────────────
+//
+// Goal: eliminate the network waterfall on tab switches. The same data is
+// requested every time you tap a tab (verse-of-day, books list, settings,
+// reading events, journal entries). These are slow-changing — books don't
+// change at all, verse-of-day changes daily, settings change when the user
+// edits them, etc.
+//
+// Strategy: stale-while-revalidate with inflight dedup.
+//   1. If we have a fresh cached entry, return it immediately and skip the
+//      network call.
+//   2. If the entry is stale, return it immediately AND fire a background
+//      refresh (the screen will get fresh data on its next render trigger).
+//   3. If multiple callers ask for the same URL while a request is in
+//      flight, they all share the same Promise (no duplicate fetches).
+//
+// Mutation paths (POST/PUT/DELETE) bypass the cache entirely.
+//
+// The cache Map is module-scoped and shared with screen components via
+// getCachedSync() so useState lazy initializers can paint content on the
+// first render (no spinner flash on warm tab returns).
+//
+// All cache primitives live in @resonance/core/http-cache. This file just
+// orchestrates the SWR flow.
+
+/** Internal: actually perform the network call and update the cache. */
+async function _fetchAndStore<T>(path: string, init?: RequestInit): Promise<T> {
+  const value = await api<T>(path, init);
+  const ttl = ttlFor(path);
+  if (ttl > 0) {
+    cacheSet(path, value, ttl);
+  }
+  return value;
+}
+
+/**
+ * Cached fetch with SWR semantics. Only caches GETs.
+ *
+ * Callers should not assume a "fresh" network roundtrip — if cached data is
+ * available, this returns it immediately and may refresh in the background.
+ * For mutations (POST/PUT/DELETE), pass through to `api` directly.
+ */
+export function cachedApi<T>(path: string, init?: RequestInit): Promise<T> {
+  const isRead = !init?.method || init.method === 'GET';
+  if (!isRead || ttlFor(path) === 0) {
+    return api<T>(path, init);
+  }
+  const now = Date.now();
+  const existing = cacheGetEntry<T>(path);
+
+  // 1. Fresh cache hit — return immediately.
+  if (existing && existing.expiresAt > now && !existing.inflight) {
+    return Promise.resolve(existing.value);
+  }
+
+  // 2. Stale cache hit — return cached value, refresh in background.
+  if (existing && existing.value != null && !existing.inflight) {
+    const stale = existing.value;
+    const inflight = _fetchAndStore<T>(path, init).catch(err => {
+      // If refresh fails, keep serving the stale value.
+      console.warn(`[cache] background refresh failed for ${path}:`, err);
+      throw err;
+    });
+    cacheSetEntry(path, { value: stale, expiresAt: 0, inflight: inflight as Promise<unknown> });
+    // Resolve the original call with stale; the inflight is best-effort.
+    void inflight;
+    return Promise.resolve(stale);
+  }
+
+  // 3. Cache miss — fetch fresh. Dedupe concurrent calls.
+  if (existing?.inflight) {
+    return existing.inflight;
+  }
+  const inflight = _fetchAndStore<T>(path, init);
+  // Sentinel entry so concurrent callers dedup. The real entry is written
+  // when _fetchAndStore resolves.
+  cacheSetEntry(path, { value: undefined as T, expiresAt: 0, inflight: inflight as Promise<unknown> });
+  return inflight;
+}
+
+// Re-export shared cache primitives so existing callers in this file
+// (and any future ones) can reach them.
+export const invalidateCache = cacheDelete;
+export const _clearCacheForTests = cacheClear;
+export { getCachedSync };
 
 function bibleBookId(bookName: string, translation: Translation): string {
   return `${translation}_${bookName.replace(/\s+/g, '_')}`;
@@ -73,7 +166,7 @@ interface WebLibraryPackage {
 
 export class WebDataLayer implements DataLayer {
   async getBooks(translation: Translation): Promise<BookSummary[]> {
-    const data = await api<{ books: WebBookRow[] }>(`/api/bible/books?translation=${translation.toLowerCase()}`);
+    const data = await cachedApi<{ books: WebBookRow[] }>(`/api/bible/books?translation=${translation.toLowerCase()}`);
     return data.books.map((b) => ({
       name: b.name,
       testament: b.testament,
@@ -84,7 +177,7 @@ export class WebDataLayer implements DataLayer {
   }
 
   async getChapters(bookName: string, translation: Translation): Promise<number[]> {
-    const data = await api<{ books: WebBookRow[] }>(`/api/bible/books?translation=${translation.toLowerCase()}`);
+    const data = await cachedApi<{ books: WebBookRow[] }>(`/api/bible/books?translation=${translation.toLowerCase()}`);
     return data.books.find((b) => b.name === bookName)?.chapters ?? [];
   }
 
@@ -150,7 +243,7 @@ export class WebDataLayer implements DataLayer {
   }
 
   async loadSegments(): Promise<JournalSegment[]> {
-    const data = await api<{ entries: { id: string; text: string; created_at: number; updated_at?: number }[] }>('/api/journal/entries');
+    const data = await cachedApi<{ entries: { id: string; text: string; created_at: number; updated_at?: number }[] }>('/api/journal/entries');
     return data.entries
       .slice()
       .reverse()
@@ -187,18 +280,22 @@ export class WebDataLayer implements DataLayer {
         }),
       },
     );
+    // Invalidate cached journal list so the next loadSegments() call gets
+    // the new entry.
+    invalidateCache('/api/journal/entries');
     // Return the server-generated UUID so the caller can update optimistic state
     return entry as unknown as void;
   }
 
   async deleteSegment(id: string): Promise<void> {
     await fetch(`/api/journal/entries/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    invalidateCache('/api/journal/entries');
   }
 
   async getHighlightsForRefs(refs: string[]): Promise<Highlight[]> {
     if (refs.length === 0) return [];
     const prefix = refs[0].replace(/:\d+.*$/, '');
-    const data = await api<{ highlights: Highlight[] }>(`/api/reading/highlights?verseRef=${encodeURIComponent(prefix)}`);
+    const data = await cachedApi<{ highlights: Highlight[] }>(`/api/reading/highlights?verseRef=${encodeURIComponent(prefix)}`);
     const wanted = new Set(refs);
     return (data.highlights || []).filter((h) => wanted.has(h.verse_ref));
   }
@@ -208,6 +305,7 @@ export class WebDataLayer implements DataLayer {
       method: 'POST',
       body: JSON.stringify(input),
     });
+    invalidateCache('/api/reading/highlights');
     return created;
   }
 
@@ -216,11 +314,13 @@ export class WebDataLayer implements DataLayer {
       method: 'PATCH',
       body: JSON.stringify(patch),
     });
+    invalidateCache('/api/reading/highlights');
     return updated;
   }
 
   async deleteHighlight(id: string): Promise<void> {
     await fetch(`/api/reading/highlights/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+    invalidateCache('/api/reading/highlights');
   }
 
   async saveBookmark(verseRef: string, label?: string): Promise<void> {
@@ -303,10 +403,13 @@ export class WebDataLayer implements DataLayer {
       method: 'POST',
       body: JSON.stringify({ bookId, chapter, verseRef, timestamp }),
     });
+    // Reading events feed both getReadingHistory and the patterns page. The
+    // user just changed state — invalidate so the next read returns fresh data.
+    invalidateCache('/api/reading/events');
   }
 
   async getReadingHistory(startDate: string, endDate: string): Promise<{ date: string; count: number }[]> {
-    const data = await api<{ events: { date: string; count: number }[] }>(
+    const data = await cachedApi<{ events: { date: string; count: number }[] }>(
       `/api/reading/events?start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}`
     );
     return data.events || [];
@@ -314,7 +417,7 @@ export class WebDataLayer implements DataLayer {
 
   async getLastReadPosition(): Promise<{ bookId: string; chapter: number; verseRef: string } | null> {
     try {
-      const data = await api<{ position: { bookId: string; chapter: number; verseRef: string } | null }>('/api/reading/events?last=1');
+      const data = await cachedApi<{ position: { bookId: string; chapter: number; verseRef: string } | null }>('/api/reading/events?last=1');
       return data.position ?? null;
     } catch {
       return null;
@@ -387,7 +490,7 @@ export class WebDataLayer implements DataLayer {
   async setActiveEmbeddingModel(_id: EmbeddingModelId): Promise<void> {}
   async getSettings(): Promise<Record<string, string>> {
     try {
-      const data = await api<Record<string, string>>('/api/settings');
+      const data = await cachedApi<Record<string, string>>('/api/settings');
       return data || {};
     } catch { return {}; }
   }
