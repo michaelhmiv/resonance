@@ -20,7 +20,7 @@
 import { type ReactNode } from 'react';
 import { Text, View, StyleSheet } from 'react-native';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { colors, fontFamilies, spacing, radii } from '@resonance/theme';
 import { SearchIcon, LibraryIcon, WindIcon } from './icons';
 
@@ -49,13 +49,27 @@ function tabFromPath(pathname: string | null): TabId {
 
 export function BottomTabBar({ activeTab: activeOverride, onSelect }: BottomTabBarProps = {}): ReactNode {
   const pathname = usePathname();
+  const router = useRouter();
   const active = activeOverride ?? tabFromPath(pathname);
 
-  const handlePress = (tab: TabId) => {
+  const handlePress = (tab: TabId, e: React.MouseEvent) => {
     // next/link handles navigation. This callback lets a parent override
     // behavior (e.g. analytics, or forced remount) without reimplementing
     // the link itself.
     if (onSelect) onSelect(tab);
+
+    // Wrap the soft navigation in a View Transition for a gentle
+    // cross-fade. next/link's experimental viewTransition flag is
+    // unreliable in 14.x/15.x, so we trigger it ourselves. Falls through
+    // to the default <a> navigation on browsers without the API.
+    if (typeof document !== 'undefined' && 'startViewTransition' in document) {
+      e.preventDefault();
+      const transition = (document as any).startViewTransition(() => {
+        router.push(tab.href);
+      });
+      // Suppress unhandled-promise warning from the optional ready callback.
+      void transition?.ready?.catch(() => {});
+    }
   };
 
   return (
@@ -69,7 +83,7 @@ export function BottomTabBar({ activeTab: activeOverride, onSelect }: BottomTabB
             href={tab.href}
             prefetch={true}
             style={styles.linkReset}
-            onClick={() => handlePress(tab.id)}
+            onClick={(e) => handlePress(tab.id, e)}
             aria-label={tab.label}
             aria-current={isActive ? 'page' : undefined}
           >
