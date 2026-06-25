@@ -979,7 +979,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   passageListContent: {
-    paddingBottom: 150, // room for fixed bottom chrome (44px pill + nav bar + padding)
+    // Room for the fixed bottom chrome (which sits above the mobile tab bar).
+    // When highlight mode is on the chrome expands to ~120px; on desktop with
+    // no tab bar it's ~60px. 210 covers the worst case.
+    paddingBottom: 210,
   },
   verseBlock: {
     paddingHorizontal: 0,
@@ -1083,7 +1086,10 @@ const styles = StyleSheet.create({
     // Must be fixed on web. `absolute` anchors to the long chapter container
     // on standalone /word routes, which puts the toolbar below the viewport.
     position: 'fixed' as any,
-    bottom: 0,
+    // Sit above the mobile tab bar (60px). On desktop there's no bar so
+    // this is cosmetic spacing. RN inline style wins over the CSS rule
+    // we previously relied on, so we hardcode the offset here.
+    bottom: 60,
     left: 0,
     right: 0,
     zIndex: 300,

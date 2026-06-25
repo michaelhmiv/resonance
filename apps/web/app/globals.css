@@ -61,18 +61,14 @@ input, textarea { font-family: inherit; }
   }
 }
 
-/* ── Bottom tab bar (mobile only, visibility JS-driven) ──────────── */
+/* ── Mobile bottom tab bar ────────────────────────────────────────── */
 /* The bar mounts only on mobile (≤768px) via useIsMobile. The header
-   tabs are hidden on mobile so the bar is the only tab navigation. */
+   tabs are hidden on mobile so the bar is the only tab navigation.
+   The reading chrome's inline `bottom: 60` style positions it above
+   the bar; no CSS offset needed here. */
 
 @media (max-width: 768px) {
   .resonance-tab-bar {
     display: none !important;
-  }
-
-  /* Offset reading chrome above bottom tab bar.
-     MobileChrome provides the content padding; no need to double it. */
-  .reading-bottom-chrome {
-    bottom: 60px !important;
   }
 }
