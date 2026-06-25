@@ -1079,7 +1079,9 @@ const styles = StyleSheet.create({
   },
   // ── Bottom chrome (fixed to viewport) ──────────────────────────────────
   bottomChrome: {
-    position: 'absolute',
+    // Must be fixed on web. `absolute` anchors to the long chapter container
+    // on standalone /word routes, which puts the toolbar below the viewport.
+    position: 'fixed' as any,
     bottom: 0,
     left: 0,
     right: 0,
