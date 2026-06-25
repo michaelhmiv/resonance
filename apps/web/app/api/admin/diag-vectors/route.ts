@@ -60,6 +60,21 @@ export async function GET(_req: NextRequest) {
       norm_after_renormalize: normAfter,
     });
   }
+  // Sample at suspicious indices
+  for (const i of [881, 13635, 100000, 200000, 237403]) {
+    if (i < manifest.passage_count) {
+      const buf = Buffer.alloc(dim);
+      await fd.read(buf, 0, dim, i * dim);
+      sample.push({
+        idx: i,
+        passage_id: manifest.passage_ids?.[i],
+        raw_bytes_first3: Array.from(buf.slice(0, 3)),
+        dequant_first3: [buf[0] / 127.0, buf[1] / 127.0, buf[2] / 127.0],
+        norm_after_dequant: null,
+        norm_after_renormalize: null,
+      });
+    }
+  }
   await fd.close();
 
   return NextResponse.json({
