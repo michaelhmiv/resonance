@@ -27,7 +27,9 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json({ error: 'vectors.bin not found' }, { status: 404 });
   }
   const fh = await import('fs/promises');
+  const stat1 = await fh.stat(vecPath);
   const fd = await fh.open(vecPath, 'r');
+  // Force fresh read by using positional read with explicit position
 
   // Read first 5 vectors, dequantize, compute norms
   const sample: any[] = [];
@@ -80,7 +82,8 @@ export async function GET(_req: NextRequest) {
   return NextResponse.json({
     manifest_passage_count: manifest.passage_count,
     manifest_dim: manifest.dim,
-    vectors_file_size: (await fh.stat(vecPath)).size,
+    vectors_file_size: stat1.size,
+    vectors_file_mtime: stat1.mtime.toISOString(),
     sample,
   });
 }
