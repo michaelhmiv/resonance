@@ -16,10 +16,11 @@
 
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { Pressable, Text, View, StyleSheet } from 'react-native';
 import { usePathname, useRouter } from 'next/navigation';
 import { colors, fontFamilies, spacing, radii } from '@resonance/theme';
+import { SearchIcon, LibraryIcon, WindIcon } from './icons';
 
 export type TabId = 'journal' | 'word' | 'patterns';
 
@@ -30,10 +31,10 @@ interface BottomTabBarProps {
   onSelect?: (tab: TabId) => void;
 }
 
-const TABS: { id: TabId; label: string; icon: string; href: string }[] = [
-  { id: 'journal', label: 'Journal', icon: '✍', href: '/journal' },
-  { id: 'word', label: 'Word', icon: '📖', href: '/word' },
-  { id: 'patterns', label: 'Patterns', icon: '◈', href: '/patterns' },
+const TABS: { id: TabId; label: string; Icon: typeof WindIcon; href: string }[] = [
+  { id: 'journal', label: 'Journal', Icon: WindIcon, href: '/journal' },
+  { id: 'word', label: 'Word', Icon: SearchIcon, href: '/word' },
+  { id: 'patterns', label: 'Patterns', Icon: LibraryIcon, href: '/patterns' },
 ];
 
 /** Map a pathname prefix to the active tab. /word (incl. /word?...) → word. */
@@ -44,32 +45,10 @@ function tabFromPath(pathname: string | null): TabId {
   return 'journal';
 }
 
-/** Mobile-only check via matchMedia. SSR-safe: defaults to false, updates on mount. */
-function useIsMobile(breakpoint = 768): boolean {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
-    const mql = window.matchMedia(`(max-width: ${breakpoint}px)`);
-    const update = () => setIsMobile(mql.matches);
-    update();
-    // Older Safari uses addListener; modern uses addEventListener.
-    if (mql.addEventListener) mql.addEventListener('change', update);
-    else mql.addListener(update);
-    return () => {
-      if (mql.removeEventListener) mql.removeEventListener('change', update);
-      else mql.removeListener(update);
-    };
-  }, [breakpoint]);
-  return isMobile;
-}
-
 export function BottomTabBar({ activeTab: activeOverride, onSelect }: BottomTabBarProps = {}): ReactNode {
   const router = useRouter();
   const pathname = usePathname();
-  const isMobile = useIsMobile();
   const active = activeOverride ?? tabFromPath(pathname);
-
-  if (!isMobile) return null;
 
   const handle = (tab: TabId, href: string) => {
     if (onSelect) onSelect(tab);
@@ -80,6 +59,7 @@ export function BottomTabBar({ activeTab: activeOverride, onSelect }: BottomTabB
     <View style={styles.container}>
       {TABS.map((tab) => {
         const isActive = active === tab.id;
+        const Icon = tab.Icon;
         return (
           <Pressable
             key={tab.id}
@@ -89,9 +69,7 @@ export function BottomTabBar({ activeTab: activeOverride, onSelect }: BottomTabB
             accessibilityState={{ selected: isActive }}
             style={({ pressed }) => [styles.tab, isActive && styles.tabActive, pressed && styles.pressed]}
           >
-            <Text style={[styles.icon, isActive && styles.iconActive]}>
-              {tab.icon}
-            </Text>
+            <Icon size={20} color={isActive ? colors.accent : colors.textTertiary} />
             <Text style={[styles.label, isActive && styles.labelActive]}>
               {tab.label}
             </Text>
@@ -131,14 +109,6 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.6,
-  },
-  icon: {
-    fontSize: 18,
-    marginBottom: 2,
-    opacity: 0.5,
-  },
-  iconActive: {
-    opacity: 1,
   },
   label: {
     fontFamily: fontFamilies.sans,
