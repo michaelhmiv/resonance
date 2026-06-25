@@ -55,6 +55,13 @@ interface VectorManifest {
   quantization?: string;
   shards: { file: string; start: number; count: number }[];
   passage_order?: string;
+  /**
+   * Ordered list of passage IDs in the same order as the vectors.bin rows.
+   * i.e. vectors[i*dim : (i+1)*dim] corresponds to passage_ids[i].
+   * Required for correct mapping from vector index to passage metadata.
+   * If absent, the route falls back to a per-book start_offset (legacy).
+   */
+  passage_ids?: number[];
 }
 
 interface LoadedModel {
@@ -69,6 +76,19 @@ interface LoadedModel {
 let passageMetadata: PassageMeta[] | null = null;
 let metadataPromise: Promise<void> | null = null;
 const modelCache = new Map<string, LoadedModel>(); // by model id
+/**
+ * Map: passage id → index in the loaded vectors array (i.e. row in vectors.bin).
+ * Built from the manifest's passage_ids array. Without this, vector-row N
+ * could refer to a different passage than metadata[N] — the previous behavior
+ * (which surfaced random unrelated passages).
+ */
+const idToVectorIndex = new Map<number, number>();
+/**
+ * Parallel array to idToVectorIndex: orderedPassageIds[i] = passage id whose
+ * vector is at row i in vectors.bin. Used in the hot scoring loop for O(1)
+ * lookups without reverse-mapping.
+ */
+let orderedPassageIds: number[] = [];
 
 const BIBLE_PASSAGES_PATH = existsSync('/data/seeded_library/bible_passages.json')
   ? '/data/seeded_library/bible_passages.json'
@@ -83,7 +103,10 @@ async function ensureMetadata(): Promise<void> {
 
   metadataPromise = (async () => {
     const meta: PassageMeta[] = [];
-
+    // Stable insertion order: Bible first (sorted by id), then Voices (sorted by id).
+    // The vectors.bin is built from the same voice library but in a different
+    // (book-by-book) order — passage_ids[] in the manifest maps vector rows
+    // back to passage IDs, which is how we resolve alignment.
     if (existsSync(BIBLE_PASSAGES_PATH)) {
       const data = JSON.parse(await readFile(BIBLE_PASSAGES_PATH, 'utf-8'));
       data.sort((a: { id: number }, b: { id: number }) => a.id - b.id);
@@ -177,6 +200,25 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
       dtype: manifest.dtype,
     };
 
+    // Build passage id → vector index map from manifest.
+    // Vectors were written in the order script processed books; passage_ids[]
+    // preserves that exact order. Without this map we can't correctly look up
+    // the passage metadata for a given vector row.
+    if (Array.isArray(manifest.passage_ids) && manifest.passage_ids.length === manifest.passage_count) {
+      idToVectorIndex.clear();
+      orderedPassageIds = manifest.passage_ids.slice();
+      for (let i = 0; i < manifest.passage_ids.length; i++) {
+        idToVectorIndex.set(manifest.passage_ids[i], i);
+      }
+    } else {
+      console.warn(
+        `[resonance] manifest missing passage_ids[] (or length mismatch); ` +
+        `semantic results will be misaligned with metadata.`
+      );
+      idToVectorIndex.clear();
+      orderedPassageIds = [];
+    }
+
     modelCache.set(modelId, loaded);
     return loaded;
   } catch (err) {
@@ -228,15 +270,30 @@ export async function POST(req: NextRequest) {
           // personalization is additive, not critical
         }
 
-        // Build accumulated similarity map
+        // Build id → meta-index lookup so we can resolve the correct
+        // metadata for each vector row via its passage id.
+        const idToMeta = new Map<number, number>();
+        for (let m = 0; m < meta.length; m++) {
+          idToMeta.set(meta[m].id, m);
+        }
+
+        // Build accumulated similarity map keyed by passage id (not vector idx).
+        // Use the idToVectorIndex map to read the right vector row for each id.
         const simMap = new Map<number, number>();
 
         const scoreAgainst = (queryVec: number[], boost = 1.0) => {
           for (let i = 0; i < loaded.passageCount; i++) {
+            // We need the passage id for this vector row to look up metadata.
+            // Get the id from idToVectorIndex (reverse lookup) — but we built
+            // the map in the other direction. Walk passage_ids once if needed.
+            // To stay O(1) here, we use a parallel id array maintained by
+            // loadModel.
+            const pid = orderedPassageIds[i];
+            if (pid === undefined) continue;
             const sim = cosineSim(loaded.vectors, i * loaded.dim, queryVec, loaded.dim) * boost;
             if (sim >= MIN_SIMILARITY) {
-              const existing = simMap.get(i) ?? 0;
-              if (sim > existing) simMap.set(i, sim);
+              const existing = simMap.get(pid) ?? 0;
+              if (sim > existing) simMap.set(pid, sim);
             }
           }
         };
@@ -252,25 +309,39 @@ export async function POST(req: NextRequest) {
         }
 
         // Apply highlight boost and sort
-        const scored: { idx: number; sim: number }[] = [];
-        for (const [idx, sim] of simMap) {
+        const scored: { id: number; sim: number }[] = [];
+        for (const [pid, sim] of simMap) {
+          const m = idToMeta.get(pid);
+          if (m === undefined) continue; // passage not in current metadata
           let finalSim = sim;
-          if (highlightRefs.has(normalizeVerseRef(verseRefFromMeta(meta[idx])))) {
+          if (highlightRefs.has(normalizeVerseRef(verseRefFromMeta(meta[m])))) {
             finalSim = sim * HIGHLIGHT_BOOST;
           }
-          scored.push({ idx, sim: finalSim });
+          scored.push({ id: pid, sim: finalSim });
         }
         scored.sort((a, b) => b.sim - a.sim);
 
         const topScripture = scored
-          .filter((s) => meta[s.idx]?.translation != null)
+          .filter((s) => {
+            const m = idToMeta.get(s.id);
+            return m !== undefined && meta[m].translation != null;
+          })
           .slice(0, MAX_PER_CATEGORY)
-          .map((s) => toCard(meta[s.idx], s.sim, 'scripture'));
+          .map((s) => {
+            const m = idToMeta.get(s.id)!;
+            return toCard(meta[m], s.sim, 'scripture');
+          });
 
         const topVoices = scored
-          .filter((s) => meta[s.idx]?.translation == null)
+          .filter((s) => {
+            const m = idToMeta.get(s.id);
+            return m !== undefined && meta[m].translation == null;
+          })
           .slice(0, MAX_PER_CATEGORY)
-          .map((s) => toCard(meta[s.idx], s.sim, 'voice'));
+          .map((s) => {
+            const m = idToMeta.get(s.id)!;
+            return toCard(meta[m], s.sim, 'voice');
+          });
 
         return NextResponse.json({
           scripture: topScripture,

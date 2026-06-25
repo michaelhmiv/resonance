@@ -213,6 +213,7 @@ def main():
     current_offset = vec_fh.tell()  # bytes already written
 
     passage_order: list[dict] = []  # { id, book_id, dim_offset } for manifest
+    passage_ids: list[int] = []  # flat list in same order as vectors.bin (for the route to map idx→id)
 
     # Process each book
     for i, book in enumerate(all_books, 1):
@@ -271,6 +272,7 @@ def main():
                     # Quantize float32 to int8 (signed)
                     int8 = bytes(max(-127, min(127, int(round(v * 127)))) & 0xFF for v in vec)
                     vec_fh.write(int8)
+                    passage_ids.append(batch[j]["id"])
                     passage_order.append({
                         "id": batch[j]["id"],
                         "book_id": book_id,
@@ -301,6 +303,7 @@ def main():
         "quantization": "signed_linear",
         "passage_count": len(passage_order),
         "shards": [{"file": "vectors.bin", "start": 0, "count": len(passage_order)}],
+        "passage_ids": passage_ids,  # ordered: index N in this list = vector at offset N*dim
         "passage_order_source": "voice_passages.json (current 75-book library)",
         "built_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "passage_order_summary": {
