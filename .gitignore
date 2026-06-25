@@ -69,3 +69,6 @@ build/output/seeded_library/vectors_gte-small.bin
 build/output/seeded_library/vectors_pplx/
 supabase/
 .next
+
+# Re-embed scratch state (huge vectors.bin, resumable state.json)
+scripts/library/.reembed/

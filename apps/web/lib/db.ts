@@ -187,10 +187,13 @@ export async function deleteHighlight(id: string) {
 
 export async function storeHighlightEmbedding(highlightId: string, vector: number[]) {
   const sb = getSupabase();
-  // Upsert — embedding is regenerated on every note update
+  // Upsert — embedding is regenerated on every note update.
+  // Server-side vectors are 2560d (pplx-embed-v1-4b). Mobile free-tier
+  // highlights use 384d gte-small and never enter this table — they live
+  // on-device in the mobile SQLite vector store.
   const { error } = await sb.from('highlight_vectors')
     .upsert(
-      { highlight_id: highlightId, vector, model_id: 'gte-small', generated_at: new Date().toISOString() },
+      { highlight_id: highlightId, vector, model_id: 'pplx-embed-v1-4b', generated_at: new Date().toISOString() },
       { onConflict: 'highlight_id' },
     );
   if (error) {
@@ -318,8 +321,8 @@ export async function ensureHighlightVectorsTable(): Promise<void> {
           CREATE TABLE IF NOT EXISTS public.highlight_vectors (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             highlight_id UUID NOT NULL REFERENCES public.highlights(id) ON DELETE CASCADE,
-            vector vector(384) NOT NULL,
-            model_id TEXT NOT NULL DEFAULT 'gte-small',
+            vector vector(2560) NOT NULL,
+            model_id TEXT NOT NULL DEFAULT 'pplx-embed-v1-4b',
             generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             UNIQUE (highlight_id)
           );

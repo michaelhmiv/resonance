@@ -1,52 +1,46 @@
 /**
- * Shared GTE-small embedding helper.
+ * Shared server-side embedding helper.
  *
- * Loads the Transformers.js model once (33MB) and provides a
- * simple embed() function for server-side use.
+ * Calls our own /api/embed endpoint, which in turn calls OpenRouter's
+ * Perplexity pplx-embed-v1-4b (2560d). Used for highlight-note embeddings
+ * that need to live in the same vector space as the library index.
  *
- * Used by /api/embed (journal) and annotation save (notes).
+ * Replaces the old in-process Transformers.js gte-small loader (removed
+ * 2026-06 — server now exclusively uses the online 4B model).
  */
 
-let pipeline: unknown = null;
-let modelReady = false;
-let loadPromise: Promise<void> | null = null;
+const EMBED_URL = process.env.NEXT_PUBLIC_APP_URL
+  ? `${process.env.NEXT_PUBLIC_APP_URL}/api/embed`
+  : 'http://localhost:3000/api/embed';
+const TIMEOUT_MS = 30_000;
 
-const DIM = 384;
-
-async function ensureModel(): Promise<void> {
-  if (modelReady) return;
-  if (loadPromise) return loadPromise;
-
-  loadPromise = (async () => {
-    const { pipeline: createPipeline } = await import('@xenova/transformers');
-    pipeline = await createPipeline('feature-extraction', 'Xenova/gte-small');
-    modelReady = true;
-  })();
-
-  return loadPromise;
+export interface EmbedResponse {
+  vector: number[];
+  dim: number;
+  model: string;
+  cost_usd?: number;
 }
 
 export async function embed(text: string): Promise<number[] | null> {
   const trimmed = text.trim();
   if (trimmed.length < 3) return null;
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
   try {
-    await Promise.race([
-      ensureModel(),
-      new Promise<void>((resolve) => setTimeout(resolve, 60000)),
-    ]);
-
-    if (!modelReady || !pipeline) return null;
-
-    const result = await (pipeline as (text: string, opts: Record<string, unknown>) => Promise<{ data: Float32Array }>)(
-      trimmed,
-      { pooling: 'mean', normalize: true },
-    );
-
-    if (!result?.data || result.data.length !== DIM) return null;
-
-    return Array.from(result.data);
+    const res = await fetch(EMBED_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: trimmed }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const data = (await res.json()) as EmbedResponse;
+    return data.vector ?? null;
   } catch {
+    clearTimeout(timer);
     return null;
   }
 }

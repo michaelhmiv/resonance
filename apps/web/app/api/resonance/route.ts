@@ -2,18 +2,20 @@
  * POST /api/resonance — find the most resonant Library passages
  * for a given journal text vector.
  *
- * Supports multiple embedding models. The client provides a `model`
- * parameter to select which vector set to search.
+ * Single embedding model on the server: pplx-embed-v1-4b (2560d int8).
+ * The client sends a 2560d vector; we score it against the on-volume index.
  *
  * POST body:
- *   { vector: number[], model?: string }
+ *   { vector: number[] }  (or { text: string } for lexical fallback)
  *
- * Available models are auto-detected from ./data/seeded_library/vectors/<model>/
+ * Returns up to MAX_PER_CATEGORY scripture + voice passages sorted by cosine
+ * similarity. Personalizes with a 1.12× boost for passages the user has
+ * previously highlighted.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
-import { existsSync, readdirSync } from 'fs';
+import { existsSync } from 'fs';
 import { lexicalResonance } from '../../../lib/resonance-fallback';
 import {
   getUserHighlightEmbeddings,
@@ -21,16 +23,13 @@ import {
   ensureHighlightVectorsTable,
 } from '../../../lib/db';
 
-// Run migration on first import
+// Migration on first import (safe to re-run)
 ensureHighlightVectorsTable().catch(() => {});
 
-const VECTORS_BASE =
-  process.env.VECTORS_PATH || '/data/vectors';
-
+const VECTORS_BASE = process.env.VECTORS_PATH || '/data/vectors';
+const ONLINE_MODEL = 'pplx-embed-v1-4b'; // the only server-side model
 const MIN_SIMILARITY = 0.1;
 const MAX_PER_CATEGORY = 3;
-
-/** Boost multiplier for passages the user has highlighted. */
 const HIGHLIGHT_BOOST = 1.12;
 
 interface PassageMeta {
@@ -69,7 +68,7 @@ interface LoadedModel {
 
 let passageMetadata: PassageMeta[] | null = null;
 let metadataPromise: Promise<void> | null = null;
-const modelCache = new Map<string, LoadedModel>();
+const modelCache = new Map<string, LoadedModel>(); // by model id
 
 const BIBLE_PASSAGES_PATH = existsSync('/data/seeded_library/bible_passages.json')
   ? '/data/seeded_library/bible_passages.json'
@@ -91,7 +90,7 @@ async function ensureMetadata(): Promise<void> {
       for (const p of data) {
         meta.push({
           id: p.id,
-          book_id: `${p.translation}_${p.book.replace(/\\s+/g, '_')}`,
+          book_id: `${p.translation}_${p.book.replace(/\s+/g, '_')}`,
           chapter: p.chapter,
           verse_start: p.verse_start,
           verse_end: p.verse_end,
@@ -158,13 +157,12 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
           buffer[offset + i] = gmin + (raw[i] / 255.0) * range;
         }
       } else if (manifest.dtype === 'int8') {
-        // Native int8: de-quantize by dividing by 127 (Perplexity native format)
+        // Perplexity native int8: signed -128..127, normalize to ~[-1, 1]
         for (let i = 0; i < raw.length; i++) {
           buffer[offset + i] = raw[i] / 127.0;
         }
       } else {
-        // float32 (default, e.g. GTE-small): interpret buffer as Float32Array
-        // Copy the buffer's ArrayBuffer to avoid byteOffset alignment issues
+        // float32 (default for non-Perplexity models)
         const byteLen = raw.byteLength - (raw.byteLength % 4);
         const ab = raw.buffer.slice(raw.byteOffset, raw.byteOffset + byteLen);
         const floats = new Float32Array(ab);
@@ -187,16 +185,6 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
   }
 }
 
-function availableModels(): string[] {
-  try {
-    return readdirSync(VECTORS_BASE, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name);
-  } catch {
-    return [];
-  }
-}
-
 function cosineSim(a: Float32Array, aOffset: number, b: number[], dim: number): number {
   let dot = 0;
   let normB = 0;
@@ -212,28 +200,20 @@ function cosineSim(a: Float32Array, aOffset: number, b: number[], dim: number): 
 
 export async function POST(req: NextRequest) {
   try {
-    const { vector, text, model } = (await req.json()) as {
+    const { vector, text } = (await req.json()) as {
       vector?: number[];
       text?: string;
-      model?: string;
     };
-
-    // Determine which model to use
-    const models = availableModels();
-    const modelId =
-      model ||
-      (models.includes('pplx-embed-v1-4b') ? 'pplx-embed-v1-4b' : models[0]) ||
-      'gte-small';
 
     // ── Semantic vector path ─────────────────────────────────────────
     if (vector && vector.length > 0) {
-      const loaded = await loadModel(modelId);
+      const loaded = await loadModel(ONLINE_MODEL);
 
       if (loaded && loaded.passageCount > 0 && vector.length === loaded.dim) {
         await ensureMetadata();
         const meta = passageMetadata || [];
 
-        // Fetch user highlights and their note embeddings (non-blocking fallback)
+        // Fetch user highlights and their note embeddings
         let highlightNoteVecs: number[][] = [];
         let highlightRefs = new Set<string>();
         try {
@@ -245,13 +225,12 @@ export async function POST(req: NextRequest) {
             ).catch(() => new Set<string>()),
           ]);
         } catch {
-          // Best-effort — personalization is additive, not critical
+          // personalization is additive, not critical
         }
 
-        // Build an accumulated similarity map (idx → highest sim across all query vectors)
+        // Build accumulated similarity map
         const simMap = new Map<number, number>();
 
-        /** Score all passages against one query vector and merge into simMap. */
         const scoreAgainst = (queryVec: number[], boost = 1.0) => {
           for (let i = 0; i < loaded.passageCount; i++) {
             const sim = cosineSim(loaded.vectors, i * loaded.dim, queryVec, loaded.dim) * boost;
@@ -272,11 +251,10 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Convert to scored array, applying highlight boost
+        // Apply highlight boost and sort
         const scored: { idx: number; sim: number }[] = [];
         for (const [idx, sim] of simMap) {
           let finalSim = sim;
-          // Apply 1.12× highlight boost for scripture passages the user highlighted
           if (highlightRefs.has(normalizeVerseRef(verseRefFromMeta(meta[idx])))) {
             finalSim = sim * HIGHLIGHT_BOOST;
           }
@@ -299,14 +277,14 @@ export async function POST(req: NextRequest) {
           voices: topVoices,
           pastEntries: [],
           method: highlightNoteVecs.length > 0 ? 'semantic-vector+highlight-notes' : 'semantic-vector',
-          model: modelId,
+          model: ONLINE_MODEL,
           dim: loaded.dim,
           passageCount: loaded.passageCount,
         });
       }
     }
 
-    // ── Lexical fallback ─────────────────────────────────────────────
+    // ── Lexical fallback (no vector or model unavailable) ────────────
     await ensureMetadata();
     const meta = passageMetadata || [];
     const scriptureMeta = meta.filter((p) => p.translation != null);
@@ -333,7 +311,7 @@ export async function POST(req: NextRequest) {
       ...fallback,
       pastEntries: [],
       method: 'lexical-fallback',
-      note: `No semantic vectors available for model "${modelId}". Using transparent lexical fallback.`,
+      note: `No semantic vectors available. Using transparent lexical fallback.`,
     });
   } catch (err) {
     console.error('[resonance] route error:', err);
@@ -363,7 +341,6 @@ function toCard(
     source = `${ref} (${meta.translation.toUpperCase()})`;
     bookId = meta.book_id;
   } else {
-    // Voice passage: use author + work for human-readable source
     const parts = [meta.author, meta.work].filter(Boolean);
     source = parts.length > 0 ? parts.join(' — ') : meta.book_id;
     bookId = meta.book_id;
@@ -380,12 +357,10 @@ function toCard(
   };
 }
 
-/** Normalize a verse ref for highlight matching. */
 function normalizeVerseRef(ref: string): string {
   return ref.replace(/\s+/g, ' ').trim();
 }
 
-/** Build a verse ref string from PassageMeta for highlight boost matching. */
 function verseRefFromMeta(meta: PassageMeta): string {
   if (!meta.translation) return '';
   const bookName = meta.book_id.replace(/^[a-z]+_/, '').replace(/_/g, ' ');

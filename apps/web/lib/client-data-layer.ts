@@ -355,9 +355,9 @@ export class WebDataLayer implements DataLayer {
   async findResonance(journalText: string): Promise<ResonanceResult | null> {
     if (journalText.trim().length < 3) return null;
 
-    // 1. Embed the journal text via /api/embed (Xenova/gte-small in-browser or server-side)
+    // 1. Embed the journal text via /api/embed (pplx-embed-v1-4b via OpenRouter)
     let vector: number[] | undefined;
-    let model = 'gte-small';
+    let model = 'pplx-embed-v1-4b';
     try {
       const embedResult = await api<{ vector: number[]; dim: number; model: string }>('/api/embed', {
         method: 'POST',
@@ -486,8 +486,9 @@ export class WebDataLayer implements DataLayer {
     const data = await api<{ text?: string }>('/api/reflect', { method: 'POST', body: JSON.stringify({ action: 'shift_narrative', period1Excerpts: p1Excerpts, period2Excerpts: p2Excerpts }) });
     return data.text ?? null;
   }
-  async getActiveEmbeddingModel(): Promise<EmbeddingModelId> { return 'gte-small'; }
-  async setActiveEmbeddingModel(_id: EmbeddingModelId): Promise<void> {}
+  // Embedding model is now server-managed. Web uses the single online model.
+  async getActiveEmbeddingModel(): Promise<EmbeddingModelId> { return 'gte-small' as EmbeddingModelId; /* legacy, unused server-side */ }
+  async setActiveEmbeddingModel(_id: EmbeddingModelId): Promise<void> { /* no-op on web */ }
   async getSettings(): Promise<Record<string, string>> {
     try {
       const data = await cachedApi<Record<string, string>>('/api/settings');

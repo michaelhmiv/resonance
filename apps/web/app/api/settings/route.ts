@@ -1,3 +1,11 @@
+/**
+ * GET/PUT /api/settings — user preferences
+ *
+ * The embedding model is no longer a user setting — the server uses a
+ * single online model (pplx-embed-v1-4b) for journal/library resonance.
+ * The mobile app picks its on-device highlight model separately.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getSettings, setSetting } from '../../../lib/db';
 
@@ -7,7 +15,6 @@ const DEFAULTS: Record<string, string> = {
   theme: 'auto',
   textScale: 'medium',
   reduceMotion: 'off',
-  embeddingModel: 'gte-small',
   llmModel: 'deepseek-v4-pro',
 };
 
@@ -25,6 +32,10 @@ export async function PUT(req: NextRequest) {
     const { key, value } = await req.json();
     if (!key || value === undefined) {
       return NextResponse.json({ error: 'key and value required' }, { status: 400 });
+    }
+    // Block writes to legacy embeddingModel key — it's no longer user-controlled
+    if (key === 'embeddingModel') {
+      return NextResponse.json({ ok: true, note: 'embeddingModel is now server-managed' });
     }
     return NextResponse.json(await setSetting(key, String(value)));
   } catch {
