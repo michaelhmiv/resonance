@@ -1,0 +1,17 @@
+{
+  "book_id": "herbert-temple",
+  "title": "Selected Poems from The Temple",
+  "author": "George Herbert",
+  "era": "17th c.",
+  "package_id": "poetry_hymns",
+  "source_url": "https://archive.org/download/templesacredpoem00herb/templesacredpoem00herb_djvu.txt",
+  "source_kind": "ia_raw",
+  "content_type": "text/plain; charset=utf-8",
+  "size_chars": 273877,
+  "fetched_at": "2026-06-25T20:37:18.150697+00:00",
+  "passage_count": 2080,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

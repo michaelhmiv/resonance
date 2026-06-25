@@ -1,0 +1,17 @@
+{
+  "book_id": "ath-anf06",
+  "title": "ANF Vol 6: Gregory Thaumaturgus, Dionysius, etc.",
+  "author": "Various",
+  "era": "2nd-3rd c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/schaff/anf06/cache/anf06.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 3437933,
+  "fetched_at": "2026-06-25T20:37:31.291780+00:00",
+  "passage_count": 5941,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

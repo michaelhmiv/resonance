@@ -1,0 +1,17 @@
+{
+  "book_id": "tertullian-apology",
+  "title": "Apology",
+  "author": "Tertullian",
+  "era": "2nd-3rd c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/tertullian/apology/cache/apology.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 4469033,
+  "fetched_at": "2026-06-25T20:37:23.531966+00:00",
+  "passage_count": 7584,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

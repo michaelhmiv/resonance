@@ -1,0 +1,17 @@
+{
+  "book_id": "ath-anf05",
+  "title": "ANF Vol 5: Hippolytus, Cyprian, Caius, Novatian",
+  "author": "Hippolytus, Cyprian, etc.",
+  "era": "2nd-3rd c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/schaff/anf05/cache/anf05.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 4301503,
+  "fetched_at": "2026-06-25T20:37:30.704013+00:00",
+  "passage_count": 6914,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

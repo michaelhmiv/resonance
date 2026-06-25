@@ -1,0 +1,17 @@
+{
+  "book_id": "ath-npnf109",
+  "title": "NPNF Vol 9: Chrysostom (On the Priesthood, etc.)",
+  "author": "John Chrysostom",
+  "era": "4th-5th c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/schaff/npnf109/cache/npnf109.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 2752255,
+  "fetched_at": "2026-06-25T20:37:36.895785+00:00",
+  "passage_count": 3647,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

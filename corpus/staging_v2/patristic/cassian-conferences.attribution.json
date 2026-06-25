@@ -1,0 +1,17 @@
+{
+  "book_id": "cassian-conferences",
+  "title": "The Conferences",
+  "author": "John Cassian",
+  "era": "5th c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/cassian/conferences/cache/conferences.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 1471096,
+  "fetched_at": "2026-06-25T20:37:20.896669+00:00",
+  "passage_count": 2238,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

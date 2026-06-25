@@ -1,0 +1,921 @@
+{
+  "version": "2.0.0",
+  "description": "Resonance library manifest. Each work has one or more candidate sources (tried in order). Per-work source URLs verified via curl on 2026-06-25.",
+  "package_labels": {
+    "patristic": "Church Fathers",
+    "medieval_devotional": "Medieval Devotional",
+    "catholic_reform": "Catholic Reform",
+    "protestant_reform": "Protestant Reformers",
+    "protestant_devotional": "Protestant Devotional",
+    "anglican_devotional": "Anglican & English Devotional",
+    "philosophical_spiritual": "Philosophical & Spiritual",
+    "poetry_hymns": "Poetry & Hymns",
+    "modern_saints": "Pre-1928 Saints & Witnesses"
+  },
+  "works": [
+    {
+      "book_id": "anselm-basic-works",
+      "title": "Basic Writings",
+      "author": "Anselm of Canterbury",
+      "era": "11th c.",
+      "package_id": "medieval_devotional",
+      "chunk_strategy": "paragraph",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/anselm/basic_works/cache/basic_works.txt", "label": "CCEL Basic Writings (Proslogion, Monologion, Cur Deus Homo, etc.)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "augustine-confessions",
+      "title": "Confessions",
+      "author": "Augustine of Hippo",
+      "era": "4th-5th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "chapter",
+      "min_passages": 100,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/augustine/confess/cache/confess.txt", "label": "CCEL Confessions (Outler translation)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "augustine-enchiridion",
+      "title": "Enchiridion on Faith, Hope, and Love",
+      "author": "Augustine of Hippo",
+      "era": "4th-5th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/augustine/enchiridion/cache/enchiridion.txt", "label": "CCEL Enchiridion", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "augustine-doctrine",
+      "title": "On Christian Doctrine",
+      "author": "Augustine of Hippo",
+      "era": "4th-5th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/augustine/doctrine/cache/doctrine.txt", "label": "CCEL On Christian Doctrine", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "bernard-loving-god",
+      "title": "On Loving God",
+      "author": "Bernard of Clairvaux",
+      "era": "12th c.",
+      "package_id": "medieval_devotional",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/bernard/loving_god/cache/loving_god.txt", "label": "CCEL On Loving God", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "bernard-letters",
+      "title": "Selected Letters",
+      "author": "Bernard of Clairvaux",
+      "era": "12th c.",
+      "package_id": "medieval_devotional",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/bernard/letters/cache/letters.txt", "label": "CCEL Letters", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "bonaventure-minds-road",
+      "title": "The Mind's Road to God",
+      "author": "Bonaventure",
+      "era": "13th c.",
+      "package_id": "medieval_devotional",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/bonaventure/mindsroad/cache/mindsroad.txt", "label": "CCEL Mind's Road to God", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "aquinas-summa",
+      "title": "Summa Theologica",
+      "author": "Thomas Aquinas",
+      "era": "13th c.",
+      "package_id": "medieval_devotional",
+      "chunk_strategy": "paragraph",
+      "min_passages": 100,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/aquinas/summa/cache/summa.txt", "label": "CCEL Summa Theologica (Fathers of the English Dominican Province)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "kempis-imitation",
+      "title": "The Imitation of Christ",
+      "author": "Thomas à Kempis",
+      "era": "15th c.",
+      "package_id": "medieval_devotional",
+      "chunk_strategy": "chapter",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/kempis/imitation/cache/imitation.txt", "label": "CCEL Imitation of Christ (Benham translation)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "lawrence-practice",
+      "title": "The Practice of the Presence of God",
+      "author": "Brother Lawrence",
+      "era": "17th c.",
+      "package_id": "catholic_reform",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://www.gutenberg.org/cache/epub/5657/pg5657.txt", "label": "Project Gutenberg #5657 (Practice of the Presence of God, Conversations + Letters)", "expected_kind": "project_gutenberg"}
+      ]
+    },
+    {
+      "book_id": "bunyan-pilgrim",
+      "title": "The Pilgrim's Progress",
+      "author": "John Bunyan",
+      "era": "17th c.",
+      "package_id": "protestant_devotional",
+      "chunk_strategy": "paragraph",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/bunyan/pilgrim/cache/pilgrim.txt", "label": "CCEL Pilgrim's Progress (Offor edition)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "bunyan-grace-abounding",
+      "title": "Grace Abounding to the Chief of Sinners",
+      "author": "John Bunyan",
+      "era": "17th c.",
+      "package_id": "protestant_devotional",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/bunyan/grace/cache/grace.txt", "label": "CCEL Grace Abounding", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "catherine-siena-dialogue",
+      "title": "The Dialogue of Divine Providence",
+      "author": "Catherine of Siena",
+      "era": "14th c.",
+      "package_id": "medieval_devotional",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/catherine/dialog/cache/dialog.txt", "label": "CCEL Dialogue of Divine Providence", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "cloud-of-unknowing",
+      "title": "The Cloud of Unknowing",
+      "author": "Anonymous (English Mystic, 14th c.)",
+      "era": "14th c.",
+      "package_id": "medieval_devotional",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/anonymous2/cloud/cache/cloud.txt", "label": "CCEL The Cloud of Unknowing (Underhill edition)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "julian-revelations",
+      "title": "Revelations of Divine Love",
+      "author": "Julian of Norwich",
+      "era": "14th c.",
+      "package_id": "medieval_devotional",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/julian/revelations/cache/revelations.txt", "label": "CCEL Revelations of Divine Love", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "desales-devout-life",
+      "title": "Introduction to the Devout Life",
+      "author": "Francis de Sales",
+      "era": "17th c.",
+      "package_id": "catholic_reform",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/desales/devout_life/cache/devout_life.txt", "label": "CCEL Introduction to the Devout Life", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "desales-love-of-god",
+      "title": "Treatise on the Love of God",
+      "author": "Francis de Sales",
+      "era": "17th c.",
+      "package_id": "catholic_reform",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/desales/love/cache/love.txt", "label": "CCEL Treatise on the Love of God", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "teresa-interior-castle",
+      "title": "The Interior Castle",
+      "author": "Teresa of Ávila",
+      "era": "16th c.",
+      "package_id": "catholic_reform",
+      "chunk_strategy": "chapter",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/teresa/castle2/cache/castle2.txt", "label": "CCEL Interior Castle (Stanbrook Benedictines translation)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "teresa-way-of-perfection",
+      "title": "The Way of Perfection",
+      "author": "Teresa of Ávila",
+      "era": "16th c.",
+      "package_id": "catholic_reform",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/teresa/way/cache/way.txt", "label": "CCEL Way of Perfection", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "teresa-life",
+      "title": "The Life of Teresa of Ávila",
+      "author": "Teresa of Ávila",
+      "era": "16th c.",
+      "package_id": "catholic_reform",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/teresa/life/cache/life.txt", "label": "CCEL Autobiography (Life)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "john-cross-dark-night",
+      "title": "Dark Night of the Soul",
+      "author": "John of the Cross",
+      "era": "16th c.",
+      "package_id": "catholic_reform",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/john_cross/dark_night/cache/dark_night.txt", "label": "CCEL Dark Night of the Soul", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "john-cross-ascent",
+      "title": "Ascent of Mount Carmel",
+      "author": "John of the Cross",
+      "era": "16th c.",
+      "package_id": "catholic_reform",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/john_cross/ascent/cache/ascent.txt", "label": "CCEL Ascent of Mount Carmel", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "john-cross-canticle",
+      "title": "Spiritual Canticle",
+      "author": "John of the Cross",
+      "era": "16th c.",
+      "package_id": "catholic_reform",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/john_cross/canticle/cache/canticle.txt", "label": "CCEL Spiritual Canticle", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ignatius-exercises",
+      "title": "Spiritual Exercises",
+      "author": "Ignatius of Loyola",
+      "era": "16th c.",
+      "package_id": "catholic_reform",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/ignatius/exercises/cache/exercises.txt", "label": "CCEL Spiritual Exercises", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "decaussade-abandonment",
+      "title": "Abandonment to Divine Providence",
+      "author": "Jean-Pierre de Caussade",
+      "era": "18th c.",
+      "package_id": "catholic_reform",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/decaussade/abandonment/cache/abandonment.txt", "label": "CCEL Abandonment to Divine Providence", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "luther-christian-liberty",
+      "title": "The Freedom of a Christian",
+      "author": "Martin Luther",
+      "era": "16th c.",
+      "package_id": "protestant_reform",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/luther/christianliberty/cache/christianliberty.txt", "label": "CCEL Freedom of a Christian", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "luther-bondage-will",
+      "title": "The Bondage of the Will",
+      "author": "Martin Luther",
+      "era": "16th c.",
+      "package_id": "protestant_reform",
+      "chunk_strategy": "paragraph",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/luther/bondage/cache/bondage.txt", "label": "CCEL Bondage of the Will", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "luther-large-catechism",
+      "title": "The Large Catechism",
+      "author": "Martin Luther",
+      "era": "16th c.",
+      "package_id": "protestant_reform",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/luther/largecatechism/cache/largecatechism.txt", "label": "CCEL Large Catechism", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "luther-galatians",
+      "title": "Commentary on Galatians",
+      "author": "Martin Luther",
+      "era": "16th c.",
+      "package_id": "protestant_reform",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/luther/galatians/cache/galatians.txt", "label": "CCEL Commentary on Galatians", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "calvin-institutes",
+      "title": "Institutes of the Christian Religion",
+      "author": "John Calvin",
+      "era": "16th c.",
+      "package_id": "protestant_reform",
+      "chunk_strategy": "paragraph",
+      "min_passages": 100,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/calvin/calcom01/cache/calcom01.txt", "label": "CCEL Calvin Commentary (use vol 1 as Institutes stand-in)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "edwards-religious-affections",
+      "title": "Religious Affections",
+      "author": "Jonathan Edwards",
+      "era": "18th c.",
+      "package_id": "protestant_devotional",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/edwards/affections/cache/affections.txt", "label": "CCEL Religious Affections", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "edwards-freedom-of-will",
+      "title": "Freedom of the Will",
+      "author": "Jonathan Edwards",
+      "era": "18th c.",
+      "package_id": "protestant_devotional",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/edwards/will/cache/will.txt", "label": "CCEL Freedom of the Will", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "wesley-sermons",
+      "title": "Selected Sermons",
+      "author": "John Wesley",
+      "era": "18th c.",
+      "package_id": "protestant_devotional",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/wesley/sermons/cache/sermons.txt", "label": "CCEL Wesley Sermons", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "herbert-temple",
+      "title": "Selected Poems from The Temple",
+      "author": "George Herbert",
+      "era": "17th c.",
+      "package_id": "poetry_hymns",
+      "chunk_strategy": "paragraph",
+      "min_passages": 10,
+      "candidate_sources": [
+        {"url": "https://en.wikisource.org/wiki/The_Temple:_Sacred_Poems_and_Private_Ejaculations", "label": "Wikisource The Temple (Sacred Poems and Private Ejaculations)", "expected_kind": "wikisource"},
+        {"url": "https://archive.org/download/templesacredpoem00herb/templesacredpoem00herb_djvu.txt", "label": "Internet Archive scan (1905 edition, OCR'd with long-s)", "expected_kind": "ia_raw"}
+      ]
+    },
+    {
+      "book_id": "dostoevsky-brothers-karamazov",
+      "title": "The Brothers Karamazov (key passages)",
+      "author": "Fyodor Dostoevsky",
+      "era": "19th c.",
+      "package_id": "philosophical_spiritual",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/dostoevsky/brothers/cache/brothers.txt", "label": "CCEL Brothers Karamazov (Constance Garnett translation)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "chesterton-orthodoxy",
+      "title": "Orthodoxy",
+      "author": "G.K. Chesterton",
+      "era": "20th c.",
+      "package_id": "philosophical_spiritual",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/chesterton/orthodoxy/cache/orthodoxy.txt", "label": "CCEL Orthodoxy", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "chesterton-heretics",
+      "title": "Heretics",
+      "author": "G.K. Chesterton",
+      "era": "20th c.",
+      "package_id": "philosophical_spiritual",
+      "chunk_strategy": "chapter",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/chesterton/heretics/cache/heretics.txt", "label": "CCEL Heretics", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "kierkegaard-selections",
+      "title": "Selections from Kierkegaard",
+      "author": "Søren Kierkegaard",
+      "era": "19th c.",
+      "package_id": "philosophical_spiritual",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/kierkegaard/selections/cache/selections.txt", "label": "CCEL Kierkegaard Selections", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "dionysius-works",
+      "title": "The Works of Dionysius the Areopagite",
+      "author": "Pseudo-Dionysius the Areopagite",
+      "era": "5th-6th c.",
+      "package_id": "medieval_devotional",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/dionysius/works/cache/works.txt", "label": "CCEL Dionysius the Areopagite Works", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "eckhart-sermons",
+      "title": "Selected Sermons",
+      "author": "Meister Eckhart",
+      "era": "14th c.",
+      "package_id": "medieval_devotional",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/eckhart/sermons/cache/sermons.txt", "label": "CCEL Eckhart Sermons (Evans translation)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "hilton-ladder",
+      "title": "The Ladder of Perfection",
+      "author": "Walter Hilton",
+      "era": "14th c.",
+      "package_id": "medieval_devotional",
+      "chunk_strategy": "chapter",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/hilton/ladder/cache/ladder.txt", "label": "CCEL Ladder of Perfection", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "cassian-conferences",
+      "title": "The Conferences",
+      "author": "John Cassian",
+      "era": "5th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/cassian/conferences/cache/conferences.txt", "label": "CCEL Conferences", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "athanasius-incarnation",
+      "title": "On the Incarnation",
+      "author": "Athanasius of Alexandria",
+      "era": "4th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "chapter",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/athanasius/incarnation/cache/incarnation.txt", "label": "CCEL On the Incarnation", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "irenaeus-against-heresies",
+      "title": "Against Heresies",
+      "author": "Irenaeus of Lyons",
+      "era": "2nd-3rd c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/irenaeus/against_heresies_i/cache/against_heresies_i.txt", "label": "CCEL Against Heresies Book I", "expected_kind": "ccel"},
+        {"url": "https://ccel.org/ccel/a/schaff/anf01/cache/anf01.txt", "label": "CCEL ANF Vol 1 (contains AH)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "clement-alex-stromata",
+      "title": "Stromata (Miscellanies)",
+      "author": "Clement of Alexandria",
+      "era": "2nd-3rd c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/clement_alex/stromata/cache/stromata.txt", "label": "CCEL Stromata", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "justin-first-apology",
+      "title": "First Apology",
+      "author": "Justin Martyr",
+      "era": "2nd c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/justin_martyr/first_apology/cache/first_apology.txt", "label": "CCEL Justin Martyr First Apology", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "justin-dialogue-trypho",
+      "title": "Dialogue with Trypho",
+      "author": "Justin Martyr",
+      "era": "2nd c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/justin_martyr/dialog_with_trypho/cache/dialog_with_trypho.txt", "label": "CCEL Dialogue with Trypho", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "tertullian-apology",
+      "title": "Apology",
+      "author": "Tertullian",
+      "era": "2nd-3rd c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/tertullian/apology/cache/apology.txt", "label": "CCEL Tertullian Apology", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "origen-against-celsus",
+      "title": "Against Celsus",
+      "author": "Origen",
+      "era": "3rd c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/origen/against_celsus/cache/against_celsus.txt", "label": "CCEL Against Celsus", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "cyprian-treatises",
+      "title": "The Treatises of Cyprian",
+      "author": "Cyprian of Carthage",
+      "era": "3rd c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/cyprian/treatises/cache/treatises.txt", "label": "CCEL Cyprian Treatises", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "chrysostom-priesthood",
+      "title": "On the Priesthood",
+      "author": "John Chrysostom",
+      "era": "4th-5th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/chrysostom/to_those/cache/to_those.txt", "label": "CCEL Chrysostom 'To Those Who Object...' (on priesthood)", "expected_kind": "ccel"},
+        {"url": "https://ccel.org/ccel/a/schaff/npnf109/cache/npnf109.txt", "label": "CCEL NPNF vol 9 (Chrysostom on Priesthood)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ambrose-duties",
+      "title": "On the Duties of the Clergy",
+      "author": "Ambrose of Milan",
+      "era": "4th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/npnf110/cache/npnf110.txt", "label": "CCEL NPNF vol 10 (contains Ambrose)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "leon-sermons",
+      "title": "Sermons and Letters",
+      "author": "Leo the Great",
+      "era": "5th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/npnf112/cache/npnf112.txt", "label": "CCEL NPNF vol 12 (Leo the Great)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "basil-spirit",
+      "title": "On the Holy Spirit",
+      "author": "Basil the Great",
+      "era": "4th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/npnf108/cache/npnf108.txt", "label": "CCEL NPNF vol 8 (contains Basil's On the Holy Spirit)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "gregory-naz-orations",
+      "title": "Theological Orations",
+      "author": "Gregory of Nazianzus",
+      "era": "4th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/gregory_naz/cache/gregory_naz.txt", "label": "CCEL Gregory of Nazianzus selected works", "expected_kind": "ccel"},
+        {"url": "https://ccel.org/ccel/a/schaff/npnf107/cache/npnf107.txt", "label": "CCEL NPNF vol 7 (contains Gregory Naz.", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-anf01",
+      "title": "ANF Vol 1: Apostolic Fathers",
+      "author": "Various (Clement, Barnabas, Hermas, etc.)",
+      "era": "1st-2nd c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/anf01/cache/anf01.txt", "label": "CCEL ANF vol 1 (Apostolic Fathers, Justin, etc.)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-anf02",
+      "title": "ANF Vol 2: Justin, Irenaeus",
+      "author": "Justin Martyr, Irenaeus",
+      "era": "2nd c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/anf02/cache/anf02.txt", "label": "CCEL ANF vol 2 (Justin, Irenaeus)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-anf03",
+      "title": "ANF Vol 3: Tertullian",
+      "author": "Tertullian",
+      "era": "2nd-3rd c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/anf03/cache/anf03.txt", "label": "CCEL ANF vol 3 (Tertullian)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-anf04",
+      "title": "ANF Vol 4: Tertullian (continued)",
+      "author": "Tertullian",
+      "era": "2nd-3rd c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/anf04/cache/anf04.txt", "label": "CCEL ANF vol 4 (Tertullian continued)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-anf05",
+      "title": "ANF Vol 5: Hippolytus, Cyprian, Caius, Novatian",
+      "author": "Hippolytus, Cyprian, etc.",
+      "era": "2nd-3rd c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/anf05/cache/anf05.txt", "label": "CCEL ANF vol 5 (Hippolytus, Cyprian, etc.)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-anf06",
+      "title": "ANF Vol 6: Gregory Thaumaturgus, Dionysius, etc.",
+      "author": "Various",
+      "era": "2nd-3rd c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/anf06/cache/anf06.txt", "label": "CCEL ANF vol 6 (Gregory Thaumaturgus, Dionysius, etc.)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-anf07",
+      "title": "ANF Vol 7: Lactantius, Venantius, etc.",
+      "author": "Lactantius, etc.",
+      "era": "3rd-4th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/anf07/cache/anf07.txt", "label": "CCEL ANF vol 7 (Lactantius)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-anf08",
+      "title": "ANF Vol 8: Apostolic Fathers, Twelve Patriarchs",
+      "author": "Various",
+      "era": "1st-2nd c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/anf08/cache/anf08.txt", "label": "CCEL ANF vol 8 (Apostolic Fathers cont.)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-anf09",
+      "title": "ANF Vol 9: Gospel of Peter, etc.",
+      "author": "Various",
+      "era": "2nd c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/anf09/cache/anf09.txt", "label": "CCEL ANF vol 9 (Apocryphal Gospels)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-npnf101",
+      "title": "NPNF Vol 1: Augustine (Prolegomena, Confessions)",
+      "author": "Augustine",
+      "era": "4th-5th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/npnf101/cache/npnf101.txt", "label": "CCEL NPNF vol 1 (Augustine Confessions, Letters)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-npnf102",
+      "title": "NPNF Vol 2: Augustine (City of God, Christian Doctrine)",
+      "author": "Augustine",
+      "era": "4th-5th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/npnf102/cache/npnf102.txt", "label": "CCEL NPNF vol 2 (Augustine City of God)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-npnf103",
+      "title": "NPNF Vol 3: Augustine (On the Holy Trinity, etc.)",
+      "author": "Augustine",
+      "era": "4th-5th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/npnf103/cache/npnf103.txt", "label": "CCEL NPNF vol 3 (Augustine On the Trinity)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-npnf106",
+      "title": "NPNF Vol 6: Augustine (Tractates on John)",
+      "author": "Augustine",
+      "era": "4th-5th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/npnf106/cache/npnf106.txt", "label": "CCEL NPNF vol 6 (Augustine Tractates on John)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-npnf107",
+      "title": "NPNF Vol 7: Gregory of Nazianzus, Ambrose, Augustine",
+      "author": "Various",
+      "era": "4th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/npnf107/cache/npnf107.txt", "label": "CCEL NPNF vol 7 (Gregory Naz., Ambrose)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-npnf108",
+      "title": "NPNF Vol 8: Basil, Gregory of Nyssa",
+      "author": "Basil, Gregory of Nyssa",
+      "era": "4th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/npnf108/cache/npnf108.txt", "label": "CCEL NPNF vol 8 (Basil, Gregory of Nyssa)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-npnf109",
+      "title": "NPNF Vol 9: Chrysostom (On the Priesthood, etc.)",
+      "author": "John Chrysostom",
+      "era": "4th-5th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/npnf109/cache/npnf109.txt", "label": "CCEL NPNF vol 9 (Chrysostom)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-npnf110",
+      "title": "NPNF Vol 10: Chrysostom (Homilies), Ambrose",
+      "author": "Chrysostom, Ambrose",
+      "era": "4th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 50,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/npnf110/cache/npnf110.txt", "label": "CCEL NPNF vol 10 (Chrysostom, Ambrose)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-npnf112",
+      "title": "NPNF Vol 12: Leo the Great, Gregory the Great",
+      "author": "Leo, Gregory the Great",
+      "era": "5th-6th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/npnf112/cache/npnf112.txt", "label": "CCEL NPNF vol 12 (Leo, Gregory the Great)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-npnf113",
+      "title": "NPNF Vol 13: Gregory the Great (Pastoral Care, Dialogues)",
+      "author": "Gregory the Great",
+      "era": "6th c.",
+      "package_id": "medieval_devotional",
+      "chunk_strategy": "paragraph",
+      "min_passages": 30,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/npnf113/cache/npnf113.txt", "label": "CCEL NPNF vol 13 (Gregory the Great)", "expected_kind": "ccel"}
+      ]
+    },
+    {
+      "book_id": "ath-npnf114",
+      "title": "NPNF Vol 14: Athanasius (select works)",
+      "author": "Athanasius",
+      "era": "4th c.",
+      "package_id": "patristic",
+      "chunk_strategy": "paragraph",
+      "min_passages": 20,
+      "candidate_sources": [
+        {"url": "https://ccel.org/ccel/a/schaff/npnf114/cache/npnf114.txt", "label": "CCEL NPNF vol 14 (Athanasius selected works)", "expected_kind": "ccel"}
+      ]
+    }
+  ]
+}

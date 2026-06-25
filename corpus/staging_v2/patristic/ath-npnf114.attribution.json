@@ -1,0 +1,17 @@
+{
+  "book_id": "ath-npnf114",
+  "title": "NPNF Vol 14: Athanasius (select works)",
+  "author": "Athanasius",
+  "era": "4th c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/schaff/npnf114/cache/npnf114.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 3943275,
+  "fetched_at": "2026-06-25T20:37:38.922006+00:00",
+  "passage_count": 5881,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

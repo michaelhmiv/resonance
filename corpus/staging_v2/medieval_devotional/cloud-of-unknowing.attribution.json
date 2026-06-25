@@ -1,0 +1,17 @@
+{
+  "book_id": "cloud-of-unknowing",
+  "title": "The Cloud of Unknowing",
+  "author": "Anonymous (English Mystic, 14th c.)",
+  "era": "14th c.",
+  "package_id": "medieval_devotional",
+  "source_url": "https://ccel.org/ccel/a/anonymous2/cloud/cache/cloud.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 276931,
+  "fetched_at": "2026-06-25T20:37:09.092971+00:00",
+  "passage_count": 449,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

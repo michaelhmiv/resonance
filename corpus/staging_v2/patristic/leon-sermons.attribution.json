@@ -1,0 +1,17 @@
+{
+  "book_id": "leon-sermons",
+  "title": "Sermons and Letters",
+  "author": "Leo the Great",
+  "era": "5th c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/schaff/npnf112/cache/npnf112.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 2896831,
+  "fetched_at": "2026-06-25T20:37:26.490954+00:00",
+  "passage_count": 3959,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

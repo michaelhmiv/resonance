@@ -1,0 +1,17 @@
+{
+  "book_id": "ath-npnf101",
+  "title": "NPNF Vol 1: Augustine (Prolegomena, Confessions)",
+  "author": "Augustine",
+  "era": "4th-5th c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/schaff/npnf101/cache/npnf101.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 3900684,
+  "fetched_at": "2026-06-25T20:37:33.399648+00:00",
+  "passage_count": 5359,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

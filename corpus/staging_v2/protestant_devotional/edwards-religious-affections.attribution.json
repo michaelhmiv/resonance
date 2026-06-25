@@ -1,0 +1,17 @@
+{
+  "book_id": "edwards-religious-affections",
+  "title": "Religious Affections",
+  "author": "Jonathan Edwards",
+  "era": "18th c.",
+  "package_id": "protestant_devotional",
+  "source_url": "https://ccel.org/ccel/a/edwards/affections/cache/affections.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 1109251,
+  "fetched_at": "2026-06-25T20:37:14.978329+00:00",
+  "passage_count": 1185,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

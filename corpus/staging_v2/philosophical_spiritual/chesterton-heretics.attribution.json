@@ -1,0 +1,17 @@
+{
+  "book_id": "chesterton-heretics",
+  "title": "Heretics",
+  "author": "G.K. Chesterton",
+  "era": "20th c.",
+  "package_id": "philosophical_spiritual",
+  "source_url": "https://ccel.org/ccel/a/chesterton/heretics/cache/heretics.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 380661,
+  "fetched_at": "2026-06-25T20:37:19.156579+00:00",
+  "passage_count": 387,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

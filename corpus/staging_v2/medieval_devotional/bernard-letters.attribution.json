@@ -1,0 +1,17 @@
+{
+  "book_id": "bernard-letters",
+  "title": "Selected Letters",
+  "author": "Bernard of Clairvaux",
+  "era": "12th c.",
+  "package_id": "medieval_devotional",
+  "source_url": "https://ccel.org/ccel/a/bernard/letters/cache/letters.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 626799,
+  "fetched_at": "2026-06-25T20:37:01.935367+00:00",
+  "passage_count": 703,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

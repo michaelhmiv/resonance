@@ -1,0 +1,17 @@
+{
+  "book_id": "luther-christian-liberty",
+  "title": "The Freedom of a Christian",
+  "author": "Martin Luther",
+  "era": "16th c.",
+  "package_id": "protestant_reform",
+  "source_url": "https://ccel.org/ccel/a/luther/christianliberty/cache/christianliberty.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 104873,
+  "fetched_at": "2026-06-25T20:37:13.390314+00:00",
+  "passage_count": 127,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

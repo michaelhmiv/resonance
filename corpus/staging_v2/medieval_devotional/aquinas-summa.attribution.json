@@ -1,0 +1,17 @@
+{
+  "book_id": "aquinas-summa",
+  "title": "Summa Theologica",
+  "author": "Thomas Aquinas",
+  "era": "13th c.",
+  "package_id": "medieval_devotional",
+  "source_url": "https://ccel.org/ccel/a/aquinas/summa/cache/summa.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 16814980,
+  "fetched_at": "2026-06-25T20:37:02.933061+00:00",
+  "passage_count": 33696,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

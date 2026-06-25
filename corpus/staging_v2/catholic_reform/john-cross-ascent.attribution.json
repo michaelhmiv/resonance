@@ -1,0 +1,17 @@
+{
+  "book_id": "john-cross-ascent",
+  "title": "Ascent of Mount Carmel",
+  "author": "John of the Cross",
+  "era": "16th c.",
+  "package_id": "catholic_reform",
+  "source_url": "https://ccel.org/ccel/a/john_cross/ascent/cache/ascent.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 1021298,
+  "fetched_at": "2026-06-25T20:37:12.191679+00:00",
+  "passage_count": 1146,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

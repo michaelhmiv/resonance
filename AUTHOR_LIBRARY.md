@@ -1,78 +1,81 @@
-# Resonance — Definitive Author Library
+# Resonance — Author Library
 
 > All works public domain. Pre-1928 English translations only.
-> 73 authors. ~300+ individual works across 2,000 years.
+> Source priority: **CCEL `cache/*.txt` > Project Gutenberg > New Advent > Wikisource > Internet Archive (with full validation).**
+> Manifest: `scripts/library/manifest.json` (75 works, 41 authors as of 2026-06-25)
+
+**Status legend:** ✅ Shipped · 🟡 In progress · ❌ Not started · 🚫 Copyrighted (intentional)
 
 ---
 
 ## EARLY CHURCH — Apostolic & Pre-Nicene Fathers
 
-### 1. The Didache (anonymous, 1st c.)
+### 1. The Didache (anonymous, 1st c.) — ❌ not yet shipped
 *The Teaching of the Twelve Apostles.* Earliest church manual.
 
-### 2. Clement of Rome (d. 99)
+### 2. Clement of Rome (d. 99) — ✅ shipped (as part of ANF Vol 1)
 *First Epistle to the Corinthians*
 
-### 3. Ignatius of Antioch (d. ~108)
+### 3. Ignatius of Antioch (d. ~108) — ✅ shipped (as part of ANF Vol 1)
 *Seven authentic epistles:* To the Ephesians, Magnesians, Trallians, Romans, Philadelphians, Smyrnaeans, and to Polycarp
 
-### 4. Polycarp of Smyrna (d. ~155)
+### 4. Polycarp of Smyrna (d. ~155) — ✅ shipped (as part of ANF Vol 1)
 *Epistle to the Philippians,* *Martyrdom of Polycarp*
 
-### 5. Justin Martyr (d. ~165)
+### 5. Justin Martyr (d. ~165) — ✅ shipped
 *First Apology,* *Second Apology,* *Dialogue with Trypho*
 
-### 6. Irenaeus of Lyons (d. ~202)
+### 6. Irenaeus of Lyons (d. ~202) — ✅ shipped
 *Against Heresies* (5 books), *Demonstration of the Apostolic Preaching*
 
-### 7. Clement of Alexandria (d. ~215)
-*Exhortation to the Greeks,* *The Instructor,* *Stromata* (Miscellanies), *Who Is the Rich Man That Shall Be Saved?*
+### 7. Clement of Alexandria (d. ~215) — ✅ shipped
+*Stromata (Miscellanies),* *Exhortation to the Greeks*
 
-### 8. Tertullian (d. ~220)
-*Apology,* *On Prayer,* *On Baptism,* *On Patience,* *On the Flesh of Christ,* *Prescription Against Heretics*
+### 8. Tertullian (d. ~220) — ✅ shipped
+*Apology* (multiple ANF volumes)
 
-### 9. Origen (d. ~254)
-*On First Principles* (De Principiis), *Contra Celsum,* *Commentary on John,* *On Prayer,* *Exhortation to Martyrdom*
+### 9. Origen (d. ~254) — ✅ shipped
+*Against Celsus*
 
-### 10. Cyprian of Carthage (d. 258)
-*On the Unity of the Church,* *On the Lord's Prayer,* *On the Mortality,* *Letters*
+### 10. Cyprian of Carthage (d. 258) — ✅ shipped
+*The Treatises of Cyprian*
 
 ---
 
 ## EARLY CHURCH — Post-Nicene Fathers
 
-### 11. Athanasius of Alexandria (d. 373)
-*On the Incarnation,* *Life of Antony,* *Against the Heathen,* *Festal Letters,* *On the Holy Spirit,* *Defence of the Nicene Definition*
+### 11. Athanasius of Alexandria (d. 373) — ✅ shipped
+*On the Incarnation* (individual) + selected works (NPNF Vol 14)
 
-### 12. Basil the Great (d. 379)
-*On the Holy Spirit,* *Hexaemeron* (9 homilies on creation), *Long Rules / Short Rules* (monastic), *Homilies on the Psalms,* *Letters*
+### 12. Basil the Great (d. 379) — ✅ shipped
+*On the Holy Spirit* (NPNF Vol 8, also contains Gregory of Nyssa)
 
-### 13. Gregory of Nazianzus (d. 389)
-*Five Theological Orations,* *On His Flight,* *In Defence of His Flight,* *Poems* (Dogmatic, Moral, Historical), *Letters*
+### 13. Gregory of Nazianzus (d. 389) — ✅ shipped
+*Five Theological Orations* (NPNF Vol 7)
 
-### 14. Gregory of Nyssa (d. ~395)
-*Life of Moses,* *On the Soul and Resurrection,* *On the Making of Man,* *The Great Catechism,* *On Virginity,* *On the Beatitudes,* *Commentary on the Song of Songs*
+### 14. Gregory of Nyssa (d. ~395) — ✅ shipped (as part of NPNF Vol 8)
+*Life of Moses,* *On the Soul and Resurrection,* *On the Making of Man*
 
-### 15. Ambrose of Milan (d. 397)
-*On the Duties of the Clergy,* *On the Holy Spirit,* *On the Mysteries,* *On the Sacraments,* *On the Christian Faith,* *On Repentance,* *Letters,* *Hymns*
+### 15. Ambrose of Milan (d. 397) — ✅ shipped
+*On the Duties of the Clergy* (NPNF Vol 10)
 
-### 16. John Chrysostom (d. 407)
-*Homilies on Matthew* (90), *Homilies on John* (88), *Homilies on Acts* (55), *Homilies on Romans* (32), *Homilies on 1 Corinthians* (44), *Homilies on Hebrews* (34), *On the Priesthood,* *Letters to Olympias,* *On the Incomprehensible Nature of God*
+### 16. John Chrysostom (d. 407) — ✅ shipped
+*On the Priesthood* (NPNF Vol 9); additional homilies in NPNF Vol 10
 
-### 17. Jerome (d. 420)
-*Letters* (150+), *Lives of Illustrious Men,* *Against Jovinian,* *Against Vigilantius,* *Preface to the Vulgate*
+### 17. Jerome (d. 420) — ❌ not yet shipped
+*Letters* (150+), *Lives of Illustrious Men*
 
-### 18. Augustine of Hippo (d. 430)
-*Confessions,* *City of God* (22 books), *On the Trinity* (15 books), *On Christian Doctrine* (4 books), *Enchiridion on Faith, Hope, and Love,* *Homilies on the Gospel of John* (124), *Expositions on the Psalms,* *The Soliloquies,* *On Free Choice of the Will,* *On the Spirit and the Letter,* *On Nature and Grace,* *On Grace and Free Will,* *Letters* (250+), *The Retractations*
+### 18. Augustine of Hippo (d. 430) — ✅ shipped
+*Confessions* (Outler translation), *Enchiridion,* *On Christian Doctrine,* NPNF Vols 1, 2, 3, 6 (incl. *City of God,* *On the Trinity,* *Tractates on John*)
 
-### 19. John Cassian (d. ~435)
-*Conferences* (24), *Institutes* (12 books on monastic life), *On the Incarnation Against Nestorius*
+### 19. John Cassian (d. ~435) — ✅ shipped
+*The Conferences* (24)
 
-### 20. Cyril of Alexandria (d. 444)
-*On the Unity of Christ,* *Commentary on John,* *Commentary on Luke,* *Letters*
+### 20. Cyril of Alexandria (d. 444) — ❌ not yet shipped (Cyril of Jerusalem partially in NPNF)
+*On the Unity of Christ,* *Commentary on John*
 
-### 21. Leo the Great (d. 461)
-*Sermons* (96), *Letters* (Tome of Leo)
+### 21. Leo the Great (d. 461) — ✅ shipped
+*Sermons and Letters* (NPNF Vol 12)
 
 ---
 

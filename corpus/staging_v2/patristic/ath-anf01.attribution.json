@@ -1,0 +1,17 @@
+{
+  "book_id": "ath-anf01",
+  "title": "ANF Vol 1: Apostolic Fathers",
+  "author": "Various (Clement, Barnabas, Hermas, etc.)",
+  "era": "1st-2nd c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/schaff/anf01/cache/anf01.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 3148136,
+  "fetched_at": "2026-06-25T20:37:28.338860+00:00",
+  "passage_count": 5743,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

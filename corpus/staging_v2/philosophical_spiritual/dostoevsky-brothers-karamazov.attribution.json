@@ -1,0 +1,17 @@
+{
+  "book_id": "dostoevsky-brothers-karamazov",
+  "title": "The Brothers Karamazov (key passages)",
+  "author": "Fyodor Dostoevsky",
+  "era": "19th c.",
+  "package_id": "philosophical_spiritual",
+  "source_url": "https://ccel.org/ccel/a/dostoevsky/brothers/cache/brothers.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 2021675,
+  "fetched_at": "2026-06-25T20:37:18.514199+00:00",
+  "passage_count": 4755,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

@@ -1,0 +1,17 @@
+{
+  "book_id": "ath-anf07",
+  "title": "ANF Vol 7: Lactantius, Venantius, etc.",
+  "author": "Lactantius, etc.",
+  "era": "3rd-4th c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/schaff/anf07/cache/anf07.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 3985524,
+  "fetched_at": "2026-06-25T20:37:31.793498+00:00",
+  "passage_count": 6035,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

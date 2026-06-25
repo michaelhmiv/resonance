@@ -1,0 +1,17 @@
+{
+  "book_id": "bunyan-grace-abounding",
+  "title": "Grace Abounding to the Chief of Sinners",
+  "author": "John Bunyan",
+  "era": "17th c.",
+  "package_id": "protestant_devotional",
+  "source_url": "https://ccel.org/ccel/a/bunyan/grace/cache/grace.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 260557,
+  "fetched_at": "2026-06-25T20:37:08.597304+00:00",
+  "passage_count": 404,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

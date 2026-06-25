@@ -1,0 +1,17 @@
+{
+  "book_id": "clement-alex-stromata",
+  "title": "Stromata (Miscellanies)",
+  "author": "Clement of Alexandria",
+  "era": "2nd-3rd c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/clement_alex/stromata/cache/stromata.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 3823473,
+  "fetched_at": "2026-06-25T20:37:21.980443+00:00",
+  "passage_count": 6843,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

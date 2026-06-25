@@ -1,0 +1,17 @@
+{
+  "book_id": "ath-anf04",
+  "title": "ANF Vol 4: Tertullian (continued)",
+  "author": "Tertullian",
+  "era": "2nd-3rd c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/schaff/anf04/cache/anf04.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 4236613,
+  "fetched_at": "2026-06-25T20:37:30.107768+00:00",
+  "passage_count": 7188,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

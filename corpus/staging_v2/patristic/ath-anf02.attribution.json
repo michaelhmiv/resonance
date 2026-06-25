@@ -1,0 +1,17 @@
+{
+  "book_id": "ath-anf02",
+  "title": "ANF Vol 2: Justin, Irenaeus",
+  "author": "Justin Martyr, Irenaeus",
+  "era": "2nd c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/schaff/anf02/cache/anf02.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 3766929,
+  "fetched_at": "2026-06-25T20:37:28.853100+00:00",
+  "passage_count": 6843,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

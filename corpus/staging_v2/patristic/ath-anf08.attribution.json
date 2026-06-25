@@ -1,0 +1,17 @@
+{
+  "book_id": "ath-anf08",
+  "title": "ANF Vol 8: Apostolic Fathers, Twelve Patriarchs",
+  "author": "Various",
+  "era": "1st-2nd c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/schaff/anf08/cache/anf08.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 4429334,
+  "fetched_at": "2026-06-25T20:37:32.348659+00:00",
+  "passage_count": 7211,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

@@ -1,0 +1,17 @@
+{
+  "book_id": "basil-spirit",
+  "title": "On the Holy Spirit",
+  "author": "Basil the Great",
+  "era": "4th c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/schaff/npnf108/cache/npnf108.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 5028419,
+  "fetched_at": "2026-06-25T20:37:26.987456+00:00",
+  "passage_count": 6185,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

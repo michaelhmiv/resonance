@@ -1,0 +1,17 @@
+{
+  "book_id": "cyprian-treatises",
+  "title": "The Treatises of Cyprian",
+  "author": "Cyprian of Carthage",
+  "era": "3rd c.",
+  "package_id": "patristic",
+  "source_url": "https://ccel.org/ccel/a/cyprian/treatises/cache/treatises.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 4345828,
+  "fetched_at": "2026-06-25T20:37:24.805410+00:00",
+  "passage_count": 6914,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

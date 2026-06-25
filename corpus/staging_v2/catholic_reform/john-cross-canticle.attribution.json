@@ -1,0 +1,17 @@
+{
+  "book_id": "john-cross-canticle",
+  "title": "Spiritual Canticle",
+  "author": "John of the Cross",
+  "era": "16th c.",
+  "package_id": "catholic_reform",
+  "source_url": "https://ccel.org/ccel/a/john_cross/canticle/cache/canticle.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 468432,
+  "fetched_at": "2026-06-25T20:37:12.524508+00:00",
+  "passage_count": 789,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

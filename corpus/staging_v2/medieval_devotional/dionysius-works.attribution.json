@@ -1,0 +1,17 @@
+{
+  "book_id": "dionysius-works",
+  "title": "The Works of Dionysius the Areopagite",
+  "author": "Pseudo-Dionysius the Areopagite",
+  "era": "5th-6th c.",
+  "package_id": "medieval_devotional",
+  "source_url": "https://ccel.org/ccel/a/dionysius/works/cache/works.txt",
+  "source_kind": "ccel",
+  "content_type": "text/plain",
+  "size_chars": 664324,
+  "fetched_at": "2026-06-25T20:37:20.000510+00:00",
+  "passage_count": 882,
+  "quality_ok": true,
+  "quality_reasons": [],
+  "license": "Public Domain (pre-1928)",
+  "translator": "unknown"
+}

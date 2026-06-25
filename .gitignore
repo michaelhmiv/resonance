@@ -31,6 +31,14 @@ venv/
 corpus_staging/
 corpus_staging_test/
 corpus_staging_check/
+corpus/staging_v2/**/*.txt  # raw source text — too big for git
+corpus/staging_v2/**/*.passages.json  # per-work chunked output — too big for git
+# Note: *.attribution.json per-work files (audit trail) ARE committed
+# Belt-and-suspenders for older git versions that don't handle ** properly
+corpus/staging_v2/*/*.txt
+corpus/staging_v2/*/*/*.txt
+corpus/staging_v2/*/*.passages.json
+corpus/staging_v2/*/*/*.passages.json
 
 # Models (large binary files)
 models/
