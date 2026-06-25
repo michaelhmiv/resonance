@@ -5,8 +5,10 @@
  * with `useRouter().push()`. Designed to be mounted once at the layout
  * level so every authenticated page inherits the bar.
  *
- * Only visible on mobile viewports (max-width: 768px) via the
- * `bottom-tab-bar` CSS class in globals.css.
+ * Visibility is driven by a JavaScript media-query check (not CSS) because
+ * RN-Web's inline `style.display` wins over a CSS `.bottom-tab-bar` rule,
+ * and the `className` prop is not preserved through RN-Web. On desktop
+ * we render nothing.
  *
  * Tap targets are 48px (slightly above Apple HIG 44px) to give thumb
  * reach comfortable margins.
@@ -14,7 +16,7 @@
 
 'use client';
 
-import { type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Pressable, Text, View, StyleSheet } from 'react-native';
 import { usePathname, useRouter } from 'next/navigation';
 import { colors, fontFamilies, spacing, radii } from '@resonance/theme';
@@ -42,20 +44,40 @@ function tabFromPath(pathname: string | null): TabId {
   return 'journal';
 }
 
+/** Mobile-only check via matchMedia. SSR-safe: defaults to false, updates on mount. */
+function useIsMobile(breakpoint = 768): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mql = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const update = () => setIsMobile(mql.matches);
+    update();
+    // Older Safari uses addListener; modern uses addEventListener.
+    if (mql.addEventListener) mql.addEventListener('change', update);
+    else mql.addListener(update);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener('change', update);
+      else mql.removeListener(update);
+    };
+  }, [breakpoint]);
+  return isMobile;
+}
+
 export function BottomTabBar({ activeTab: activeOverride, onSelect }: BottomTabBarProps = {}): ReactNode {
   const router = useRouter();
   const pathname = usePathname();
+  const isMobile = useIsMobile();
   const active = activeOverride ?? tabFromPath(pathname);
+
+  if (!isMobile) return null;
 
   const handle = (tab: TabId, href: string) => {
     if (onSelect) onSelect(tab);
-    // Same route: still push to force a fresh state (matches the
-    // old in-app behavior where tapping the active tab reset scroll).
     router.push(href);
   };
 
   return (
-    <View style={styles.container} className="bottom-tab-bar">
+    <View style={styles.container}>
       {TABS.map((tab) => {
         const isActive = active === tab.id;
         return (
@@ -82,7 +104,6 @@ export function BottomTabBar({ activeTab: activeOverride, onSelect }: BottomTabB
 
 const styles = StyleSheet.create({
   container: {
-    display: 'none', // hidden by default — shown via media query CSS
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',

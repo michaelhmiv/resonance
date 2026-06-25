@@ -61,18 +61,11 @@ input, textarea { font-family: inherit; }
   }
 }
 
-/* ── Bottom tab bar (mobile only) ──────────────────────── */
-
-.bottom-tab-bar {
-  display: none !important;
-}
+/* ── Bottom tab bar (mobile only, visibility JS-driven) ──────────── */
+/* The bar mounts only on mobile (≤768px) via useIsMobile. The header
+   tabs are hidden on mobile so the bar is the only tab navigation. */
 
 @media (max-width: 768px) {
-  .bottom-tab-bar {
-    display: flex !important;
-  }
-
-  /* Hide header tabs on mobile — bottom bar replaces them */
   .resonance-tab-bar {
     display: none !important;
   }
