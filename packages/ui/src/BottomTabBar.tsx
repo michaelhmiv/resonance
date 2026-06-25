@@ -52,11 +52,11 @@ export function BottomTabBar({ activeTab: activeOverride, onSelect }: BottomTabB
   const router = useRouter();
   const active = activeOverride ?? tabFromPath(pathname);
 
-  const handlePress = (tab: TabId, e: React.MouseEvent) => {
+  const handlePress = (href: string, e: React.MouseEvent) => {
     // next/link handles navigation. This callback lets a parent override
     // behavior (e.g. analytics, or forced remount) without reimplementing
     // the link itself.
-    if (onSelect) onSelect(tab);
+    if (onSelect) onSelect(tabFromPath(href));
 
     // Wrap the soft navigation in a View Transition for a gentle
     // cross-fade. next/link's experimental viewTransition flag is
@@ -65,7 +65,7 @@ export function BottomTabBar({ activeTab: activeOverride, onSelect }: BottomTabB
     if (typeof document !== 'undefined' && 'startViewTransition' in document) {
       e.preventDefault();
       const transition = (document as any).startViewTransition(() => {
-        router.push(tab.href);
+        router.push(href);
       });
       // Suppress unhandled-promise warning from the optional ready callback.
       void transition?.ready?.catch(() => {});
@@ -83,7 +83,7 @@ export function BottomTabBar({ activeTab: activeOverride, onSelect }: BottomTabB
             href={tab.href}
             prefetch={true}
             style={styles.linkReset}
-            onClick={(e) => handlePress(tab.id, e)}
+            onClick={(e) => handlePress(tab.href, e)}
             aria-label={tab.label}
             aria-current={isActive ? 'page' : undefined}
           >
