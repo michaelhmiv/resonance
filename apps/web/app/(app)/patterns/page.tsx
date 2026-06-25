@@ -7,7 +7,7 @@
 import { useMemo, type ReactNode } from 'react';
 import { DataLayerProvider } from '@resonance/core/data-layer-context';
 import { PatternsScreen } from '@resonance/screens';
-import { WebDataLayer } from '../../lib/client-data-layer';
+import { WebDataLayer } from '../../../lib/client-data-layer';
 
 export default function PatternsPage(): ReactNode {
   const dataLayer = useMemo(() => new WebDataLayer(), []);

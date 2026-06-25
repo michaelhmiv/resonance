@@ -77,12 +77,8 @@ input, textarea { font-family: inherit; }
     display: none !important;
   }
 
-  /* Add bottom padding to main content so it clears the fixed bottom bar */
-  .resonance-container {
-    padding-bottom: 70px;
-  }
-
-  /* Offset reading chrome above bottom tab bar */
+  /* Offset reading chrome above bottom tab bar.
+     MobileChrome provides the content padding; no need to double it. */
   .reading-bottom-chrome {
     bottom: 60px !important;
   }

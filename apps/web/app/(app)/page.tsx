@@ -1,16 +1,20 @@
 /**
  * Main page — three tabs (Journal, Word, Patterns) + Settings link.
- * Uses client-side routing for tab switching.
+ * Uses client-side routing for tab switching on desktop.
+ *
+ * On mobile, the persistent bottom tab bar is provided by the (app)
+ * layout's MobileChrome, not here.
  */
 
 'use client';
 
 import { useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View, Pressable } from 'react-native-web';
-import { BottomTabBar, type TabId } from '@resonance/ui';
 import JournalPage from './journal/page';
 import WordPage from './word/page';
 import PatternsPage from './patterns/page';
+
+type TabId = 'journal' | 'word' | 'patterns';
 
 export default function HomePage(): ReactNode {
   const [activeTab, setActiveTab] = useState<TabId>('journal');
@@ -55,8 +59,6 @@ export default function HomePage(): ReactNode {
           <Text style={styles.settingsText}>Settings</Text>
         </Pressable>
       </View>
-      {/* ── Bottom tab bar (mobile only) ───────────────────── */}
-      <BottomTabBar activeTab={activeTab} onSelect={onSelect} />
     </View>
   );
 

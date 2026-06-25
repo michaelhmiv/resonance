@@ -7,7 +7,7 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { DataLayerProvider } from '@resonance/core/data-layer-context';
 import { SettingsScreen } from '@resonance/screens';
-import { WebDataLayer } from '../../lib/client-data-layer';
+import { WebDataLayer } from '../../../lib/client-data-layer';
 
 export default function SettingsPage(): ReactNode {
   const dataLayer = useMemo(() => new WebDataLayer(), []);

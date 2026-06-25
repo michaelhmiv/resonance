@@ -8,7 +8,7 @@ import { useMemo, useCallback, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { DataLayerProvider } from '@resonance/core/data-layer-context';
 import { JournalScreen } from '@resonance/screens';
-import { WebDataLayer } from '../../lib/client-data-layer';
+import { WebDataLayer } from '../../../lib/client-data-layer';
 
 export default function JournalPage(): ReactNode {
   const dataLayer = useMemo(() => new WebDataLayer(), []);
