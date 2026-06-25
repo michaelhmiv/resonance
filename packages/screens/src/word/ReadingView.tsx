@@ -758,7 +758,7 @@ export function ReadingView({
       )}
 
       {/* ── Bottom chrome: fixed pill + nav bar ───────────────────────── */}
-      <View style={styles.bottomChrome}>
+      <View style={styles.bottomChrome} className="reading-bottom-chrome">
         {/* Floating tool pill */}
         <View style={styles.pillContainer}>
           <HighlightPill
@@ -1083,7 +1083,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    zIndex: 100,
+    zIndex: 300,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
     backgroundColor: colors.background,

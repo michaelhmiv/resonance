@@ -7,14 +7,13 @@
 
 import { useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View, Pressable } from 'react-native-web';
+import { BottomTabBar, type TabId } from '@resonance/ui';
 import JournalPage from './journal/page';
 import WordPage from './word/page';
 import PatternsPage from './patterns/page';
 
-type Tab = 'journal' | 'word' | 'patterns';
-
 export default function HomePage(): ReactNode {
-  const [activeTab, setActiveTab] = useState<Tab>('journal');
+  const [activeTab, setActiveTab] = useState<TabId>('journal');
 
   return (
     <View style={styles.container} className="resonance-container">
@@ -23,10 +22,10 @@ export default function HomePage(): ReactNode {
         <Text style={styles.headerTitle}>Resonance</Text>
         <View style={styles.tabBar} className="resonance-tab-bar">
           {([
-            { id: 'journal', label: 'Journal' },
-            { id: 'word', label: 'Word' },
-            { id: 'patterns', label: 'Patterns' },
-          ] as const).map((tab) => {
+            { id: 'journal' as TabId, label: 'Journal' },
+            { id: 'word' as TabId, label: 'Word' },
+            { id: 'patterns' as TabId, label: 'Patterns' },
+          ]).map((tab) => {
             const active = activeTab === tab.id;
             return (
               <Pressable
@@ -56,10 +55,12 @@ export default function HomePage(): ReactNode {
           <Text style={styles.settingsText}>Settings</Text>
         </Pressable>
       </View>
+      {/* ── Bottom tab bar (mobile only) ───────────────────── */}
+      <BottomTabBar activeTab={activeTab} onSelect={onSelect} />
     </View>
   );
 
-  function onSelect(t: Tab) {
+  function onSelect(t: TabId) {
     setActiveTab(t);
   }
 }

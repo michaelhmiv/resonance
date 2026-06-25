@@ -60,3 +60,30 @@ input, textarea { font-family: inherit; }
     line-height: 24px !important;
   }
 }
+
+/* ── Bottom tab bar (mobile only) ──────────────────────── */
+
+.bottom-tab-bar {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .bottom-tab-bar {
+    display: flex !important;
+  }
+
+  /* Hide header tabs on mobile — bottom bar replaces them */
+  .resonance-tab-bar {
+    display: none !important;
+  }
+
+  /* Add bottom padding to main content so it clears the fixed bottom bar */
+  .resonance-container {
+    padding-bottom: 70px;
+  }
+
+  /* Offset reading chrome above bottom tab bar */
+  .reading-bottom-chrome {
+    bottom: 60px !important;
+  }
+}
