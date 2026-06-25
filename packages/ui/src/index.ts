@@ -33,4 +33,5 @@ export {
   ChevronRightIcon,
   SettingsIcon,
   HighlighterPenIcon,
+  NoteIcon,
 } from './icons';

@@ -10,7 +10,8 @@
 import { type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, highlightPalette, radii, spacing, withAlpha } from '@resonance/theme';
-import { EditIcon } from './icons';
+import { NoteIcon } from './icons';
+
 
 export interface FloatingHighlightToolbarProps {
   /** Bounding rect of the current text selection, in viewport coords. */
@@ -91,7 +92,7 @@ export function FloatingHighlightToolbar({
           accessibilityLabel="Add note"
           style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.5 }]}
         >
-          <EditIcon size={16} color={colors.textSecondary} />
+          <NoteIcon size={16} color={colors.textSecondary} />
         </Pressable>
 
         <Pressable

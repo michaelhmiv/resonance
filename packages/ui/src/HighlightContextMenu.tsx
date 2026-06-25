@@ -15,7 +15,7 @@ import {
   spacing,
   withAlpha,
 } from '@resonance/theme';
-import { EditIcon, TrashIcon } from './icons';
+import { NoteIcon, TrashIcon } from './icons';
 import type { Highlight } from '@resonance/core';
 
 export interface HighlightContextMenuProps {
@@ -95,7 +95,7 @@ export function HighlightContextMenu({
             accessibilityLabel={hasNote ? 'Edit note' : 'Add note'}
             style={({ pressed }) => [styles.action, pressed && { opacity: 0.5 }]}
           >
-            <EditIcon size={14} color={colors.textSecondary} />
+            <NoteIcon size={14} color={colors.textSecondary} />
             <Text style={styles.actionText}>
               {hasNote ? 'Edit note' : 'Add note'}
             </Text>

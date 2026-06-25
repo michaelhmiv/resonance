@@ -15,7 +15,7 @@
 
 import { type ReactNode } from 'react';
 import { Pressable, View, StyleSheet } from 'react-native';
-import { HighlighterPenIcon, EditIcon, XIcon } from './icons';
+import { HighlighterPenIcon, NoteIcon, XIcon } from './icons';
 import { colors, highlightPalette, radii, spacing } from '@resonance/theme';
 
 interface HighlightPillProps {
@@ -90,10 +90,10 @@ export function HighlightPill({
         onPress={onAnnotate}
         hitSlop={8}
         accessibilityRole="button"
-        accessibilityLabel="Add annotation"
+        accessibilityLabel="Add note"
         style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
       >
-        <EditIcon size={18} color={colors.textSecondary} />
+        <NoteIcon size={18} color={colors.textSecondary} />
       </Pressable>
 
       <Pressable
