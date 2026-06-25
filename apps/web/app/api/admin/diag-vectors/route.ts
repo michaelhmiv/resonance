@@ -1,14 +1,13 @@
 /**
  * GET /api/admin/diag-vectors — check that loaded vectors match the manifest
- * Returns the first 5 vectors with their norms and the first 3 dimensions
- * of vector[0]. If the route is loading from the right file with the right
- * alignment, the norms should be ~1.0 (after renormalization) and vector[0]
- * should match the manifest's first passage_ids[0] passage.
+ * Returns sample vectors with their norms and the first 3 dimensions.
+ * If the route is loading from the right file with the right alignment,
+ * the norms should be ~1.0 (after renormalization) and the bytes should
+ * match what's on the volume.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
-import path from 'path';
 
 export async function GET(_req: NextRequest) {
   const token = _req.headers.get('x-admin-token');
@@ -29,46 +28,48 @@ export async function GET(_req: NextRequest) {
   const fh = await import('fs/promises');
   const stat1 = await fh.stat(vecPath);
   const fd = await fh.open(vecPath, 'r');
-  // Force fresh read by using positional read with explicit position
 
-  // Read first 5 vectors, dequantize, compute norms
-  if (manifest.dtype === 'int8') {
-    const signed = new Int8Array(raw.buffer, raw.byteOffset, raw.byteLength);
-    for (let i = 0; i < raw.length; i++) {
-      const buf = Buffer.alloc(dim);
-      await fd.read(buf, 0, dim, i * dim);
-      const signed = new Int8Array(buf.buffer, buf.byteOffset, dim);
-      for (let d = 0; d < 3; d++) {
-        floats[d] = signed[d] / 127.0;
+  // Read sample vectors using signed Int8Array view
+  const sample: any[] = [];
+  const sampleIndices = [0, 1, 2, 3, 4, 881, 13635, 100000, 200000, 237403];
+  for (const i of sampleIndices) {
+    if (i >= manifest.passage_count) continue;
+    const buf = Buffer.alloc(dim);
+    await fd.read(buf, 0, dim, i * dim);
+    // Read as signed Int8 (so -59 stays -59, not 197)
+    const signed = new Int8Array(buf.buffer, buf.byteOffset, dim);
+    // Dequantize and renormalize
+    const floats = new Float32Array(dim);
+    let normBefore = 0;
+    for (let d = 0; d < dim; d++) {
+      floats[d] = signed[d] / 127.0;
+      normBefore += floats[d] * floats[d];
+    }
+    normBefore = Math.sqrt(normBefore);
+    let normAfter = 0;
+    if (normBefore > 0) {
+      for (let d = 0; d < dim; d++) {
+        floats[d] /= normBefore;
+        normAfter += floats[d] * floats[d];
+      }
+    }
+    normAfter = Math.sqrt(normAfter);
     sample.push({
       idx: i,
       passage_id: manifest.passage_ids?.[i],
-      raw_bytes_first3: Array.from(buf.slice(0, 3)),
+      raw_bytes_first3: [buf[0], buf[1], buf[2]],
+      signed_first3: [signed[0], signed[1], signed[2]],
       dequant_first3: [floats[0], floats[1], floats[2]],
       norm_after_dequant: normBefore,
       norm_after_renormalize: normAfter,
     });
-  }
-  // Sample at suspicious indices
-  for (const i of [881, 13635, 100000, 200000, 237403]) {
-    if (i < manifest.passage_count) {
-      const buf = Buffer.alloc(dim);
-      await fd.read(buf, 0, dim, i * dim);
-      sample.push({
-        idx: i,
-        passage_id: manifest.passage_ids?.[i],
-        raw_bytes_first3: Array.from(buf.slice(0, 3)),
-        dequant_first3: [buf[0] / 127.0, buf[1] / 127.0, buf[2] / 127.0],
-        norm_after_dequant: null,
-        norm_after_renormalize: null,
-      });
-    }
   }
   await fd.close();
 
   return NextResponse.json({
     manifest_passage_count: manifest.passage_count,
     manifest_dim: manifest.dim,
+    manifest_dtype: manifest.dtype,
     vectors_file_size: stat1.size,
     vectors_file_mtime: stat1.mtime.toISOString(),
     sample,
