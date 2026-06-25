@@ -119,6 +119,9 @@ export function ReadingView({
     quoteContext: string | null;
   } | null>(null);
 
+  // Collapsed notes — hidden by default, tap to reveal
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+
   // Chapter picker
   const [chapterPickerOpen, setChapterPickerOpen] = useState(false);
 
@@ -569,66 +572,64 @@ export function ReadingView({
     );
   }
 
-  /** Render a note chip for a verse that has an annotated highlight. */
+  /** Render a collapsed note toggle + expanded content for a verse that has an annotated highlight. */
   const renderHighlightNote = (ref: string) => {
     const hl = highlightForRef(ref);
     if (!hl || !hl.note_text || hl.note_text.trim().length === 0) return null;
+
+    const isExpanded = expandedNotes.has(ref);
 
     return (
       <View style={styles.noteChip}>
         <Pressable
           onPress={() => {
-            const passage = passages.find((p) => verseRefFor(p) === ref);
-            setNoteModal({
-              highlight: hl,
-              verseRef: ref,
-              quoteContext: passage?.text ?? null,
+            setExpandedNotes((prev) => {
+              const next = new Set(prev);
+              if (next.has(ref)) next.delete(ref);
+              else next.add(ref);
+              return next;
             });
           }}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="View or edit note"
+          accessibilityLabel={isExpanded ? 'Collapse note' : 'Expand note'}
         >
-          <Text style={styles.noteChipText} numberOfLines={3}>
-            {hl.note_text}
+          <Text style={styles.noteToggle}>
+            {isExpanded ? '▾' : '▸'} note
           </Text>
-          {hl.note_updated_at ? (
-            <Text style={styles.noteChipTimestamp}>
-              {formatNoteDate(hl.note_updated_at)}
-            </Text>
-          ) : null}
         </Pressable>
+
+        {isExpanded ? (
+          <Pressable
+            onPress={() => {
+              const passage = passages.find((p) => verseRefFor(p) === ref);
+              setNoteModal({
+                highlight: hl,
+                verseRef: ref,
+                quoteContext: passage?.text ?? null,
+              });
+            }}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="View or edit note"
+          >
+            <Text style={styles.noteChipText} numberOfLines={6}>
+              {hl.note_text}
+            </Text>
+            {hl.note_updated_at ? (
+              <Text style={styles.noteChipTimestamp}>
+                {formatNoteDate(hl.note_updated_at)}
+              </Text>
+            ) : null}
+          </Pressable>
+        ) : null}
       </View>
     );
   };
 
   return (
     <View style={styles.container}>
-      {/* ── Reading header (context only) ─────────────────────────────── */}
-      <View style={styles.readingHeader}>
-        <Pressable
-          onPress={onBack}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Back to browse"
-        >
-          <Text style={styles.backText}>← Browse</Text>
-        </Pressable>
-
-        {isScripture && onChangeTranslation ? (
-          <TranslationSelector
-            value={mode.translation}
-            onChange={onChangeTranslation}
-          />
-        ) : null}
-
-        <Text style={styles.headerTitle}>{headerTitle}</Text>
-
-        {/* Spacer to balance the row (back + translation on left) */}
-        <View style={styles.headerSpacer} />
-      </View>
-
-      {/* ── Passage list ────────────────────────────────────────────── */}
+      {/* ── Passage list (no top header — bottom chrome + tab bar handle nav) */}
       {isScripture ? (
         <FlatList
           ref={scrollRef}
@@ -740,11 +741,10 @@ export function ReadingView({
         />
       )}
 
-      {/* ── Bottom chrome: one row, chrome expands inline ─────────────── */}
+      {/* ── Bottom chrome: chapter nav + tools, matching top header aesthetic ── */}
       <View style={styles.bottomChrome}>
-        {/* Row 1: chapter nav + bookmark + highlighter (collapsed/expanded) */}
         <View style={styles.bottomNav}>
-          {/* Chapter / section navigation */}
+          {/* Chapter / section navigation — clean text arrows, no emojis */}
           {isScripture ? (
             <View style={styles.chapterNav}>
               {prevChapter > 0 ? (
@@ -755,8 +755,8 @@ export function ReadingView({
                   accessibilityLabel="Previous chapter"
                   style={[styles.chapterNavBtn, { minWidth: TOUCH_MIN, minHeight: TOUCH_MIN }]}
                 >
-                  <Text style={styles.chapterNavText}>◀</Text>
-                  <Text style={styles.chapterNavLabel}>Ch</Text>
+                  <Text style={styles.chapterNavArrow}>‹</Text>
+                  <Text style={styles.chapterNavCh}>Ch</Text>
                 </Pressable>
               ) : (
                 <View style={styles.chapterNavPlaceholder} />
@@ -782,8 +782,8 @@ export function ReadingView({
                   accessibilityLabel="Next chapter"
                   style={[styles.chapterNavBtn, { minWidth: TOUCH_MIN, minHeight: TOUCH_MIN }]}
                 >
-                  <Text style={styles.chapterNavText}>▶</Text>
-                  <Text style={styles.chapterNavLabel}>Ch</Text>
+                  <Text style={styles.chapterNavArrow}>›</Text>
+                  <Text style={styles.chapterNavCh}>Ch</Text>
                 </Pressable>
               ) : (
                 <View style={styles.chapterNavPlaceholder} />
@@ -799,7 +799,7 @@ export function ReadingView({
                   accessibilityLabel="Previous section"
                   style={[styles.chapterNavBtn, { minWidth: TOUCH_MIN, minHeight: TOUCH_MIN }]}
                 >
-                  <Text style={styles.chapterNavText}>◀</Text>
+                  <Text style={styles.chapterNavArrow}>‹</Text>
                 </Pressable>
               ) : (
                 <View style={styles.chapterNavPlaceholder} />
@@ -815,7 +815,7 @@ export function ReadingView({
                   accessibilityLabel="Next section"
                   style={[styles.chapterNavBtn, { minWidth: TOUCH_MIN, minHeight: TOUCH_MIN }]}
                 >
-                  <Text style={styles.chapterNavText}>▶</Text>
+                  <Text style={styles.chapterNavArrow}>›</Text>
                 </Pressable>
               ) : (
                 <View style={styles.chapterNavPlaceholder} />
@@ -823,7 +823,15 @@ export function ReadingView({
             </View>
           )}
 
-          {/* Highlighter — toggles inline; expands to swatches+annotate+dismiss */}
+          {/* Translation selector (was in removed top header) */}
+          {isScripture && onChangeTranslation ? (
+            <TranslationSelector
+              value={mode.translation}
+              onChange={onChangeTranslation}
+            />
+          ) : null}
+
+          {/* Highlighter — toggles inline */}
           {highlightMode ? (
             <View style={styles.highlightInline}>
               <HighlightPill
@@ -904,30 +912,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  readingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: layout.screenPaddingX,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  backText: {
-    fontFamily: fontFamilies.sansMedium,
-    fontSize: 14,
-    color: colors.accent,
-  },
-  headerTitle: {
-    fontFamily: fontFamilies.serifSemibold,
-    fontSize: 18,
-    color: colors.textPrimary,
-    flex: 1,
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    width: 60,
-  },
   passageList: {
     flex: 1,
   },
@@ -993,6 +977,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: colors.textSecondary,
   },
+  noteToggle: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 12,
+    color: colors.accent,
+    marginBottom: spacing.xs,
+  },
   noteChipTimestamp: {
     fontFamily: fontFamilies.sans,
     fontSize: 10,
@@ -1041,15 +1031,17 @@ const styles = StyleSheet.create({
   chapterNavPlaceholder: {
     width: 48,
   },
-  chapterNavText: {
-    fontSize: 12,
-    color: colors.textSecondary,
+  chapterNavArrow: {
+    fontFamily: fontFamilies.serif,
+    fontSize: 18,
+    color: colors.accent,
+    lineHeight: 20,
   },
-  chapterNavLabel: {
+  chapterNavCh: {
     fontFamily: fontFamilies.sans,
     fontSize: 10,
     color: colors.textTertiary,
-    marginLeft: 4,
+    marginLeft: 2,
   },
   chapterPos: {
     fontFamily: fontFamilies.sans,
