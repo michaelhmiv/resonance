@@ -47,6 +47,16 @@ const CONCEPTS: Record<string, string[]> = {
   peace: ['peace', 'still', 'quiet', 'calm', 'trouble', 'heart'],
 };
 
+/**
+ * Concept taxonomy. Re-exported so other routes (e.g. journal/verse-echoes)
+ * can stay consistent with how the lexical fallback explains "what
+ * resonated." The keys are concept names, the values are the lexical
+ * terms that activate each concept.
+ */
+export const CONCEPTS_LIST: ReadonlyArray<string> = Object.freeze([
+  'rest', 'anxious', 'alone', 'grief', 'wisdom', 'forgiveness', 'hope', 'peace',
+]);
+
 function tokens(text: string): string[] {
   const base = text
     .toLowerCase()

@@ -398,6 +398,18 @@ export class WebDataLayer implements DataLayer {
     });
   }
 
+  async findVerseEchoes(verseText: string, verseRef?: string): Promise<{ count: number; entryIds: string[]; concepts: string[] }> {
+    if (verseText.trim().length < 4) return { count: 0, entryIds: [], concepts: [] };
+    try {
+      return await api<{ count: number; entryIds: string[]; concepts: string[] }>('/api/journal/verse-echoes', {
+        method: 'POST',
+        body: JSON.stringify({ verseText, verseRef }),
+      });
+    } catch {
+      return { count: 0, entryIds: [], concepts: [] };
+    }
+  }
+
   async recordReadingEvent(bookId: string, chapter: number, verseRef: string, timestamp: number): Promise<void> {
     await api('/api/reading/events', {
       method: 'POST',

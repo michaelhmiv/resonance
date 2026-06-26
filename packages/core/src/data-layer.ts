@@ -66,6 +66,18 @@ export interface DataLayer {
   findResonance(journalText: string): Promise<ResonanceResult | null>;
   storeSegmentVector(segmentId: string, text: string): Promise<void>;
   appendQuoteToJournal(quote: string, source: string): Promise<void>;
+  /**
+   * How many of the user's past entries share a concept with the given
+   * verse text. Returns matching entry ids and the shared concept names
+   * so the client can render a glance line like "Today's verse has
+   * echoed in 2 of your past entries — grace, salvation."
+   * Optional in implementations; absence is fine for the journal screen.
+   */
+  findVerseEchoes?(verseText: string, verseRef?: string): Promise<{
+    count: number;
+    entryIds: string[];
+    concepts: string[];
+  }>;
 
   // ── Patterns ───────────────────────────────────────────────────────────
   clusterEntries(segments: JournalSegment[]): Promise<EntryCluster[]>;

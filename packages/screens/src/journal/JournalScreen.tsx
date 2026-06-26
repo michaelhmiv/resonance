@@ -6,7 +6,7 @@
  * Resonance is curation, not generation — no AI-written content.
  */
 
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -51,6 +51,11 @@ export function JournalScreen({ fetchVerseOfDay, onNavigateToBook }: JournalScre
   const [verseOfDay, setVerseOfDay] = useState<VerseOfDay | null>(() => {
     return getCachedSync<VerseOfDay>('/api/bible/verse-of-day');
   });
+  // How many of the user's past journal entries are semantically close
+  // to today's verse. Surfaced under the verse card so the "resonance"
+  // between the two is visible at a glance — verse and entries stop
+  // looking like unrelated things stacked vertically.
+  const [verseEchoCount, setVerseEchoCount] = useState<number | null>(null);
   const [currentText, setCurrentText] = useState('');
   // Start in "loading" only if the cache was cold (we have no segments and no
   // verse yet). If the cache was warm, the first render already shows content
@@ -88,6 +93,63 @@ export function JournalScreen({ fetchVerseOfDay, onNavigateToBook }: JournalScre
     };
     load();
   }, [dataLayer, fetchVerseOfDay]);
+
+  // After verse of the day + segments are both in, count how many of the
+  // user's past entries share a concept with the verse. Surfaces the
+  // connection visibly under the verse card so verse and entries stop
+  // looking like two unrelated things stacked vertically.
+  useEffect(() => {
+    let cancelled = false;
+    if (!verseOfDay) return;
+    const fn = (dataLayer as { findVerseEchoes?: (t: string, r?: string) => Promise<{ count: number; entryIds: string[]; concepts: string[] }> }).findVerseEchoes;
+    if (!fn) return;
+    fn(verseOfDay.text, verseOfDay.ref)
+      .then((res) => {
+        if (!cancelled) setVerseEchoCount(res.count);
+      })
+      .catch(() => {
+        if (!cancelled) setVerseEchoCount(null);
+      });
+    return () => { cancelled = true; };
+  }, [dataLayer, verseOfDay]);
+
+  // Auto-load per-entry resonance as soon as past entries paint. This is
+  // what makes the "resonance" promise visible without the user having to
+  // know to tap ✦ — every entry arrives with its matches already computed.
+  // The previous version required an explicit tap, which made the feature
+  // look inert on first impression.
+  const autoResonanceArmed = useRef(false);
+  useEffect(() => {
+    if (autoResonanceArmed.current) return;
+    if (segments.length === 0) return;
+    autoResonanceArmed.current = true;
+    for (const seg of segments) {
+      if (seg.segment_type === 'text' && seg.text) {
+        loadResonance(seg.id, seg.text);
+      }
+    }
+  }, [segments, loadResonance]);
+
+  // Auto-expand the most recent entry's resonance on first paint so the
+  // user sees the feature working. Only the top entry — the rest stay
+  // collapsed until tapped, so the screen doesn't turn into a wall of
+  // cards. Without this, resonance loads silently in the background and
+  // the user has no idea the feature exists.
+  const autoExpandArmed = useRef(false);
+  useEffect(() => {
+    if (autoExpandArmed.current) return;
+    if (segments.length === 0) return;
+    autoExpandArmed.current = true;
+    const top = segments.find((s) => s.segment_type === 'text' && s.text);
+    if (top) {
+      setExpandedFootnotes((prev) => {
+        if (prev.has(top.id)) return prev;
+        const next = new Set(prev);
+        next.add(top.id);
+        return next;
+      });
+    }
+  }, [segments]);
 
   const loadResonance = useCallback(async (segId: string, text: string) => {
     if (resonanceMap[segId] || loadingResonance.has(segId)) return;
@@ -184,9 +246,20 @@ export function JournalScreen({ fetchVerseOfDay, onNavigateToBook }: JournalScre
 
       {/* Verse of the day */}
       {verseOfDay && (
-        <View style={styles.verseCard}>
-          <Text style={styles.verseCardText}>"{verseOfDay.text}"</Text>
-          <Text style={styles.verseRef}>{verseOfDay.ref}</Text>
+        <View>
+          <View style={styles.verseCard}>
+            <Text style={styles.verseCardText}>"{verseOfDay.text}"</Text>
+            <Text style={styles.verseRef}>{verseOfDay.ref}</Text>
+          </View>
+          {/* Connection between verse and entries. Without this, the verse
+              reads as a decorative header and the entries read as data —
+              two unrelated things stacked vertically. The line makes the
+              relationship visible. Hidden on cold load until we know. */}
+          {verseEchoCount != null && verseEchoCount > 0 && (
+            <Text style={styles.verseEchoLine}>
+              Has echoed in {verseEchoCount} of your past entr{verseEchoCount === 1 ? 'y' : 'ies'}
+            </Text>
+          )}
         </View>
       )}
 
@@ -321,7 +394,7 @@ function CardSection({ label, cards, onNavigateToBook }: { label: string; cards:
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { gap: 16, paddingBottom: 40 },
+  content: { gap: 16, paddingBottom: 40, paddingHorizontal: 20 },
   center: { justifyContent: 'center', alignItems: 'center' },
   dateDivider: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   dateLine: { flex: 1, height: 1, backgroundColor: '#e8e5e0' },
@@ -329,6 +402,9 @@ const styles = StyleSheet.create({
   verseCard: { borderWidth: 1, borderColor: '#e8e5e0', backgroundColor: '#ffffff', borderRadius: 10, padding: 16, gap: 4 },
   verseCardText: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontStyle: 'italic', fontSize: 17, lineHeight: 26, color: '#3a3530' },
   verseRef: { fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#9a9388', textAlign: 'right' },
+  // Verse↔entries correlation line. Small caps + warm gold so it reads as
+  // a meta-note about the relationship, not as a separate piece of content.
+  verseEchoLine: { fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: '600', color: '#8b7355', letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 6, paddingHorizontal: 2 },
 
   // Entry
   entryRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
@@ -336,8 +412,11 @@ const styles = StyleSheet.create({
   entryText: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 18, lineHeight: 28, color: '#3a3530' },
   entryActions: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingTop: 2 },
   footnoteBtn: { padding: 4 },
-  footnoteMark: { fontSize: 16, color: '#c9a25a', opacity: 0.6 },
-  footnoteMarkActive: { opacity: 1, fontWeight: '600' },
+  // ✦ rendered inside a soft circle pill so it reads as a control, not
+  // punctuation. Opacity bumped from 0.6 → 0.85 idle, full + bold when
+  // expanded (matches have loaded).
+  footnoteMark: { fontSize: 16, color: '#8b7355', opacity: 0.85 },
+  footnoteMarkActive: { opacity: 1, fontWeight: '600', color: '#c9a25a' },
   deleteBtn: { padding: 4 },
   deleteText: { fontFamily: 'Inter, sans-serif', fontSize: 18, color: '#c9a0a0', fontWeight: '300' },
 
