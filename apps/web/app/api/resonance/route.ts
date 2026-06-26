@@ -372,12 +372,13 @@ async function scoreAllRows(loaded: LoadedModel, queryVecs: number[][]): Promise
 
 export async function POST(req: NextRequest) {
   try {
-    const { vector, text, sourceId, entryId, sourceNodeId } = (await req.json()) as {
+    const { vector, text, sourceId, entryId, sourceNodeId, sourceType } = (await req.json()) as {
       vector?: number[];
       text?: string;
       sourceId?: string;
       entryId?: string;
       sourceNodeId?: string;
+      sourceType?: 'journal_entry' | 'highlight' | 'note' | 'reading_event' | 'corpus_passage' | 'theme_snapshot';
     };
     const resolvedSourceId = sourceId ?? entryId;
 
@@ -389,6 +390,7 @@ export async function POST(req: NextRequest) {
           storeResonanceCache({
             sourceNodeId,
             sourceId: resolvedSourceId,
+            sourceType: sourceType ?? 'journal_entry',
             contentHash,
             result,
             metadata: { route: '/api/resonance' },
@@ -442,7 +444,7 @@ export async function POST(req: NextRequest) {
 
         // Apply highlight boost and sort
         const scored: { key: string; sim: number }[] = [];
-        for (const [rowKey, sim] of simMap) {
+        for (const [rowKey, sim] of Array.from(simMap.entries())) {
           const m = keyToMeta.get(rowKey);
           if (m === undefined) continue; // passage not in current metadata
           let finalSim = sim;

@@ -156,6 +156,130 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 2,
+    description: 'offline adaptive resonance parity',
+    sql: `
+      ALTER TABLE highlights ADD COLUMN start_offset INTEGER;
+      ALTER TABLE highlights ADD COLUMN end_offset INTEGER;
+      ALTER TABLE highlights ADD COLUMN selected_text TEXT;
+      ALTER TABLE highlights ADD COLUMN note_text TEXT;
+      ALTER TABLE highlights ADD COLUMN note_updated_at INTEGER;
+      ALTER TABLE highlights ADD COLUMN updated_at INTEGER;
+
+      CREATE TABLE IF NOT EXISTS reading_events (
+        id         TEXT PRIMARY KEY,
+        book_id    TEXT NOT NULL,
+        chapter    INTEGER NOT NULL,
+        verse_ref  TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_reading_events_time ON reading_events (created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS resonance_nodes (
+        id           TEXT PRIMARY KEY,
+        node_type    TEXT NOT NULL,
+        source_table TEXT NOT NULL,
+        source_id    TEXT NOT NULL,
+        title        TEXT,
+        body_text    TEXT,
+        content_hash TEXT,
+        status       TEXT NOT NULL DEFAULT 'active',
+        metadata     TEXT NOT NULL DEFAULT '{}',
+        created_at   INTEGER NOT NULL,
+        updated_at   INTEGER NOT NULL,
+        UNIQUE (node_type, source_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_resonance_nodes_source ON resonance_nodes (source_table, source_id);
+
+      CREATE TABLE IF NOT EXISTS resonance_events (
+        id             TEXT PRIMARY KEY,
+        event_type     TEXT NOT NULL,
+        source_node_id TEXT,
+        source_type    TEXT,
+        source_id      TEXT,
+        payload        TEXT NOT NULL DEFAULT '{}',
+        created_at     INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_resonance_events_source ON resonance_events (source_type, source_id, created_at DESC);
+
+      CREATE TABLE IF NOT EXISTS resonance_jobs (
+        id             TEXT PRIMARY KEY,
+        job_type       TEXT NOT NULL,
+        source_node_id TEXT,
+        source_table   TEXT,
+        source_id      TEXT,
+        status         TEXT NOT NULL DEFAULT 'pending',
+        priority       INTEGER NOT NULL DEFAULT 100,
+        attempts       INTEGER NOT NULL DEFAULT 0,
+        max_attempts   INTEGER NOT NULL DEFAULT 3,
+        run_after      INTEGER NOT NULL,
+        completed_at   INTEGER,
+        error          TEXT,
+        payload        TEXT NOT NULL DEFAULT '{}',
+        created_at     INTEGER NOT NULL,
+        updated_at     INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_resonance_jobs_pending ON resonance_jobs (status, run_after, priority, created_at);
+
+      CREATE TABLE IF NOT EXISTS resonance_result_cache (
+        id             TEXT PRIMARY KEY,
+        source_node_id TEXT NOT NULL,
+        source_type    TEXT NOT NULL,
+        source_id      TEXT NOT NULL,
+        cache_key      TEXT NOT NULL UNIQUE,
+        content_hash   TEXT NOT NULL,
+        model_id       TEXT NOT NULL,
+        result_json    TEXT NOT NULL,
+        status         TEXT NOT NULL DEFAULT 'fresh',
+        computed_at    INTEGER NOT NULL,
+        expires_at     INTEGER NOT NULL,
+        metadata       TEXT NOT NULL DEFAULT '{}'
+      );
+      CREATE INDEX IF NOT EXISTS idx_resonance_cache_source ON resonance_result_cache (source_type, source_id, status, expires_at DESC);
+
+      CREATE TABLE IF NOT EXISTS resonance_edges (
+        id             TEXT PRIMARY KEY,
+        source_node_id TEXT NOT NULL,
+        target_kind    TEXT NOT NULL,
+        target_source  TEXT,
+        target_id      TEXT NOT NULL,
+        target_ref     TEXT,
+        score          REAL NOT NULL DEFAULT 0,
+        confidence     REAL NOT NULL DEFAULT 0,
+        state          TEXT NOT NULL DEFAULT 'candidate',
+        evidence       TEXT NOT NULL DEFAULT '[]',
+        first_seen_at  INTEGER NOT NULL,
+        last_seen_at   INTEGER NOT NULL,
+        expires_at     INTEGER,
+        metadata       TEXT NOT NULL DEFAULT '{}',
+        UNIQUE (source_node_id, target_kind, target_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS theme_snapshots (
+        id         TEXT PRIMARY KEY,
+        label      TEXT NOT NULL,
+        summary    TEXT,
+        confidence REAL NOT NULL DEFAULT 0,
+        evidence   TEXT NOT NULL DEFAULT '[]',
+        status     TEXT NOT NULL DEFAULT 'active',
+        valid_from INTEGER NOT NULL,
+        expires_at INTEGER,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS sync_outbox (
+        id          TEXT PRIMARY KEY,
+        event_id    TEXT NOT NULL,
+        status      TEXT NOT NULL DEFAULT 'pending',
+        attempts    INTEGER NOT NULL DEFAULT 0,
+        last_error  TEXT,
+        created_at  INTEGER NOT NULL,
+        updated_at  INTEGER NOT NULL
+      );
+    `,
+  },
 ];
 
 /** The current target schema version (max across migrations). */

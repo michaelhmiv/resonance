@@ -350,24 +350,54 @@ const EMBEDDING_DIM = 2560;
 const RESONANCE_CACHE_TTL_DAYS = 7;
 
 export function resonanceContentHash(text: string): string {
-  return createHash('sha256').update(text.trim(), 'utf8').digest('hex');
+  return createHash('sha256').update(text.trim().replace(/\s+/g, ' ').toLowerCase(), 'utf8').digest('hex');
 }
 
-export async function upsertJournalResonanceNode(entry: { id: string; text: string; created_at?: string; updated_at?: string }) {
+type AdaptiveSourceType = 'journal_entry' | 'highlight' | 'note' | 'reading_event' | 'corpus_passage' | 'theme_snapshot';
+
+export function buildHighlightResonanceText(highlight: { verse_ref?: string; selected_text?: string | null; note_text?: string | null; color?: string | null }) {
+  const parts = [
+    highlight.verse_ref ? `Highlighted ${highlight.verse_ref}` : 'Highlight',
+    highlight.selected_text ? `phrase: ${highlight.selected_text}` : '',
+    highlight.note_text ? `note: ${highlight.note_text}` : '',
+    highlight.color ? `color: ${highlight.color}` : '',
+  ].filter(Boolean);
+  return parts.join('\n');
+}
+
+export function buildNoteResonanceText(highlight: { verse_ref?: string; selected_text?: string | null; note_text?: string | null }) {
+  const parts = [
+    highlight.verse_ref ? `Note on ${highlight.verse_ref}` : 'Note',
+    highlight.selected_text ? `highlighted phrase: ${highlight.selected_text}` : '',
+    highlight.note_text ?? '',
+  ].filter(Boolean);
+  return parts.join('\n');
+}
+
+export async function upsertResonanceSourceNode(input: {
+  nodeType: AdaptiveSourceType;
+  sourceTable: string;
+  sourceId: string;
+  bodyText: string;
+  title?: string | null;
+  metadata?: Record<string, unknown>;
+  sourceType?: AdaptiveSourceType;
+}) {
   const sb = getSupabase();
   const uid = await getDevUserId();
-  const contentHash = resonanceContentHash(entry.text);
+  const contentHash = resonanceContentHash(input.bodyText);
   const now = new Date().toISOString();
   const { data, error } = await sb.from('resonance_nodes')
     .upsert({
       user_id: uid,
-      node_type: 'journal_entry',
-      source_table: 'journal_entries',
-      source_id: entry.id,
-      body_text: entry.text,
+      node_type: input.nodeType,
+      source_table: input.sourceTable,
+      source_id: input.sourceId,
+      title: input.title ?? null,
+      body_text: input.bodyText,
       content_hash: contentHash,
       status: 'active',
-      metadata: { created_at: entry.created_at ?? null, updated_at: entry.updated_at ?? null },
+      metadata: input.metadata ?? {},
       updated_at: now,
     }, { onConflict: 'user_id,node_type,source_id' })
     .select()
@@ -376,19 +406,70 @@ export async function upsertJournalResonanceNode(entry: { id: string; text: stri
   return data;
 }
 
-export async function markJournalResonanceNodeDeleted(entryId: string) {
+export async function markResonanceSourceNodeDeleted(input: { nodeType: AdaptiveSourceType; sourceId: string }) {
   const sb = getSupabase();
   const uid = await getDevUserId();
   const { data, error } = await sb.from('resonance_nodes')
     .update({ status: 'deleted', updated_at: new Date().toISOString() })
     .eq('user_id', uid)
-    .eq('node_type', 'journal_entry')
-    .eq('source_id', entryId)
+    .eq('node_type', input.nodeType)
+    .eq('source_id', input.sourceId)
     .select()
     .maybeSingle();
   if (error) throw error;
   return data;
 }
+
+
+export async function upsertJournalResonanceNode(entry: { id: string; text: string; created_at?: string; updated_at?: string }) {
+  return upsertResonanceSourceNode({
+    nodeType: 'journal_entry',
+    sourceTable: 'journal_entries',
+    sourceId: entry.id,
+    bodyText: entry.text,
+    metadata: { created_at: entry.created_at ?? null, updated_at: entry.updated_at ?? null },
+  });
+}
+
+
+export async function markJournalResonanceNodeDeleted(entryId: string) {
+  return markResonanceSourceNodeDeleted({ nodeType: 'journal_entry', sourceId: entryId });
+}
+
+export async function upsertHighlightResonanceNodes(highlight: Record<string, any>) {
+  const highlightText = buildHighlightResonanceText(highlight);
+  const highlightNode = await upsertResonanceSourceNode({
+    nodeType: 'highlight',
+    sourceTable: 'highlights',
+    sourceId: String(highlight.id),
+    title: String(highlight.verse_ref ?? 'Highlight'),
+    bodyText: highlightText,
+    metadata: { verse_ref: highlight.verse_ref ?? null, selected_text: highlight.selected_text ?? null, color: highlight.color ?? null },
+  });
+  let noteNode: any = null;
+  if (highlight.note_text && String(highlight.note_text).trim().length >= 3) {
+    noteNode = await upsertResonanceSourceNode({
+      nodeType: 'note',
+      sourceTable: 'highlights',
+      sourceId: `${highlight.id}:note`,
+      title: `Note on ${highlight.verse_ref ?? 'highlight'}`,
+      bodyText: buildNoteResonanceText(highlight),
+      metadata: { highlight_id: highlight.id, verse_ref: highlight.verse_ref ?? null, selected_text: highlight.selected_text ?? null },
+    });
+  } else {
+    await markResonanceSourceNodeDeleted({ nodeType: 'note', sourceId: `${highlight.id}:note` }).catch(() => null);
+  }
+  return { highlightNode, noteNode };
+}
+
+export async function markHighlightResonanceNodesDeleted(highlightId: string) {
+  const [highlightNode, noteNode] = await Promise.all([
+    markResonanceSourceNodeDeleted({ nodeType: 'highlight', sourceId: highlightId }),
+    markResonanceSourceNodeDeleted({ nodeType: 'note', sourceId: `${highlightId}:note` }).catch(() => null),
+  ]);
+  return { highlightNode, noteNode };
+}
+
 
 export async function appendResonanceEvent(input: {
   eventType: string;
@@ -455,17 +536,18 @@ function cacheKeyFor(nodeId: string, contentHash: string, modelId = RESONANCE_MO
   return `${nodeId}:${contentHash}:${modelId}`;
 }
 
-export async function getFreshResonanceCacheForSource(sourceId: string) {
+export async function getFreshResonanceCacheForSource(sourceId: string, sourceType?: AdaptiveSourceType) {
   const sb = getSupabase();
   const uid = await getDevUserId();
-  const { data: node, error: nodeErr } = await sb.from('resonance_nodes')
-    .select('id,content_hash,status')
+  let nodeQuery = sb.from('resonance_nodes')
+    .select('id,content_hash,status,node_type')
     .eq('user_id', uid)
-    .eq('node_type', 'journal_entry')
     .eq('source_id', sourceId)
-    .eq('status', 'active')
-    .maybeSingle();
+    .eq('status', 'active');
+  if (sourceType) nodeQuery = nodeQuery.eq('node_type', sourceType);
+  const { data: nodes, error: nodeErr } = await nodeQuery.order('updated_at', { ascending: false }).limit(1);
   if (nodeErr) throw nodeErr;
+  const node = nodes?.[0];
   if (!node?.id || !node.content_hash) return null;
 
   const { data, error } = await sb.from('resonance_result_cache')
@@ -481,6 +563,7 @@ export async function getFreshResonanceCacheForSource(sourceId: string) {
   if (error) throw error;
   return data?.result_json ?? null;
 }
+
 
 export async function storeResonanceEmbedding(input: {
   nodeId: string;
@@ -523,6 +606,7 @@ export async function getStoredResonanceEmbedding(nodeId: string, contentHash: s
 export async function storeResonanceCache(input: {
   sourceNodeId: string;
   sourceId: string;
+  sourceType?: AdaptiveSourceType;
   contentHash: string;
   result: unknown;
   metadata?: Record<string, unknown>;
@@ -535,7 +619,7 @@ export async function storeResonanceCache(input: {
     .upsert({
       user_id: uid,
       source_node_id: input.sourceNodeId,
-      source_type: 'journal_entry',
+      source_type: input.sourceType ?? 'journal_entry',
       source_id: input.sourceId,
       cache_key: cacheKeyFor(input.sourceNodeId, input.contentHash),
       content_hash: input.contentHash,
@@ -671,11 +755,11 @@ export async function processNextResonanceJob(origin: string) {
     const resonanceRes = await fetch(`${origin}/api/resonance`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: node.body_text, vector, sourceId: node.source_id, sourceNodeId: node.id }),
+      body: JSON.stringify({ text: node.body_text, vector, sourceId: node.source_id, sourceNodeId: node.id, sourceType: node.node_type }),
     });
     if (!resonanceRes.ok) throw new Error(`/api/resonance ${resonanceRes.status}: ${(await resonanceRes.text()).slice(0, 240)}`);
     const result = await resonanceRes.json();
-    await storeResonanceCache({ sourceNodeId: node.id, sourceId: node.source_id, contentHash: node.content_hash, result, metadata: { job_id: job.id } });
+    await storeResonanceCache({ sourceNodeId: node.id, sourceId: node.source_id, sourceType: node.node_type, contentHash: node.content_hash, result, metadata: { job_id: job.id } });
     const edges = await replaceResonanceEdges({ sourceNodeId: node.id, result });
 
     const completedAt = new Date().toISOString();
@@ -699,4 +783,69 @@ export async function processNextResonanceJob(origin: string) {
       .eq('id', job.id);
     throw err;
   }
+}
+
+
+// ── Theme snapshots + anti-staleness maintenance ───────────────────────────
+const THEME_STOP_WORDS = new Set(['the','and','for','with','that','this','from','have','has','had','was','were','are','but','not','you','your','his','her','their','our','into','about','feel','feeling','really','just','been','being','will','would','could','should','there','here','when','where','what','which','while','through','because','things','thing']);
+
+function extractThemeTerms(texts: string[], max = 6): string[] {
+  const counts = new Map<string, number>();
+  for (const text of texts) {
+    const seen = new Set<string>();
+    for (const word of text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)) {
+      if (word.length < 4 || THEME_STOP_WORDS.has(word)) continue;
+      seen.add(word);
+    }
+    for (const word of Array.from(seen)) counts.set(word, (counts.get(word) ?? 0) + 1);
+  }
+  return Array.from(counts.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, max).map(([w]) => w);
+}
+
+export async function generateThemeSnapshot(input: { windowDays?: number } = {}) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const windowDays = input.windowDays ?? 30;
+  const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000).toISOString();
+  const { data: nodes, error } = await sb.from('resonance_nodes')
+    .select('id,node_type,source_id,body_text,updated_at,metadata')
+    .eq('user_id', uid)
+    .eq('status', 'active')
+    .in('node_type', ['journal_entry', 'highlight', 'note'])
+    .gte('updated_at', since)
+    .order('updated_at', { ascending: false })
+    .limit(60);
+  if (error) throw error;
+  const texts = (nodes ?? []).map((n: any) => String(n.body_text ?? '')).filter((t: string) => t.trim().length >= 12);
+  if (texts.length < 2) return null;
+  const terms = extractThemeTerms(texts, 4);
+  if (terms.length === 0) return null;
+  const label = terms.slice(0, 3).join(' · ');
+  const confidence = Math.max(0.2, Math.min(0.9, (texts.length / 10) * 0.5 + (terms.length / 8) * 0.4));
+  const now = new Date();
+  const expires = new Date(now.getTime() + Math.max(7, Math.floor(windowDays / 2)) * 24 * 60 * 60 * 1000).toISOString();
+  const evidence = (nodes ?? []).slice(0, 8).map((n: any) => ({ source_node_id: n.id, source_type: n.node_type, source_id: n.source_id, excerpt: String(n.body_text ?? '').slice(0, 180), seen_at: n.updated_at }));
+  const { data, error: upsertErr } = await sb.from('theme_snapshots')
+    .insert({ user_id: uid, label, summary: `Recently echoed around ${label}`, confidence, evidence, status: 'active', valid_from: since, expires_at: expires })
+    .select()
+    .single();
+  if (upsertErr) throw upsertErr;
+  return data;
+}
+
+export async function runResonanceMaintenance() {
+  const sb = getSupabase();
+  const now = new Date().toISOString();
+  const { error: edgeErr } = await sb.from('resonance_edges')
+    .update({ state: 'dormant', last_seen_at: now })
+    .lt('expires_at', now)
+    .in('state', ['candidate', 'active']);
+  if (edgeErr) throw edgeErr;
+  const { error: snapshotErr } = await sb.from('theme_snapshots')
+    .update({ status: 'expired', updated_at: now })
+    .lt('expires_at', now)
+    .eq('status', 'active');
+  if (snapshotErr) throw snapshotErr;
+  const snapshot = await generateThemeSnapshot({ windowDays: 30 });
+  return { ok: true, snapshot_created: Boolean(snapshot), snapshot };
 }

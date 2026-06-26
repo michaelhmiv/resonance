@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   deleteHighlight,
   updateHighlight,
-  storeHighlightEmbedding,
-  deleteHighlightEmbedding,
   getHighlights,
+  upsertHighlightResonanceNodes,
+  markHighlightResonanceNodesDeleted,
+  appendResonanceEvent,
+  enqueueResonanceJob,
 } from '../../../../../lib/db';
-import { embed } from '../../../../../lib/embed-helper';
 
 export async function GET(
   _req: NextRequest,
@@ -40,21 +41,44 @@ export async function PATCH(
     if (noteText !== undefined) patch.noteText = noteText;
 
     const updated = await updateHighlight(id, patch);
-
-    // Re-embed / clear embedding based on the new note_text
+    const { highlightNode, noteNode } = await upsertHighlightResonanceNodes(updated);
+    const event = await appendResonanceEvent({
+      eventType: 'highlight.updated',
+      sourceNodeId: highlightNode.id,
+      sourceType: 'highlight',
+      sourceId: id,
+      payload: { fields: Object.keys(patch), hasNote: Boolean(noteNode) },
+    });
+    const highlightJob = await enqueueResonanceJob({
+      jobType: 'highlight_resonance',
+      sourceNodeId: highlightNode.id,
+      sourceTable: 'highlights',
+      sourceId: id,
+      priority: 90,
+      payload: { event_id: event.id },
+    });
+    let noteJob = null;
     if (noteText !== undefined) {
-      const hasNote = noteText && String(noteText).trim().length >= 3;
-      if (hasNote) {
-        embed(String(noteText)).then((vector) => {
-          if (vector) storeHighlightEmbedding(id, vector).catch(() => {});
-        }).catch(() => {});
-      } else {
-        // Note cleared — drop the embedding
-        deleteHighlightEmbedding(id).catch(() => {});
+      const noteEvent = await appendResonanceEvent({
+        eventType: noteNode ? 'note.updated' : 'note.deleted',
+        sourceNodeId: noteNode?.id ?? null,
+        sourceType: 'note',
+        sourceId: `${id}:note`,
+        payload: { highlightId: id, hasNote: Boolean(noteNode) },
+      });
+      if (noteNode) {
+        noteJob = await enqueueResonanceJob({
+          jobType: 'note_resonance',
+          sourceNodeId: noteNode.id,
+          sourceTable: 'highlights',
+          sourceId: `${id}:note`,
+          priority: 85,
+          payload: { event_id: noteEvent.id, highlight_id: id },
+        });
       }
     }
 
-    return NextResponse.json(updated);
+    return NextResponse.json({ ...updated, resonance_job_id: highlightJob.id, note_resonance_job_id: noteJob?.id ?? null });
   } catch (err) {
     console.error('[highlights PATCH] error:', err);
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
@@ -67,6 +91,23 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const { highlightNode, noteNode } = await markHighlightResonanceNodesDeleted(id);
+    await appendResonanceEvent({
+      eventType: 'highlight.deleted',
+      sourceNodeId: highlightNode?.id ?? null,
+      sourceType: 'highlight',
+      sourceId: id,
+      payload: {},
+    });
+    if (noteNode) {
+      await appendResonanceEvent({
+        eventType: 'note.deleted',
+        sourceNodeId: noteNode.id,
+        sourceType: 'note',
+        sourceId: `${id}:note`,
+        payload: { highlightId: id },
+      });
+    }
     return NextResponse.json(await deleteHighlight(id));
   } catch {
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
