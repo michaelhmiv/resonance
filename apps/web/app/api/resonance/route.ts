@@ -72,7 +72,8 @@ interface AlignmentManifest {
 }
 
 interface LoadedModel {
-  vectors: Float32Array;
+  raw: Buffer;
+  rowNorms: Float32Array;
   dim: number;
   passageCount: number;
   dtype: string;
@@ -194,67 +195,40 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
       }
     }
 
-    const totalFloats = manifest.passage_count * manifest.dim;
-    const buffer = new Float32Array(totalFloats);
-    const isQuantized = manifest.quantization === 'linear' && manifest.range != null;
+    if (manifest.dtype !== 'int8') {
+      console.warn(`[resonance] unsupported dtype for online model: ${manifest.dtype}`);
+      return null;
+    }
 
+    const shardBuffers: Buffer[] = [];
     for (const shard of manifest.shards) {
       const shardPath = `${modelDir}/${shard.file}`;
       if (!existsSync(shardPath)) continue;
-      const raw = await readFile(shardPath);
-      const offset = shard.start * manifest.dim;
-
-      if (isQuantized && manifest.global_min != null) {
-        const gmin = manifest.global_min;
-        const range = manifest.range!;
-        for (let i = 0; i < raw.length; i++) {
-          buffer[offset + i] = gmin + (raw[i] / 255.0) * range;
-        }
-      } else if (manifest.dtype === 'int8') {
-        // Perplexity native int8: signed -128..127, normalize to ~[-1, 1].
-        // Each row is L2-normalized in OpenRouter's float32 output; the
-        // int8 quantization scales by 127. We undo the scale here.
-        // CRITICAL: raw is a Node Buffer (Uint8Array, 0..255). We must read
-        // it as signed Int8Array or negative values become positive
-        // (e.g. -59 becomes 197, /127 = 1.55 instead of -0.46).
-        const signed = new Int8Array(raw.buffer, raw.byteOffset, raw.byteLength);
-        for (let i = 0; i < signed.length; i++) {
-          buffer[offset + i] = signed[i] / 127.0;
-        }
-      } else {
-        // float32 (default for non-Perplexity models)
-        const byteLen = raw.byteLength - (raw.byteLength % 4);
-        const ab = raw.buffer.slice(raw.byteOffset, raw.byteOffset + byteLen);
-        const floats = new Float32Array(ab);
-        buffer.set(floats, offset);
-      }
+      shardBuffers.push(await readFile(shardPath));
     }
+    const rawBuffer = shardBuffers.length === 1 ? shardBuffers[0] : Buffer.concat(shardBuffers);
 
-    // Re-L2-normalize each row in-place. After /127.0 dequantization, the
-    // per-row norm is no longer 1.0 (it was the norm of the float32 vector
-    // scaled by 127). For correct cosine similarity — and bounded
-    // similarities in [-1, 1] — we renormalize once at load time. This is
-    // O(N*dim) but happens once per model load, not per request.
+    // Memory-safe path for large int8 corpora: keep the raw bytes and one
+    // precomputed norm per row instead of inflating to a 2.7GB Float32Array.
+    const rowNorms = new Float32Array(manifest.passage_count);
     let totalNorm = 0;
     for (let row = 0; row < manifest.passage_count; row++) {
       const base = row * manifest.dim;
-      let norm = 0;
+      let sumSquares = 0;
       for (let d = 0; d < manifest.dim; d++) {
-        norm += buffer[base + d] * buffer[base + d];
+        const byte = rawBuffer[base + d]!;
+        const signed = byte > 127 ? byte - 256 : byte;
+        sumSquares += signed * signed;
       }
-      norm = Math.sqrt(norm);
-      if (norm > 0) {
-        const inv = 1 / norm;
-        for (let d = 0; d < manifest.dim; d++) {
-          buffer[base + d] *= inv;
-        }
-        totalNorm += norm;
-      }
+      const norm = Math.sqrt(sumSquares);
+      rowNorms[row] = norm > 0 ? norm : 1;
+      totalNorm += norm;
     }
-    console.log(`[resonance] loadModel: renormalized ${manifest.passage_count} rows, avg input norm ${(totalNorm / manifest.passage_count).toFixed(4)}`);
+    console.log(`[resonance] loadModel: cached int8 buffer ${manifest.passage_count} rows, avg row norm ${(totalNorm / manifest.passage_count).toFixed(4)}`);
 
     const loaded: LoadedModel = {
-      vectors: buffer,
+      raw: rawBuffer,
+      rowNorms,
       dim: manifest.dim,
       passageCount: manifest.passage_count,
       dtype: manifest.dtype,
@@ -290,15 +264,15 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
   }
 }
 
-function cosineSim(a: Float32Array, aOffset: number, b: number[], dim: number): number {
-  // Both sides are L2-normalized (document rows are renormalized at load time;
-  // the query vector is L2-normalized by OpenRouter), so this is a true dot
-  // product in [-1, 1].
+function scoreRow(loaded: LoadedModel, rowIndex: number, query: number[]): number {
+  const base = rowIndex * loaded.dim;
   let dot = 0;
-  for (let i = 0; i < dim; i++) {
-    dot += a[aOffset + i] * b[i];
+  for (let i = 0; i < loaded.dim; i++) {
+    const byte = loaded.raw[base + i]!;
+    const signed = byte > 127 ? byte - 256 : byte;
+    dot += signed * query[i];
   }
-  return dot;
+  return dot / loaded.rowNorms[rowIndex]!;
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────
@@ -359,7 +333,7 @@ export async function POST(req: NextRequest) {
             // loadModel.
             const rowKey = orderedPassageKeys[i];
             if (rowKey === undefined) continue;
-            const sim = cosineSim(loaded.vectors, i * loaded.dim, queryVec, loaded.dim) * boost;
+            const sim = scoreRow(loaded, i, queryVec) * boost;
             if (sim >= MIN_SIMILARITY) {
               const existing = simMap.get(rowKey) ?? 0;
               if (sim > existing) simMap.set(rowKey, sim);
