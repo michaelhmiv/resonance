@@ -13,7 +13,9 @@
     "typecheck:mobile": "tsc --noEmit -p apps/mobile/tsconfig.json",
     "typecheck:web": "tsc --noEmit -p apps/web/tsconfig.json",
     "typecheck:packages": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/theme/tsconfig.json && tsc --noEmit -p packages/ui/tsconfig.json && tsc --noEmit -p packages/screens/tsconfig.json",
-    "verify:resonance-hotpath": "node scripts/verify-resonance-hotpath.mjs"
+    "verify:resonance-hotpath": "node scripts/verify-resonance-hotpath.mjs",
+    "verify:adaptive-resonance": "node scripts/verify-adaptive-resonance-contract.mjs",
+    "simulate:adaptive-resonance": "node scripts/simulate-adaptive-resonance-live.mjs"
   },
   "version": "2.0.0",
   "devDependencies": {

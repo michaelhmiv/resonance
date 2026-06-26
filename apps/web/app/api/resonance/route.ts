@@ -20,6 +20,9 @@ import { lexicalResonance } from '../../../lib/resonance-fallback';
 import {
   getUserHighlightEmbeddings,
   getHighlights,
+  resonanceContentHash,
+  storeResonanceCache,
+  replaceResonanceEdges,
 } from '../../../lib/db';
 
 const VECTORS_BASE = process.env.VECTORS_PATH || '/data/vectors';
@@ -369,9 +372,32 @@ async function scoreAllRows(loaded: LoadedModel, queryVecs: number[][]): Promise
 
 export async function POST(req: NextRequest) {
   try {
-    const { vector, text } = (await req.json()) as {
+    const { vector, text, sourceId, entryId, sourceNodeId } = (await req.json()) as {
       vector?: number[];
       text?: string;
+      sourceId?: string;
+      entryId?: string;
+      sourceNodeId?: string;
+    };
+    const resolvedSourceId = sourceId ?? entryId;
+
+    const persistResultIfSourced = async (result: Record<string, unknown>) => {
+      if (!resolvedSourceId || !sourceNodeId || !text?.trim()) return;
+      try {
+        const contentHash = resonanceContentHash(text);
+        await Promise.all([
+          storeResonanceCache({
+            sourceNodeId,
+            sourceId: resolvedSourceId,
+            contentHash,
+            result,
+            metadata: { route: '/api/resonance' },
+          }),
+          replaceResonanceEdges({ sourceNodeId, result }),
+        ]);
+      } catch (err) {
+        console.warn('[resonance] sourced persistence failed:', err);
+      }
     };
 
     // ── Semantic vector path ─────────────────────────────────────────
@@ -449,7 +475,7 @@ export async function POST(req: NextRequest) {
             return toCard(meta[m], s.sim, 'voice');
           });
 
-        return NextResponse.json({
+        const result = {
           scripture: topScripture,
           voices: topVoices,
           pastEntries: [],
@@ -457,7 +483,9 @@ export async function POST(req: NextRequest) {
           model: ONLINE_MODEL,
           dim: loaded.dim,
           passageCount: loaded.passageCount,
-        });
+        };
+        await persistResultIfSourced(result);
+        return NextResponse.json(result);
       }
     }
 
@@ -484,12 +512,14 @@ export async function POST(req: NextRequest) {
       MAX_PER_CATEGORY,
     );
 
-    return NextResponse.json({
+    const fallbackResult = {
       ...fallback,
       pastEntries: [],
       method: 'lexical-fallback',
       note: `No semantic vectors available. Using transparent lexical fallback.`,
-    });
+    };
+    await persistResultIfSourced(fallbackResult);
+    return NextResponse.json(fallbackResult);
   } catch (err) {
     console.error('[resonance] route error:', err);
     return NextResponse.json(

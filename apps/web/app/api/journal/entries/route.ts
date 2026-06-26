@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getJournalEntries, createJournalEntry } from '../../../../lib/db';
+import {
+  getJournalEntries,
+  createJournalEntry,
+  upsertJournalResonanceNode,
+  appendResonanceEvent,
+  enqueueResonanceJob,
+} from '../../../../lib/db';
 
 export async function GET() {
   try {
@@ -22,7 +28,23 @@ export async function POST(req: NextRequest) {
       typeof created_at === 'number' ? created_at : undefined,
       typeof updated_at === 'number' ? updated_at : undefined,
     );
-    return NextResponse.json(entry, { status: 201 });
+    if (!entry?.id) {
+      return NextResponse.json({ error: 'Failed to create entry' }, { status: 500 });
+    }
+    const node = await upsertJournalResonanceNode(entry);
+    await appendResonanceEvent({
+      eventType: 'journal.created',
+      sourceNodeId: node.id,
+      sourceType: 'journal_entry',
+      sourceId: entry.id,
+      payload: { entry_id: entry.id },
+    });
+    const job = await enqueueResonanceJob({
+      sourceNodeId: node.id,
+      sourceId: entry.id,
+      payload: { event: 'journal.created' },
+    });
+    return NextResponse.json({ ...entry, resonance_job_id: job.id }, { status: 201 });
   } catch {
     return NextResponse.json({ error: 'Failed to create entry' }, { status: 500 });
   }

@@ -117,7 +117,7 @@ export function JournalScreen({ fetchVerseOfDay, onNavigateToBook }: JournalScre
     if (resonanceMap[segId] || loadingResonance.has(segId)) return;
     setLoadingResonance(prev => new Set(prev).add(segId));
     try {
-      const data = await dataLayer.findResonance(text);
+      const data = await dataLayer.findResonance(text, segId);
       if (data) {
         setResonanceMap(prev => ({ ...prev, [segId]: data }));
       }

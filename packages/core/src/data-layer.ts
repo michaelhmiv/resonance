@@ -63,7 +63,7 @@ export interface DataLayer {
   getLastReadPosition?(): Promise<{ bookId: string; chapter: number; verseRef: string } | null>;
 
   // ── Resonance ──────────────────────────────────────────────────────────
-  findResonance(journalText: string): Promise<ResonanceResult | null>;
+  findResonance(journalText: string, segmentId?: string): Promise<ResonanceResult | null>;
   storeSegmentVector(segmentId: string, text: string): Promise<void>;
   appendQuoteToJournal(quote: string, source: string): Promise<void>;
   /**

@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createHash } from 'crypto';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://oeumvgwecqtqqgbyiune.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -337,5 +338,365 @@ export async function ensureHighlightVectorsTable(): Promise<void> {
     }
   } catch (err) {
     console.warn('[db] ensureHighlightVectorsTable error:', err);
+  }
+}
+
+
+// ── Adaptive Resonance memory/jobs/cache ──────────────────────────────────
+
+const RESONANCE_MODEL_ID = 'pplx-embed-v1-4b';
+const OPENROUTER_EMBED_MODEL = 'perplexity/pplx-embed-v1-4b';
+const EMBEDDING_DIM = 2560;
+const RESONANCE_CACHE_TTL_DAYS = 7;
+
+export function resonanceContentHash(text: string): string {
+  return createHash('sha256').update(text.trim(), 'utf8').digest('hex');
+}
+
+export async function upsertJournalResonanceNode(entry: { id: string; text: string; created_at?: string; updated_at?: string }) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const contentHash = resonanceContentHash(entry.text);
+  const now = new Date().toISOString();
+  const { data, error } = await sb.from('resonance_nodes')
+    .upsert({
+      user_id: uid,
+      node_type: 'journal_entry',
+      source_table: 'journal_entries',
+      source_id: entry.id,
+      body_text: entry.text,
+      content_hash: contentHash,
+      status: 'active',
+      metadata: { created_at: entry.created_at ?? null, updated_at: entry.updated_at ?? null },
+      updated_at: now,
+    }, { onConflict: 'user_id,node_type,source_id' })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function markJournalResonanceNodeDeleted(entryId: string) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const { data, error } = await sb.from('resonance_nodes')
+    .update({ status: 'deleted', updated_at: new Date().toISOString() })
+    .eq('user_id', uid)
+    .eq('node_type', 'journal_entry')
+    .eq('source_id', entryId)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function appendResonanceEvent(input: {
+  eventType: string;
+  sourceNodeId?: string | null;
+  sourceType?: string | null;
+  sourceId?: string | null;
+  payload?: Record<string, unknown>;
+}) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const { data, error } = await sb.from('resonance_events')
+    .insert({
+      user_id: uid,
+      event_type: input.eventType,
+      source_node_id: input.sourceNodeId ?? null,
+      source_type: input.sourceType ?? null,
+      source_id: input.sourceId ?? null,
+      payload: input.payload ?? {},
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function enqueueResonanceJob(input: {
+  jobType?: string;
+  sourceNodeId: string;
+  sourceTable?: string;
+  sourceId: string;
+  priority?: number;
+  payload?: Record<string, unknown>;
+}) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  // Avoid duplicate pending/running work for the same source.
+  const { data: existing } = await sb.from('resonance_jobs')
+    .select('*')
+    .eq('source_node_id', input.sourceNodeId)
+    .in('status', ['pending', 'running'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existing) return existing;
+
+  const { data, error } = await sb.from('resonance_jobs')
+    .insert({
+      user_id: uid,
+      job_type: input.jobType ?? 'journal_resonance',
+      source_node_id: input.sourceNodeId,
+      source_table: input.sourceTable ?? 'journal_entries',
+      source_id: input.sourceId,
+      status: 'pending',
+      priority: input.priority ?? 100,
+      payload: input.payload ?? {},
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+function cacheKeyFor(nodeId: string, contentHash: string, modelId = RESONANCE_MODEL_ID): string {
+  return `${nodeId}:${contentHash}:${modelId}`;
+}
+
+export async function getFreshResonanceCacheForSource(sourceId: string) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const { data: node, error: nodeErr } = await sb.from('resonance_nodes')
+    .select('id,content_hash,status')
+    .eq('user_id', uid)
+    .eq('node_type', 'journal_entry')
+    .eq('source_id', sourceId)
+    .eq('status', 'active')
+    .maybeSingle();
+  if (nodeErr) throw nodeErr;
+  if (!node?.id || !node.content_hash) return null;
+
+  const { data, error } = await sb.from('resonance_result_cache')
+    .select('*')
+    .eq('source_node_id', node.id)
+    .eq('content_hash', node.content_hash)
+    .eq('model_id', RESONANCE_MODEL_ID)
+    .eq('status', 'fresh')
+    .gt('expires_at', new Date().toISOString())
+    .order('computed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.result_json ?? null;
+}
+
+export async function storeResonanceEmbedding(input: {
+  nodeId: string;
+  contentHash: string;
+  vector: number[];
+  metadata?: Record<string, unknown>;
+}) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const { data, error } = await sb.from('resonance_embeddings')
+    .upsert({
+      node_id: input.nodeId,
+      user_id: uid,
+      model_id: RESONANCE_MODEL_ID,
+      content_hash: input.contentHash,
+      dim: EMBEDDING_DIM,
+      vector: input.vector,
+      metadata: input.metadata ?? {},
+      generated_at: new Date().toISOString(),
+    }, { onConflict: 'node_id,model_id,content_hash' })
+    .select('id,node_id,content_hash,generated_at')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getStoredResonanceEmbedding(nodeId: string, contentHash: string): Promise<number[] | null> {
+  const sb = getSupabase();
+  const { data, error } = await sb.from('resonance_embeddings')
+    .select('vector')
+    .eq('node_id', nodeId)
+    .eq('model_id', RESONANCE_MODEL_ID)
+    .eq('content_hash', contentHash)
+    .maybeSingle();
+  if (error) throw error;
+  const vector = data?.vector;
+  return Array.isArray(vector) ? vector as number[] : null;
+}
+
+export async function storeResonanceCache(input: {
+  sourceNodeId: string;
+  sourceId: string;
+  contentHash: string;
+  result: unknown;
+  metadata?: Record<string, unknown>;
+}) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const computedAt = new Date();
+  const expiresAt = new Date(computedAt.getTime() + RESONANCE_CACHE_TTL_DAYS * 24 * 60 * 60 * 1000);
+  const { data, error } = await sb.from('resonance_result_cache')
+    .upsert({
+      user_id: uid,
+      source_node_id: input.sourceNodeId,
+      source_type: 'journal_entry',
+      source_id: input.sourceId,
+      cache_key: cacheKeyFor(input.sourceNodeId, input.contentHash),
+      content_hash: input.contentHash,
+      model_id: RESONANCE_MODEL_ID,
+      result_json: input.result,
+      status: 'fresh',
+      computed_at: computedAt.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      metadata: input.metadata ?? {},
+    }, { onConflict: 'cache_key' })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+type ResonanceCardForEdge = {
+  passageId?: number;
+  text?: string;
+  source?: string;
+  bookId?: string;
+  translation?: string | null;
+  similarity?: number;
+  kind?: string;
+};
+
+type ResonanceResultForEdges = {
+  scripture?: ResonanceCardForEdge[];
+  voices?: ResonanceCardForEdge[];
+  pastEntries?: ResonanceCardForEdge[];
+};
+
+export async function replaceResonanceEdges(input: {
+  sourceNodeId: string;
+  result: ResonanceResultForEdges;
+}) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  await sb.from('resonance_edges')
+    .update({ state: 'dormant', last_seen_at: new Date().toISOString() })
+    .eq('source_node_id', input.sourceNodeId)
+    .neq('state', 'dismissed');
+
+  const cards: { target_kind: 'scripture' | 'voice' | 'past_entry'; card: ResonanceCardForEdge }[] = [];
+  for (const card of input.result.scripture ?? []) cards.push({ target_kind: 'scripture', card });
+  for (const card of input.result.voices ?? []) cards.push({ target_kind: 'voice', card });
+  for (const card of input.result.pastEntries ?? []) cards.push({ target_kind: 'past_entry', card });
+
+  if (cards.length === 0) return [];
+  const now = new Date();
+  const expires = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const rows = cards.map(({ target_kind, card }) => ({
+    user_id: uid,
+    source_node_id: input.sourceNodeId,
+    target_kind,
+    target_source: card.bookId ?? card.source ?? null,
+    target_id: String(card.passageId ?? card.source ?? card.text?.slice(0, 80) ?? 'unknown'),
+    target_ref: card.source ?? null,
+    score: typeof card.similarity === 'number' ? card.similarity : 0,
+    confidence: Math.max(0, Math.min(1, typeof card.similarity === 'number' ? card.similarity : 0)),
+    state: 'candidate',
+    evidence: [{ reason: 'semantic_resonance', excerpt: card.text?.slice(0, 240) ?? null, seen_at: now.toISOString() }],
+    last_seen_at: now.toISOString(),
+    expires_at: expires,
+    metadata: card,
+  }));
+  const { data, error } = await sb.from('resonance_edges')
+    .upsert(rows, { onConflict: 'source_node_id,target_kind,target_id' })
+    .select();
+  if (error) throw error;
+  return data ?? [];
+}
+
+async function embedTextForResonance(text: string): Promise<{ vector: number[]; usage?: unknown; cost_usd?: number }> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY missing');
+  const res = await fetch('https://openrouter.ai/api/v1/embeddings', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://resonance.app',
+      'X-Title': 'Resonance',
+    },
+    body: JSON.stringify({ model: OPENROUTER_EMBED_MODEL, input: text.length > 8000 ? text.slice(0, 8000) : text }),
+  });
+  if (!res.ok) throw new Error(`OpenRouter ${res.status}: ${(await res.text()).slice(0, 240)}`);
+  const json = await res.json() as { data?: { embedding?: number[] }[]; usage?: { cost?: number } };
+  const vector = json.data?.[0]?.embedding;
+  if (!vector || vector.length !== EMBEDDING_DIM) throw new Error('Unexpected embedding shape from provider');
+  let norm = 0;
+  for (const v of vector) norm += v * v;
+  norm = Math.sqrt(norm);
+  if (norm > 0) for (let i = 0; i < vector.length; i++) vector[i] = vector[i] / norm;
+  return { vector, usage: json.usage, cost_usd: json.usage?.cost ?? 0 };
+}
+
+export async function processNextResonanceJob(origin: string) {
+  const sb = getSupabase();
+  const { data: job, error: selectErr } = await sb.from('resonance_jobs')
+    .select('*')
+    .eq('status', 'pending')
+    .lte('run_after', new Date().toISOString())
+    .order('priority', { ascending: true })
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (selectErr) throw selectErr;
+  if (!job) return null;
+
+  const startedAt = new Date().toISOString();
+  await sb.from('resonance_jobs')
+    .update({ status: 'running', locked_at: startedAt, attempts: (job.attempts ?? 0) + 1, updated_at: startedAt })
+    .eq('id', job.id);
+
+  try {
+    const { data: node, error: nodeErr } = await sb.from('resonance_nodes')
+      .select('*')
+      .eq('id', job.source_node_id)
+      .single();
+    if (nodeErr) throw nodeErr;
+    if (!node?.body_text || !node.content_hash) throw new Error('Job source node missing body_text/content_hash');
+
+    let vector = await getStoredResonanceEmbedding(node.id, node.content_hash);
+    let embedMeta: Record<string, unknown> = { reused: true };
+    if (!vector) {
+      const embedded = await embedTextForResonance(node.body_text);
+      vector = embedded.vector;
+      embedMeta = { reused: false, usage: embedded.usage ?? null, cost_usd: embedded.cost_usd ?? 0 };
+      await storeResonanceEmbedding({ nodeId: node.id, contentHash: node.content_hash, vector, metadata: embedMeta });
+    }
+
+    const resonanceRes = await fetch(`${origin}/api/resonance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: node.body_text, vector, sourceId: node.source_id, sourceNodeId: node.id }),
+    });
+    if (!resonanceRes.ok) throw new Error(`/api/resonance ${resonanceRes.status}: ${(await resonanceRes.text()).slice(0, 240)}`);
+    const result = await resonanceRes.json();
+    await storeResonanceCache({ sourceNodeId: node.id, sourceId: node.source_id, contentHash: node.content_hash, result, metadata: { job_id: job.id } });
+    const edges = await replaceResonanceEdges({ sourceNodeId: node.id, result });
+
+    const completedAt = new Date().toISOString();
+    const { data: completed, error: completeErr } = await sb.from('resonance_jobs')
+      .update({ status: 'completed', completed_at: completedAt, updated_at: completedAt, error: null, payload: { ...(job.payload ?? {}), embed: embedMeta, edges: edges.length } })
+      .eq('id', job.id)
+      .select()
+      .single();
+    if (completeErr) throw completeErr;
+    return { job: completed, result, edges: edges.length };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const failed = (job.attempts ?? 0) + 1 >= (job.max_attempts ?? 3);
+    await sb.from('resonance_jobs')
+      .update({
+        status: failed ? 'failed' : 'pending',
+        error: message.slice(0, 1000),
+        run_after: new Date(Date.now() + 60_000).toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', job.id);
+    throw err;
   }
 }

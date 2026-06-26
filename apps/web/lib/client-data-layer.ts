@@ -352,8 +352,19 @@ export class WebDataLayer implements DataLayer {
     return data.refs;
   }
 
-  async findResonance(journalText: string): Promise<ResonanceResult | null> {
+  async findResonance(journalText: string, segmentId?: string): Promise<ResonanceResult | null> {
     if (journalText.trim().length < 3) return null;
+
+    if (segmentId) {
+      try {
+        const cached = await api<{ cached: boolean; result: ResonanceResult | null }>(
+          `/api/resonance/cache?sourceId=${encodeURIComponent(segmentId)}`,
+        );
+        if (cached.cached && cached.result) return cached.result;
+      } catch {
+        // Cache is an optimization; fall through to live resonance.
+      }
+    }
 
     // 1. Embed the journal text via /api/embed (pplx-embed-v1-4b via OpenRouter)
     let vector: number[] | undefined;
@@ -373,6 +384,7 @@ export class WebDataLayer implements DataLayer {
 
     // 2. Send vector + text to /api/resonance — semantic when vector is available, lexical fallback otherwise
     const body: Record<string, unknown> = { text: journalText };
+    if (segmentId) body.sourceId = segmentId;
     if (vector) {
       body.vector = vector;
       body.model = model;
