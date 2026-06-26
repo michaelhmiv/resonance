@@ -39,12 +39,20 @@ export async function GET(_req: NextRequest) {
     let fileSizeMb = 0;
     let mtime: string | null = null;
     let loaded = false;
+    let hasPassageIds = false;
+    let hasPassageSources = false;
+    let passageIdsCount = 0;
+    let passageSourcesCount = 0;
 
     if (manifestExists) {
       const manifest = JSON.parse(await readFile(manifestPath, 'utf-8'));
       passageCount = manifest.passage_count ?? 0;
       dim = manifest.dim ?? 0;
       dtype = manifest.dtype ?? 'unknown';
+      passageIdsCount = Array.isArray(manifest.passage_ids) ? manifest.passage_ids.length : 0;
+      passageSourcesCount = Array.isArray(manifest.passage_sources) ? manifest.passage_sources.length : 0;
+      hasPassageIds = passageIdsCount === passageCount;
+      hasPassageSources = passageSourcesCount === passageCount;
 
       const vectorFile = manifest.shards?.[0]?.file || 'vectors.bin';
       const vectorPath = path.join(modelDir, vectorFile);
@@ -83,6 +91,10 @@ export async function GET(_req: NextRequest) {
       passage_count: passageCount,
       file_size_mb: fileSizeMb,
       loaded,
+      has_passage_ids: hasPassageIds,
+      passage_ids_count: passageIdsCount,
+      has_passage_sources: hasPassageSources,
+      passage_sources_count: passageSourcesCount,
       mtime,
       passage_metadata_loaded: passageMetadataLoaded,
       books,

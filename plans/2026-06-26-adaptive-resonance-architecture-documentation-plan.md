@@ -710,6 +710,7 @@ npm run build --workspace=@resonance/web
 - Added `repairManifestAlignment()` to persist sidecar-derived `passage_ids[]` and `passage_sources[]` into the active pplx manifest.
 - Kept repair non-fatal: if the write fails, the current request still uses sidecar alignment and returns semantic resonance.
 - Extended `npm run verify:resonance-hotpath` to require the manifest repair path.
+- Extended `/api/vectors/status` with public alignment health fields: `has_passage_ids`, `passage_ids_count`, `has_passage_sources`, `passage_sources_count`.
 
 **Verification run:**
 
