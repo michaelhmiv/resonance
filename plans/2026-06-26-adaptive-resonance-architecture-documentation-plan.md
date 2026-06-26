@@ -661,7 +661,7 @@ Browser verification after deploy:
 
 ## Phase 4A Completion Ledger — 2026-06-26
 
-**Status:** Implemented locally; pending commit/push/live verification.
+**Status:** Pushed to `main`, deployed on Railway deployment `78f737b4-9d53-4d1f-80da-ec105c1909fd`, and curl/log verified live.
 
 **Scope shipped:**
 
@@ -687,6 +687,11 @@ npm run build --workspace=@resonance/web
 - `npm run typecheck:web` passed.
 - `npm run typecheck:packages` passed.
 - `npm run build --workspace=@resonance/web` passed; Next generated all 38 routes successfully.
+- `git push origin main` deployed commit `f3c718d` to Railway; deployment `78f737b4-9d53-4d1f-80da-ec105c1909fd` reached `SUCCESS`.
+- Live curl checks after deploy returned: `/` 200 in 0.040s, `/journal` 200 in 0.034s, `/api/health` 200 in 0.035s, `/api/vectors/status` 200 in 0.030s, `/api/journal/entries` 200 in 0.670s.
+- Live `/api/resonance` lexical fallback returned 200 in 2.633s.
+- Railway logs for the deployed revision had zero `ensureHighlightVectorsTable`, `run_sql`, or route-error lines after smoke testing.
+- Browser CDP visual verification was attempted but blocked by the local browser runner leaking hundreds of zombie Chrome processes and failing to create `DevToolsActivePort`; curl/Railway verification completed instead.
 
 **Remaining Phase 4 item:**
 
