@@ -35,6 +35,14 @@ if (!/modelLoadPromises\.delete\(modelId\)/.test(resonanceRoute)) {
   failures.push(`${resonanceRoutePath}: loadModel must clear in-flight promise after success/failure.`);
 }
 
+if (!/repairManifestAlignment/.test(resonanceRoute) || !/writeFile\(manifestPath/.test(resonanceRoute)) {
+  failures.push(`${resonanceRoutePath}: loadModel must repair incomplete pplx manifests with sidecar passage_ids and passage_sources.`);
+}
+
+if (!/SIDECAR_ALIGNMENT_PATH/.test(resonanceRoute) || !/vectors_gte-small_manifest\.json/.test(resonanceRoute)) {
+  failures.push(`${resonanceRoutePath}: manifest repair must use the seeded-library sidecar alignment path explicitly.`);
+}
+
 if (failures.length > 0) {
   console.error('Resonance hot-path verification failed:');
   for (const failure of failures) console.error(`- ${failure}`);

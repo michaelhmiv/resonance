@@ -695,7 +695,36 @@ npm run build --workspace=@resonance/web
 
 **Remaining Phase 4 item:**
 
-- Active pplx manifest still needs a self-contained `passage_ids`/`passage_sources` repair. That is intentionally left for a separate, explicit vector-volume task.
+- Active pplx manifest repair is now implemented as a runtime hardening path: when `/api/resonance` loads an incomplete pplx manifest and finds the seeded-library alignment sidecar, it writes a self-contained manifest with `passage_ids[]` and `passage_sources[]` back to `/data/vectors/pplx-embed-v1-4b/manifest.json`. Production deployment/live verification for this repair is tracked in the next ledger entry.
+
+---
+
+## Phase 4B Completion Ledger — 2026-06-26
+
+**Status:** Implemented locally; pending commit/push/live verification.
+
+**Scope shipped:**
+
+- Added `SIDECAR_ALIGNMENT_PATH` constant for `/data/seeded_library/vectors_gte-small_manifest.json`.
+- Added `hasCompleteAlignment()` validation for active manifests.
+- Added `repairManifestAlignment()` to persist sidecar-derived `passage_ids[]` and `passage_sources[]` into the active pplx manifest.
+- Kept repair non-fatal: if the write fails, the current request still uses sidecar alignment and returns semantic resonance.
+- Extended `npm run verify:resonance-hotpath` to require the manifest repair path.
+
+**Verification run:**
+
+```bash
+cd /data/resonance
+npm run verify:resonance-hotpath
+npm run typecheck:web
+npm run build --workspace=@resonance/web
+```
+
+**Actual local result:**
+
+- Hot-path verifier passed.
+- `npm run typecheck:web` passed.
+- `npm run build --workspace=@resonance/web` passed; Next generated all 38 routes successfully.
 
 ---
 

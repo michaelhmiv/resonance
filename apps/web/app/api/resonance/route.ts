@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { open, readFile } from 'fs/promises';
+import { open, readFile, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { lexicalResonance } from '../../../lib/resonance-fallback';
 import {
@@ -100,6 +100,7 @@ const BIBLE_PASSAGES_PATH = existsSync('/data/seeded_library/bible_passages.json
 const VOICE_PASSAGES_PATH = existsSync('/data/seeded_library/voice_passages.json')
   ? '/data/seeded_library/voice_passages.json'
   : './data/seeded_library/voice_passages.json';
+const SIDECAR_ALIGNMENT_PATH = '/data/seeded_library/vectors_gte-small_manifest.json';
 
 async function ensureMetadata(): Promise<void> {
   if (passageMetadata) return;
@@ -155,6 +156,49 @@ async function ensureMetadata(): Promise<void> {
   return metadataPromise;
 }
 
+function hasCompleteAlignment(
+  manifest: Pick<VectorManifest, 'passage_count' | 'passage_ids' | 'passage_sources'>,
+): manifest is Pick<VectorManifest, 'passage_count'> & {
+  passage_ids: number[];
+  passage_sources: ('bible' | 'voice')[];
+} {
+  return (
+    Array.isArray(manifest.passage_ids) &&
+    manifest.passage_ids.length === manifest.passage_count &&
+    Array.isArray(manifest.passage_sources) &&
+    manifest.passage_sources.length === manifest.passage_count
+  );
+}
+
+async function repairManifestAlignment(
+  manifestPath: string,
+  manifest: VectorManifest,
+  alignmentIds: number[],
+  alignmentSources: ('bible' | 'voice')[],
+): Promise<void> {
+  try {
+    const repaired: VectorManifest & {
+      manifest_repaired_at: string;
+      manifest_repair_source: string;
+    } = {
+      ...manifest,
+      passage_ids: alignmentIds,
+      passage_sources: alignmentSources,
+      manifest_repaired_at: new Date().toISOString(),
+      manifest_repair_source: SIDECAR_ALIGNMENT_PATH,
+    };
+    await writeFile(manifestPath, JSON.stringify(repaired, null, 2));
+    console.log(
+      `[resonance] repaired ${manifestPath} with ${alignmentIds.length} passage_ids + passage_sources`,
+    );
+  } catch (err) {
+    // Repair is an operational hardening step. Retrieval can still use the
+    // sidecar alignment for this request, so never fail resonance because the
+    // volume is temporarily read-only or the write races with another worker.
+    console.warn('[resonance] failed to repair manifest alignment:', err);
+  }
+}
+
 async function loadModel(modelId: string): Promise<LoadedModel | null> {
   const cached = modelCache.get(modelId);
   if (cached) return cached;
@@ -182,11 +226,10 @@ async function loadModelUncached(modelId: string): Promise<LoadedModel | null> {
 
     let alignmentIds = manifest.passage_ids;
     let alignmentSources = manifest.passage_sources;
-    if (!(Array.isArray(alignmentIds) && alignmentIds.length === manifest.passage_count && Array.isArray(alignmentSources) && alignmentSources.length === manifest.passage_count)) {
-      const sidecarPath = '/data/seeded_library/vectors_gte-small_manifest.json';
-      if (existsSync(sidecarPath)) {
+    if (!hasCompleteAlignment(manifest)) {
+      if (existsSync(SIDECAR_ALIGNMENT_PATH)) {
         try {
-          const sidecar: AlignmentManifest = JSON.parse(await readFile(sidecarPath, 'utf-8'));
+          const sidecar: AlignmentManifest = JSON.parse(await readFile(SIDECAR_ALIGNMENT_PATH, 'utf-8'));
           if (
             Array.isArray(sidecar.passage_ids) &&
             sidecar.passage_ids.length === manifest.passage_count &&
@@ -195,7 +238,8 @@ async function loadModelUncached(modelId: string): Promise<LoadedModel | null> {
           ) {
             alignmentIds = sidecar.passage_ids;
             alignmentSources = sidecar.passage_sources;
-            console.log(`[resonance] using sidecar alignment manifest ${sidecarPath}`);
+            console.log(`[resonance] using sidecar alignment manifest ${SIDECAR_ALIGNMENT_PATH}`);
+            await repairManifestAlignment(manifestPath, manifest, alignmentIds, alignmentSources);
           }
         } catch (err) {
           console.warn('[resonance] failed to read sidecar alignment manifest:', err);
