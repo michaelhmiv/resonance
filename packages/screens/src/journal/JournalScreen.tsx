@@ -113,6 +113,23 @@ export function JournalScreen({ fetchVerseOfDay, onNavigateToBook }: JournalScre
     return () => { cancelled = true; };
   }, [dataLayer, verseOfDay]);
 
+  const loadResonance = useCallback(async (segId: string, text: string) => {
+    if (resonanceMap[segId] || loadingResonance.has(segId)) return;
+    setLoadingResonance(prev => new Set(prev).add(segId));
+    try {
+      const data = await dataLayer.findResonance(text);
+      if (data) {
+        setResonanceMap(prev => ({ ...prev, [segId]: data }));
+      }
+    } catch { /* best-effort */ } finally {
+      setLoadingResonance(prev => {
+        const next = new Set(prev);
+        next.delete(segId);
+        return next;
+      });
+    }
+  }, [dataLayer, resonanceMap, loadingResonance]);
+
   // Auto-load per-entry resonance as soon as past entries paint. This is
   // what makes the "resonance" promise visible without the user having to
   // know to tap ✦ — every entry arrives with its matches already computed.
@@ -150,23 +167,6 @@ export function JournalScreen({ fetchVerseOfDay, onNavigateToBook }: JournalScre
       });
     }
   }, [segments]);
-
-  const loadResonance = useCallback(async (segId: string, text: string) => {
-    if (resonanceMap[segId] || loadingResonance.has(segId)) return;
-    setLoadingResonance(prev => new Set(prev).add(segId));
-    try {
-      const data = await dataLayer.findResonance(text);
-      if (data) {
-        setResonanceMap(prev => ({ ...prev, [segId]: data }));
-      }
-    } catch { /* best-effort */ } finally {
-      setLoadingResonance(prev => {
-        const next = new Set(prev);
-        next.delete(segId);
-        return next;
-      });
-    }
-  }, [dataLayer, resonanceMap, loadingResonance]);
 
   const toggleFootnote = useCallback((segId: string, text: string) => {
     setExpandedFootnotes(prev => {
