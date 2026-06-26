@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile } from 'fs/promises';
+import { open, readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { lexicalResonance } from '../../../lib/resonance-fallback';
 import {
@@ -72,7 +72,7 @@ interface AlignmentManifest {
 }
 
 interface LoadedModel {
-  raw: Buffer;
+  vectorPath: string;
   rowNorms: Float32Array;
   dim: number;
   passageCount: number;
@@ -200,34 +200,45 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
       return null;
     }
 
-    const shardBuffers: Buffer[] = [];
-    for (const shard of manifest.shards) {
-      const shardPath = `${modelDir}/${shard.file}`;
-      if (!existsSync(shardPath)) continue;
-      shardBuffers.push(await readFile(shardPath));
+    if (manifest.shards.length !== 1) {
+      console.warn(`[resonance] unsupported shard count for online model: ${manifest.shards.length}`);
+      return null;
     }
-    const rawBuffer = shardBuffers.length === 1 ? shardBuffers[0] : Buffer.concat(shardBuffers);
+    const vectorPath = `${modelDir}/${manifest.shards[0].file}`;
+    if (!existsSync(vectorPath)) return null;
 
-    // Memory-safe path for large int8 corpora: keep the raw bytes and one
-    // precomputed norm per row instead of inflating to a 2.7GB Float32Array.
+    // Memory-safe path for large int8 corpora: stream the file to precompute one
+    // norm per row, then stream it again per request for scoring.
     const rowNorms = new Float32Array(manifest.passage_count);
+    const rowsPerChunk = Math.max(1, Math.floor((4 * 1024 * 1024) / manifest.dim));
+    const fd = await open(vectorPath, 'r');
     let totalNorm = 0;
-    for (let row = 0; row < manifest.passage_count; row++) {
-      const base = row * manifest.dim;
-      let sumSquares = 0;
-      for (let d = 0; d < manifest.dim; d++) {
-        const byte = rawBuffer[base + d]!;
-        const signed = byte > 127 ? byte - 256 : byte;
-        sumSquares += signed * signed;
+    try {
+      for (let startRow = 0; startRow < manifest.passage_count; startRow += rowsPerChunk) {
+        const rowsThisChunk = Math.min(rowsPerChunk, manifest.passage_count - startRow);
+        const bytesToRead = rowsThisChunk * manifest.dim;
+        const chunk = Buffer.allocUnsafe(bytesToRead);
+        await fd.read(chunk, 0, bytesToRead, startRow * manifest.dim);
+        for (let r = 0; r < rowsThisChunk; r++) {
+          const base = r * manifest.dim;
+          let sumSquares = 0;
+          for (let d = 0; d < manifest.dim; d++) {
+            const byte = chunk[base + d]!;
+            const signed = byte > 127 ? byte - 256 : byte;
+            sumSquares += signed * signed;
+          }
+          const norm = Math.sqrt(sumSquares);
+          rowNorms[startRow + r] = norm > 0 ? norm : 1;
+          totalNorm += norm;
+        }
       }
-      const norm = Math.sqrt(sumSquares);
-      rowNorms[row] = norm > 0 ? norm : 1;
-      totalNorm += norm;
+    } finally {
+      await fd.close();
     }
-    console.log(`[resonance] loadModel: cached int8 buffer ${manifest.passage_count} rows, avg row norm ${(totalNorm / manifest.passage_count).toFixed(4)}`);
+    console.log(`[resonance] loadModel: cached streamed int8 norms for ${manifest.passage_count} rows, avg row norm ${(totalNorm / manifest.passage_count).toFixed(4)}`);
 
     const loaded: LoadedModel = {
-      raw: rawBuffer,
+      vectorPath,
       rowNorms,
       dim: manifest.dim,
       passageCount: manifest.passage_count,
@@ -264,15 +275,42 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
   }
 }
 
-function scoreRow(loaded: LoadedModel, rowIndex: number, query: number[]): number {
-  const base = rowIndex * loaded.dim;
-  let dot = 0;
-  for (let i = 0; i < loaded.dim; i++) {
-    const byte = loaded.raw[base + i]!;
-    const signed = byte > 127 ? byte - 256 : byte;
-    dot += signed * query[i];
+async function scoreAllRows(loaded: LoadedModel, queryVecs: number[][]): Promise<Map<string, number>> {
+  const simMap = new Map<string, number>();
+  const rowsPerChunk = Math.max(1, Math.floor((4 * 1024 * 1024) / loaded.dim));
+  const fd = await open(loaded.vectorPath, 'r');
+  try {
+    for (let startRow = 0; startRow < loaded.passageCount; startRow += rowsPerChunk) {
+      const rowsThisChunk = Math.min(rowsPerChunk, loaded.passageCount - startRow);
+      const bytesToRead = rowsThisChunk * loaded.dim;
+      const chunk = Buffer.allocUnsafe(bytesToRead);
+      await fd.read(chunk, 0, bytesToRead, startRow * loaded.dim);
+      for (let r = 0; r < rowsThisChunk; r++) {
+        const rowIndex = startRow + r;
+        const rowKey = orderedPassageKeys[rowIndex];
+        if (rowKey === undefined) continue;
+        const base = r * loaded.dim;
+        let bestSim = Number.NEGATIVE_INFINITY;
+        for (const query of queryVecs) {
+          let dot = 0;
+          for (let d = 0; d < loaded.dim; d++) {
+            const byte = chunk[base + d]!;
+            const signed = byte > 127 ? byte - 256 : byte;
+            dot += signed * query[d];
+          }
+          const sim = dot / loaded.rowNorms[rowIndex]!;
+          if (sim > bestSim) bestSim = sim;
+        }
+        if (bestSim >= MIN_SIMILARITY) {
+          const existing = simMap.get(rowKey) ?? Number.NEGATIVE_INFINITY;
+          if (bestSim > existing) simMap.set(rowKey, bestSim);
+        }
+      }
+    }
+  } finally {
+    await fd.close();
   }
-  return dot / loaded.rowNorms[rowIndex]!;
+  return simMap;
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────
@@ -320,36 +358,9 @@ export async function POST(req: NextRequest) {
           keyToMeta.set(passageKey(meta[m]), m);
         }
 
-        // Build accumulated similarity map keyed by composite row key
-        // (source_type:id), not bare numeric id.
-        const simMap = new Map<string, number>();
-
-        const scoreAgainst = (queryVec: number[], boost = 1.0) => {
-          for (let i = 0; i < loaded.passageCount; i++) {
-            // We need the passage id for this vector row to look up metadata.
-            // Get the id from idToVectorIndex (reverse lookup) — but we built
-            // the map in the other direction. Walk passage_ids once if needed.
-            // To stay O(1) here, we use a parallel id array maintained by
-            // loadModel.
-            const rowKey = orderedPassageKeys[i];
-            if (rowKey === undefined) continue;
-            const sim = scoreRow(loaded, i, queryVec) * boost;
-            if (sim >= MIN_SIMILARITY) {
-              const existing = simMap.get(rowKey) ?? 0;
-              if (sim > existing) simMap.set(rowKey, sim);
-            }
-          }
-        };
-
-        // 1. Score with the main journal query vector
-        scoreAgainst(vector, 1.0);
-
-        // 2. Score with each highlight-note embedding (same weight as main query)
-        for (const noteVec of highlightNoteVecs) {
-          if (noteVec.length === loaded.dim) {
-            scoreAgainst(noteVec, 1.0);
-          }
-        }
+        // Score all query vectors in a single streamed pass over the int8 file.
+        const queryVecs = [vector, ...highlightNoteVecs.filter((noteVec) => noteVec.length === loaded.dim)];
+        const simMap = await scoreAllRows(loaded, queryVecs);
 
         // Apply highlight boost and sort
         const scored: { key: string; sim: number }[] = [];
