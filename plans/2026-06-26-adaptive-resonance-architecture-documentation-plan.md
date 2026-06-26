@@ -659,6 +659,41 @@ Browser verification after deploy:
 
 ---
 
+## Phase 4A Completion Ledger — 2026-06-26
+
+**Status:** Implemented locally; pending commit/push/live verification.
+
+**Scope shipped:**
+
+- Added `scripts/verify-resonance-hotpath.mjs` and `npm run verify:resonance-hotpath` regression check.
+- Changed `JournalScreen` so first paint loads/expands resonance for only the newest text entry; older entries lazy-load on `✦` tap.
+- Changed save behavior so saving a new entry no longer synchronously calls `loadResonance`; `✦` remains user-triggered until the queued/cache architecture is wired.
+- Added `modelLoadPromises` in `/api/resonance` so cold concurrent requests share the same model load/norm computation.
+- Removed `ensureHighlightVectorsTable()` import/call from `/api/resonance`; schema setup no longer runs on this hot path.
+
+**Verification run:**
+
+```bash
+cd /data/resonance
+npm run verify:resonance-hotpath
+npm run typecheck:web
+npm run typecheck:packages
+npm run build --workspace=@resonance/web
+```
+
+**Actual result:**
+
+- Hot-path verifier passed after first failing red run confirmed the regression check caught the old behavior.
+- `npm run typecheck:web` passed.
+- `npm run typecheck:packages` passed.
+- `npm run build --workspace=@resonance/web` passed; Next generated all 38 routes successfully.
+
+**Remaining Phase 4 item:**
+
+- Active pplx manifest still needs a self-contained `passage_ids`/`passage_sources` repair. That is intentionally left for a separate, explicit vector-volume task.
+
+---
+
 ## Phase 5 — Journal Entry Adaptation
 
 **Objective:** New journal entries become durable nodes, embed once, generate candidate edges, and cache resonance.

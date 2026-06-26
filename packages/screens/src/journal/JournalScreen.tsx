@@ -130,28 +130,10 @@ export function JournalScreen({ fetchVerseOfDay, onNavigateToBook }: JournalScre
     }
   }, [dataLayer, resonanceMap, loadingResonance]);
 
-  // Auto-load per-entry resonance as soon as past entries paint. This is
-  // what makes the "resonance" promise visible without the user having to
-  // know to tap ✦ — every entry arrives with its matches already computed.
-  // The previous version required an explicit tap, which made the feature
-  // look inert on first impression.
-  const autoResonanceArmed = useRef(false);
-  useEffect(() => {
-    if (autoResonanceArmed.current) return;
-    if (segments.length === 0) return;
-    autoResonanceArmed.current = true;
-    for (const seg of segments) {
-      if (seg.segment_type === 'text' && seg.text) {
-        loadResonance(seg.id, seg.text);
-      }
-    }
-  }, [segments, loadResonance]);
-
-  // Auto-expand the most recent entry's resonance on first paint so the
-  // user sees the feature working. Only the top entry — the rest stay
-  // collapsed until tapped, so the screen doesn't turn into a wall of
-  // cards. Without this, resonance loads silently in the background and
-  // the user has no idea the feature exists.
+  // On first paint, show resonance for only the newest text entry. Older
+  // entries stay lazy and load when the user taps ✦. This preserves the
+  // visible "resonance is here" affordance without fanning out one expensive
+  // /api/embed + /api/resonance request per historical entry.
   const autoExpandArmed = useRef(false);
   useEffect(() => {
     if (autoExpandArmed.current) return;
@@ -165,8 +147,9 @@ export function JournalScreen({ fetchVerseOfDay, onNavigateToBook }: JournalScre
         next.add(top.id);
         return next;
       });
+      loadResonance(top.id, top.text!);
     }
-  }, [segments]);
+  }, [segments, loadResonance]);
 
   const toggleFootnote = useCallback((segId: string, text: string) => {
     setExpandedFootnotes(prev => {
@@ -209,9 +192,10 @@ export function JournalScreen({ fetchVerseOfDay, onNavigateToBook }: JournalScre
       setSegments([savedSegment, ...segments]);
       setCurrentText('');
 
-      // Auto-load resonance for the new entry and expand the footnote
-      loadResonance(serverId, savedSegment.text!);
-      // Don't auto-expand — let the user tap ✦ when they want to see matches
+      // Do not synchronously auto-load resonance on save. The durable event +
+      // queue architecture will precompute this later; until then, ✦ remains
+      // a user-triggered lazy load so saving never blocks on embeddings or a
+      // full vector scan.
     } finally {
       setSaving(false);
     }

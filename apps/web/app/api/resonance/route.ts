@@ -20,7 +20,6 @@ import { lexicalResonance } from '../../../lib/resonance-fallback';
 import {
   getUserHighlightEmbeddings,
   getHighlights,
-  ensureHighlightVectorsTable,
 } from '../../../lib/db';
 
 const VECTORS_BASE = process.env.VECTORS_PATH || '/data/vectors';
@@ -81,6 +80,7 @@ interface LoadedModel {
 let passageMetadata: PassageMeta[] | null = null;
 let metadataPromise: Promise<void> | null = null;
 const modelCache = new Map<string, LoadedModel>(); // by model id
+const modelLoadPromises = new Map<string, Promise<LoadedModel | null>>(); // de-dupe cold concurrent loads
 /**
  * Map: passage id → index in the loaded vectors array (i.e. row in vectors.bin).
  * Built from the manifest's passage_ids array. Without this, vector-row N
@@ -159,6 +159,17 @@ async function loadModel(modelId: string): Promise<LoadedModel | null> {
   const cached = modelCache.get(modelId);
   if (cached) return cached;
 
+  const pending = modelLoadPromises.get(modelId);
+  if (pending) return pending;
+
+  const loadPromise = loadModelUncached(modelId).finally(() => {
+    modelLoadPromises.delete(modelId);
+  });
+  modelLoadPromises.set(modelId, loadPromise);
+  return loadPromise;
+}
+
+async function loadModelUncached(modelId: string): Promise<LoadedModel | null> {
   const modelDir = `${VECTORS_BASE}/${modelId}`;
   const manifestPath = `${modelDir}/manifest.json`;
 
@@ -314,7 +325,6 @@ async function scoreAllRows(loaded: LoadedModel, queryVecs: number[][]): Promise
 
 export async function POST(req: NextRequest) {
   try {
-    await ensureHighlightVectorsTable().catch(() => {});
     const { vector, text } = (await req.json()) as {
       vector?: number[];
       text?: string;
