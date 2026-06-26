@@ -28,7 +28,6 @@
       ]
     },
     "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
     "jsx": "preserve",
     "moduleResolution": "bundler",
     "plugins": [

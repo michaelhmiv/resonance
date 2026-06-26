@@ -6,7 +6,6 @@
     "declaration": true,
     "jsx": "react-jsx",
     "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
     "paths": {
       "@resonance/core": ["../core/src"],
       "@resonance/core/*": ["../core/src/*"],

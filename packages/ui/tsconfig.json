@@ -2,8 +2,15 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src",
-    "declaration": true
+    "rootDir": "..",
+    "declaration": true,
+    "baseUrl": ".",
+    "paths": {
+      "@resonance/core": ["../core/src"],
+      "@resonance/core/*": ["../core/src/*"],
+      "@resonance/theme": ["../theme/src"],
+      "@resonance/theme/*": ["../theme/src/*"]
+    }
   },
   "include": ["src/**/*"]
 }

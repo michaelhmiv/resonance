@@ -4,6 +4,7 @@
  */
 
 import { type ReactNode } from 'react';
+import type { Viewport } from 'next';
 import { StyleSheet, View } from 'react-native-web';
 import { VectorStatusBanner } from '../components/VectorStatusBanner';
 import './globals.css';
@@ -16,6 +17,9 @@ export const metadata = {
     description: 'A private, offline-first Christian spiritual journal.',
     type: 'website',
   },
+};
+
+export const viewport: Viewport = {
   themeColor: '#faf9f6',
 };
 

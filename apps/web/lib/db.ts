@@ -7,12 +7,14 @@ import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://oeumvgwecqtqqgbyiune.supabase.co';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ldW12Z3dlY3F0cXFnYnlpdW5lIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjI2NzkzOSwiZXhwIjoyMDk3ODQzOTM5fQ.9G6vG2GYD6DJy5rEPdPb-4LJ3yu6PYYJjVwjjc8dltw';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Singleton client
 let _supabase: SupabaseClient | null = null;
 function getSupabase(): SupabaseClient {
+  if (!SUPABASE_SERVICE_KEY) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required');
+  }
   if (!_supabase) {
     _supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -308,6 +310,7 @@ export async function ensureReadingEventsTable(): Promise<void> {
 
 // Auto-create the highlight_vectors table on first import
 export async function ensureHighlightVectorsTable(): Promise<void> {
+  if (!SUPABASE_SERVICE_KEY) return;
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/run_sql`, {
       method: 'POST',

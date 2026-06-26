@@ -8,7 +8,7 @@
 
 import { useCallback, useState, type ReactNode } from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
-import { colors, fontFamilies, spacing } from '@resonance/theme';
+import { colors, fontFamilies } from '@resonance/theme';
 import { useDataLayer } from '@resonance/core/data-layer-context';
 
 interface SendToJournalButtonProps {

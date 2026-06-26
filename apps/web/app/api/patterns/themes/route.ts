@@ -21,8 +21,12 @@ export async function GET() {
       return NextResponse.json({ themes: [] });
     }
 
-    const documents: string[][] = entries.map(e =>
-      e.text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP_WORDS.has(w))
+    const documents: string[][] = entries.map((entry: { text: string }) =>
+      entry.text
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter((word: string) => word.length > 2 && !STOP_WORDS.has(word))
     );
 
     const docFreq = new Map<string, number>();

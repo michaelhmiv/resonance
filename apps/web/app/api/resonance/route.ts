@@ -23,9 +23,6 @@ import {
   ensureHighlightVectorsTable,
 } from '../../../lib/db';
 
-// Migration on first import (safe to re-run)
-ensureHighlightVectorsTable().catch(() => {});
-
 const VECTORS_BASE = process.env.VECTORS_PATH || '/data/vectors';
 const ONLINE_MODEL = 'pplx-embed-v1-4b'; // the only server-side model
 const MIN_SIMILARITY = 0.1;
@@ -317,6 +314,7 @@ async function scoreAllRows(loaded: LoadedModel, queryVecs: number[][]): Promise
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureHighlightVectorsTable().catch(() => {});
     const { vector, text } = (await req.json()) as {
       vector?: number[];
       text?: string;

@@ -162,6 +162,12 @@ export class MobileDataLayer implements DataLayer {
     return result;
   }
 
+  async recordReadingEvent(_bookId: string, _chapter: number, _verseRef: string, _timestamp: number): Promise<void> {}
+
+  async getReadingHistory(_startDate: string, _endDate: string): Promise<{ date: string; count: number }[]> {
+    return [];
+  }
+
   async getLastReadPosition(): Promise<{ bookId: string; chapter: number; verseRef: string } | null> {
     return null; // Mobile: not implemented yet
   }
@@ -173,6 +179,8 @@ export class MobileDataLayer implements DataLayer {
   async storeSegmentVector(segmentId: string, text: string): Promise<void> {
     return storeSegmentVector(segmentId, text);
   }
+
+  async appendQuoteToJournal(_quote: string, _source: string): Promise<void> {}
 
   async clusterEntries(segments: JournalSegment[]): Promise<EntryCluster[]> {
     return clusterEntries(segments) as Promise<EntryCluster[]>;
@@ -207,4 +215,8 @@ export class MobileDataLayer implements DataLayer {
   }
 
   async setActiveEmbeddingModel(_id: EmbeddingModelId): Promise<void> {}
+
+  async getSettings(): Promise<Record<string, string>> {
+    return {};
+  }
 }

@@ -7,9 +7,6 @@ import {
 import { embed } from '../../../../lib/embed-helper';
 import { storeHighlightEmbedding, deleteHighlightEmbedding } from '../../../../lib/db';
 
-// Run migration on first import
-ensureHighlightVectorsTable().catch(() => {});
-
 export async function GET(req: NextRequest) {
   try {
     const verseRef = req.nextUrl.searchParams.get('verseRef');
@@ -21,6 +18,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureHighlightVectorsTable().catch(() => {});
     const body = await req.json();
     const { verseRef, color, startOffset, endOffset, selectedText, noteText } = body;
     if (!verseRef || !color) {
