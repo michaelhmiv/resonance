@@ -24,12 +24,17 @@ import { incCounter, observeLatencyMs, recordEvent, setGauge } from './resonance
 // import time if the native addon is missing (e.g. in local dev without it).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let hnswlibModule: any = null;
+let lastLoadError: string | null = null;
+
 async function getHnswlib() {
   if (!hnswlibModule) {
     hnswlibModule = await import('hnswlib-node');
   }
   return hnswlibModule;
 }
+
+/** Expose last HNSW load error for diagnostics */
+export function getLastLoadError(): string | null { return lastLoadError; }
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -125,7 +130,9 @@ function triggerBackgroundBuild(model: string): void {
   incCounter('resonance.build_triggered');
   recordEvent('build_triggered', `model=${model}`);
   const buildT0 = Date.now();
-  const script = resolve(process.cwd(), 'scripts/build-hnsw-index.mjs');
+  // Resolve from project root, not cwd — on Railway, cwd is apps/web but scripts/ lives at project root
+  const projectRoot = resolve(process.cwd(), '..', '..');
+  const script = resolve(projectRoot, 'scripts/build-hnsw-index.mjs');
   const outDir = resolve(VECTORS_BASE, model);
 
   console.log(`[corpus-index] Spawning background HNSW build: node ${script}`);
@@ -333,7 +340,10 @@ export async function ensureCorpusIndex(
 
       return cachedIndex;
     } catch (err) {
-      console.error('[corpus-index] failed to load HNSW index:', err);
+      const errMsg = String(err instanceof Error ? err.stack || err.message : err);
+      console.error('[corpus-index] failed to load HNSW index:', errMsg);
+      lastLoadError = errMsg.slice(0, 800);
+      recordEvent('index_load_failed', errMsg.slice(0, 300));
       return null;
     }
   })();
