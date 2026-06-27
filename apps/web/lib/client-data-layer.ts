@@ -228,33 +228,101 @@ export class WebDataLayer implements DataLayer {
     }));
   }
 
+  async getLibraryBookPrefs(): Promise<{
+    books: Array<{
+      id: string;
+      title: string | null;
+      author: string | null;
+      era: string | null;
+      packageId: string;
+      packageLabel: string;
+      enabled: boolean;
+    }>;
+    mode: 'all' | 'none' | 'subset';
+  }> {
+    return api<{
+      books: Array<{
+        id: string;
+        title: string | null;
+        author: string | null;
+        era: string | null;
+        packageId: string;
+        packageLabel: string;
+        enabled: boolean;
+      }>;
+      mode: 'all' | 'none' | 'subset';
+    }>('/api/library/books');
+  }
+
+  /**
+   * @deprecated Wrapper for getLibraryBookPrefs. Aggregates the per-book
+   * enabled set into a per-package view for any caller that still wants it.
+   */
   async getLibraryPackagePrefs(): Promise<{
     installed: Array<{ packageId: string; label: string; bookCount: number; enabled: boolean }>;
     mode: 'all' | 'none' | 'subset';
   }> {
-    return api<{
-      installed: Array<{ packageId: string; label: string; bookCount: number; enabled: boolean }>;
-      mode: 'all' | 'none' | 'subset';
-    }>('/api/library/packages');
+    const prefs = await this.getLibraryBookPrefs();
+    const byPackage = new Map<string, { bookCount: number; anyEnabled: boolean }>();
+    for (const b of prefs.books) {
+      const cur = byPackage.get(b.packageId) ?? { bookCount: 0, anyEnabled: false };
+      cur.bookCount += 1;
+      if (b.enabled) cur.anyEnabled = true;
+      byPackage.set(b.packageId, cur);
+    }
+    const installed = [...byPackage.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([packageId, agg]) => ({
+        packageId,
+        label: prefs.books.find((b) => b.packageId === packageId)?.packageLabel ?? packageId,
+        bookCount: agg.bookCount,
+        // Package is "enabled" if every book in it is enabled
+        enabled: prefs.mode === 'all' || (prefs.mode !== 'none' && agg.anyEnabled),
+      }));
+    return { installed, mode: prefs.mode };
   }
 
-  async setLibraryPackageEnabled(packageId: string, enabled: boolean): Promise<{ enabledList: string[] }> {
-    return api<{ packageId: string; enabled: boolean; enabledList: string[] }>(
-      `/api/library/packages/${encodeURIComponent(packageId)}`,
+  async setLibraryBookEnabled(bookId: string, enabled: boolean): Promise<{ enabledList: string[] }> {
+    return api<{ bookId: string; enabled: boolean; enabledList: string[] }>(
+      `/api/library/books/${encodeURIComponent(bookId)}`,
       { method: 'PUT', body: JSON.stringify({ enabled }) },
     ).then((r) => ({ enabledList: r.enabledList }));
   }
 
-  async resetLibraryPackages(): Promise<void> {
-    // No dedicated reset endpoint; toggle every package on to clear the subset list.
-    // The server's `toggleEnabledVoicePackage` treats a no-op (already enabled) as
-    // a no-op write, so this just exits 'subset' mode.
-    const prefs = await this.getLibraryPackagePrefs();
-    for (const pkg of prefs.installed) {
-      if (!pkg.enabled) {
-        await this.setLibraryPackageEnabled(pkg.packageId, true);
+  /**
+   * @deprecated Wraps setLibraryBookEnabled. Re-enables every book in
+   * the given package, which is a no-op if the user is already in 'all'
+   * mode or already has every book in the package enabled.
+   */
+  async setLibraryPackageEnabled(packageId: string, enabled: boolean): Promise<{ enabledList: string[] }> {
+    const prefs = await this.getLibraryBookPrefs();
+    const booksInPkg = prefs.books.filter((b) => b.packageId === packageId);
+    let last: { enabledList: string[] } = { enabledList: [] };
+    for (const b of booksInPkg) {
+      if (b.enabled !== enabled) {
+        last = await this.setLibraryBookEnabled(b.id, enabled);
       }
     }
+    return last;
+  }
+
+  async resetLibraryBooks(): Promise<void> {
+    // No dedicated reset endpoint; toggle every book on to clear the subset
+    // list. The server's `toggleEnabledVoiceBook` treats a no-op (already
+    // enabled) as a no-op write, so this just exits 'subset' mode.
+    const prefs = await this.getLibraryBookPrefs();
+    for (const book of prefs.books) {
+      if (!book.enabled) {
+        await this.setLibraryBookEnabled(book.id, true);
+      }
+    }
+  }
+
+  /**
+   * @deprecated Wraps resetLibraryBooks.
+   */
+  async resetLibraryPackages(): Promise<void> {
+    return this.resetLibraryBooks();
   }
 
   async getLibraryBook(bookId: string): Promise<LibraryBook | null> {

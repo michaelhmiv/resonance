@@ -263,53 +263,60 @@ export function SettingsScreen({
 
 // ── Sub-components ──────────────────────────────────────────────────
 
-interface LibraryPackagePref {
+interface LibraryBookPref {
+  id: string;
+  title: string | null;
+  author: string | null;
+  era: string | null;
   packageId: string;
-  label: string;
-  bookCount: number;
+  packageLabel: string;
   enabled: boolean;
 }
 
 /**
- * Per-package opt-in toggles for the Library.
+ * Per-book opt-in toggles for the Library.
  *
- * Reads installed packages + per-user opt-in state from dataLayer.
+ * Reads installed books + per-user opt-in state from dataLayer.
  * Toggles are optimistic: the UI updates immediately, rolls back on error.
  * "Reset to all enabled" re-enables everything (server side: exits subset mode).
+ *
+ * The per-book data is grouped by package in the UI for readability, but
+ * the underlying opt-in is per-book — toggling a single book is independent
+ * of every other book, even within the same package.
  */
 function LibraryContentsSection(): ReactNode {
   const dataLayer = useDataLayer();
   const [prefs, setPrefs] = useState<{
-    installed: LibraryPackagePref[];
+    books: LibraryBookPref[];
     mode: 'all' | 'none' | 'subset';
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    dataLayer.getLibraryPackagePrefs()
+    dataLayer.getLibraryBookPrefs()
       .then(setPrefs)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, [dataLayer]);
 
-  const toggle = useCallback(async (packageId: string, enabled: boolean) => {
+  const toggle = useCallback(async (bookId: string, enabled: boolean) => {
     if (!prefs) return;
     // Optimistic update
     setPrefs({
       ...prefs,
-      installed: prefs.installed.map((p) =>
-        p.packageId === packageId ? { ...p, enabled } : p,
+      books: prefs.books.map((b) =>
+        b.id === bookId ? { ...b, enabled } : b,
       ),
       mode: 'subset',
     });
     setError(null);
     try {
-      await dataLayer.setLibraryPackageEnabled(packageId, enabled);
+      await dataLayer.setLibraryBookEnabled(bookId, enabled);
     } catch (e) {
       // Rollback
       setPrefs({
         ...prefs,
-        installed: prefs.installed.map((p) =>
-          p.packageId === packageId ? { ...p, enabled: !enabled } : p,
+        books: prefs.books.map((b) =>
+          b.id === bookId ? { ...b, enabled: !enabled } : b,
         ),
       });
       setError(e instanceof Error ? e.message : String(e));
@@ -320,8 +327,8 @@ function LibraryContentsSection(): ReactNode {
     if (!prefs) return;
     setError(null);
     try {
-      await dataLayer.resetLibraryPackages();
-      const fresh = await dataLayer.getLibraryPackagePrefs();
+      await dataLayer.resetLibraryBooks();
+      const fresh = await dataLayer.getLibraryBookPrefs();
       setPrefs(fresh);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -336,29 +343,43 @@ function LibraryContentsSection(): ReactNode {
     );
   }
 
+  // Group by package, preserving the books' sorted order
+  const grouped = new Map<string, LibraryBookPref[]>();
+  for (const b of prefs.books) {
+    const list = grouped.get(b.packageId) ?? [];
+    list.push(b);
+    grouped.set(b.packageId, list);
+  }
+  const packageGroups = [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b));
+
   return (
     <View>
       <Text style={styles.description}>
         Pick the voices of the Church that appear in your Library and in
         resonance results. You can change these anytime.
       </Text>
-      {prefs.installed.map((pkg) => (
-        <Pressable
-          key={pkg.packageId}
-          onPress={() => toggle(pkg.packageId, !pkg.enabled)}
-          style={styles.row}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: pkg.enabled }}
-          accessibilityLabel={`${pkg.label} — ${pkg.bookCount} works`}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowLabel}>{pkg.label}</Text>
-            <Text style={styles.rowSubtext}>{pkg.bookCount} works</Text>
-          </View>
-          <View style={[styles.checkbox, pkg.enabled && styles.checkboxOn]}>
-            {pkg.enabled && <Text style={styles.checkboxMark}>✓</Text>}
-          </View>
-        </Pressable>
+      {packageGroups.map(([packageId, books]) => (
+        <View key={packageId}>
+          <Text style={styles.packageHeader}>{books[0]?.packageLabel ?? packageId}</Text>
+          {books.map((b) => (
+            <Pressable
+              key={b.id}
+              onPress={() => toggle(b.id, !b.enabled)}
+              style={styles.row}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: b.enabled }}
+              accessibilityLabel={`${b.title} by ${b.author ?? 'unknown'}`}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowLabel}>{b.title}</Text>
+                {b.author && <Text style={styles.rowSubtext}>{b.author}{b.era ? ` · ${b.era}` : ''}</Text>}
+              </View>
+              <View style={[styles.checkbox, b.enabled && styles.checkboxOn]}>
+                {b.enabled && <Text style={styles.checkboxMark}>✓</Text>}
+              </View>
+            </Pressable>
+          ))}
+        </View>
       ))}
       {prefs.mode !== 'all' && (
         <Pressable onPress={reset} style={styles.row}>
@@ -417,6 +438,7 @@ const styles = StyleSheet.create({
   rowSelected: { backgroundColor: '#faf9f6' },
   rowLabel: { fontFamily: 'Inter, sans-serif', fontSize: 15, color: '#3a3530' },
   rowSubtext: { fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#9a9388' },
+  packageHeader: { fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: '600', color: '#8b7355', textTransform: 'uppercase', letterSpacing: 0.5, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
   rowValue: { fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: '500', color: '#8b7355' },
   checkMark: { fontFamily: 'Inter, sans-serif', fontSize: 16, color: '#8b7355' },
   chevron: { fontFamily: 'Inter, sans-serif', fontSize: 18, color: '#9a9388' },

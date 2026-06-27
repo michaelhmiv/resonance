@@ -41,22 +41,51 @@ export interface DataLayer {
   getLibraryBook(bookId: string): Promise<LibraryBook | null>;
   getLibraryPassages(bookId: string): Promise<LibraryPassage[]>;
   /**
-   * Returns the installed voice packages with the current user's opt-in state
-   * for each. Used by the Settings UI to render per-package toggles.
+   * Returns the full voice library catalog with the current user's per-book
+   * opt-in state. Replaces the per-package `getLibraryPackagePrefs`.
+   *
+   * The `enabled` field is computed against user_settings(key='enabled_voice_books')
+   * (with one-shot migration from the legacy 'enabled_voice_packages' key).
    */
-  getLibraryPackagePrefs(): Promise<{
-    installed: Array<{ packageId: string; label: string; bookCount: number; enabled: boolean }>;
+  getLibraryBookPrefs(): Promise<{
+    books: Array<{
+      id: string;
+      title: string | null;
+      author: string | null;
+      era: string | null;
+      packageId: string;
+      packageLabel: string;
+      enabled: boolean;
+    }>;
     mode: 'all' | 'none' | 'subset';
   }>;
   /**
-   * Toggle one package's opt-in state. Idempotent. Throws on unknown packageId.
+   * Toggle one book's opt-in state. Idempotent. Throws on unknown bookId.
    */
-  setLibraryPackageEnabled(packageId: string, enabled: boolean): Promise<{ enabledList: string[] }>;
+  setLibraryBookEnabled(bookId: string, enabled: boolean): Promise<{ enabledList: string[] }>;
   /**
    * Reset to "all enabled" (clears the user's opt-in preference).
    * Subsequent reads will return the full installed set.
    */
-  resetLibraryPackages(): Promise<void>;
+  resetLibraryBooks(): Promise<void>;
+  /**
+   * @deprecated Replaced by getLibraryBookPrefs. Kept as a thin wrapper for
+   * backward compatibility with any caller that hasn't migrated yet.
+   * Maps the per-book enabled set back to a per-package view.
+   */
+  getLibraryPackagePrefs?(): Promise<{
+    installed: Array<{ packageId: string; label: string; bookCount: number; enabled: boolean }>;
+    mode: 'all' | 'none' | 'subset';
+  }>;
+  /**
+   * @deprecated Replaced by setLibraryBookEnabled. No-op fallback for the
+   * old per-package toggle interface.
+   */
+  setLibraryPackageEnabled?(packageId: string, enabled: boolean): Promise<{ enabledList: string[] }>;
+  /**
+   * @deprecated Replaced by resetLibraryBooks. No-op fallback.
+   */
+  resetLibraryPackages?(): Promise<void>;
 
   // ── Journal segments ───────────────────────────────────────────────────
   loadSegments(): Promise<JournalSegment[]>;

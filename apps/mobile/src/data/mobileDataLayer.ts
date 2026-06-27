@@ -60,34 +60,72 @@ export class MobileDataLayer implements DataLayer {
   }
 
   /**
-   * Mobile free-tier stub: returns all packages as enabled, mode 'all'.
+   * Mobile free-tier stub: returns all books as enabled, mode 'all'.
    * Free-tier users always see the full catalog (no per-device opt-in).
    * When the user upgrades to premium and signs in, the cloud-backed
-   * per-package prefs will take over (this method is replaced by a
-   * network-backed implementation in the premium tier).
+   * per-book prefs will take over.
    */
-  async getLibraryPackagePrefs() {
+  async getLibraryBookPrefs() {
     const packages = await getLibraryPackages();
-    return {
-      installed: packages.map((p) => ({
+    const books = packages.flatMap((p) =>
+      p.books.map((b) => ({
+        id: b.id,
+        title: b.title,
+        author: b.author,
+        era: b.era,
         packageId: p.package_id,
-        label: p.label,
-        bookCount: p.books.length,
+        packageLabel: p.label,
         enabled: true,
       })),
-      mode: 'all' as const,
+    );
+    return { books, mode: 'all' as const };
+  }
+
+  /** @deprecated Wraps getLibraryBookPrefs. Aggregates per-book into per-package. */
+  async getLibraryPackagePrefs() {
+    const prefs = await this.getLibraryBookPrefs();
+    const byPackage = new Map<string, { label: string; bookCount: number; anyEnabled: boolean }>();
+    for (const b of prefs.books) {
+      const cur = byPackage.get(b.packageId) ?? { label: b.packageLabel, bookCount: 0, anyEnabled: false };
+      cur.bookCount += 1;
+      if (b.enabled) cur.anyEnabled = true;
+      byPackage.set(b.packageId, cur);
+    }
+    return {
+      installed: [...byPackage.entries()].map(([packageId, agg]) => ({
+        packageId,
+        label: agg.label,
+        bookCount: agg.bookCount,
+        enabled: agg.anyEnabled,
+      })),
+      mode: prefs.mode,
     };
   }
 
   /** Free-tier stub: toggle is a no-op. */
-  async setLibraryPackageEnabled(_packageId: string, _enabled: boolean): Promise<{ enabledList: string[] }> {
+  async setLibraryBookEnabled(_bookId: string, _enabled: boolean): Promise<{ enabledList: string[] }> {
     // No-op on free tier — settings persist only when the user has a cloud account.
     return { enabledList: [] };
   }
 
+  /** @deprecated Wraps setLibraryBookEnabled; iterates books in the package. */
+  async setLibraryPackageEnabled(packageId: string, enabled: boolean): Promise<{ enabledList: string[] }> {
+    const prefs = await this.getLibraryBookPrefs();
+    const books = prefs.books.filter((b) => b.packageId === packageId && b.enabled !== enabled);
+    for (const b of books) {
+      await this.setLibraryBookEnabled(b.id, enabled);
+    }
+    return { enabledList: [] };
+  }
+
   /** Free-tier stub: reset is a no-op. */
-  async resetLibraryPackages(): Promise<void> {
+  async resetLibraryBooks(): Promise<void> {
     // No-op on free tier.
+  }
+
+  /** @deprecated Wraps resetLibraryBooks. */
+  async resetLibraryPackages(): Promise<void> {
+    return this.resetLibraryBooks();
   }
 
   async getLibraryBook(bookId: string) {

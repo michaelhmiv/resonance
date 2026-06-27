@@ -1,30 +1,30 @@
 /**
- * GET /api/library/books — return the catalog of voice library works,
- * grouped into packages, filtered by the user's opt-in preferences.
+ * GET /api/library/books — return the full Library catalog (all installed
+ * voice books) along with the current user's per-book opt-in state.
  *
- * Reads voice_books.json. The Railway volume is the source of truth in
- * production; the bundled copy in ./data/seeded_library/ is the dev fallback
- * (so local dev without a volume still works).
+ * Replaces the per-package grouping. Each book is a top-level entry; the
+ * packageId is still included for display grouping in the UI but the
+ * opt-in granularity is per-book.
  *
- * Filtering:
- *   - Reads user_settings(key='enabled_voice_packages')
- *   - null / unset = 'all' mode → return all packages
- *   - subset = 'subset' mode → return only packages the user has enabled
- *   - empty list = 'none' mode → return zero packages (with empty-state handled in UI)
+ * Storage: user_settings(key='enabled_voice_books'). Migration from the
+ * legacy enabled_voice_packages key is handled by getEnabledVoiceBooks().
  *
  * Response:
  *   {
- *     packages: [{
- *       packageId,
- *       label,
- *       books: [{ id, title, author, era, source }]
- *     }]
+ *     books: [
+ *       { id, title, author, era, source, packageId, packageLabel, enabled }
+ *     ],
+ *     mode: 'all' | 'none' | 'subset'
  *   }
+ *
+ * The `mode` field is informational for the UI; 'all' means the user has
+ * no preference saved, 'none' means explicitly empty, 'subset' means a
+ * non-empty explicit list.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync, existsSync, statSync } from 'fs';
-import { getEnabledVoicePackages } from '../../../../lib/library-prefs';
+import { getEnabledVoiceBooks } from '../../../../lib/library-prefs';
 
 const VOLUME_PATH = '/data/seeded_library/voice_books.json';
 const BUNDLED_PATH = './data/seeded_library/voice_books.json';
@@ -39,14 +39,11 @@ interface VoiceBook {
   [key: string]: unknown;
 }
 
-// Module-level cache, invalidated on file mtime change so a volume upload
-// (via /api/admin/upload-file) is picked up on the next request.
 let cachedVoiceBooks: VoiceBook[] | null = null;
 let cachedMtimeMs = 0;
 let cachedPath = '';
 
 function loadVoiceBooks(): VoiceBook[] {
-  // Prefer the Railway volume; fall back to bundled copy
   const path = existsSync(VOLUME_PATH) ? VOLUME_PATH : BUNDLED_PATH;
   const stat = statSync(path);
   const mtimeMs = stat.mtimeMs;
@@ -72,40 +69,35 @@ export async function GET(_request: NextRequest) {
   try {
     const allBooks = loadVoiceBooks();
 
-    // Get installed package_ids (unique, sorted for stable caching)
-    const installed = [...new Set(allBooks.map((b) => b.package_id))].sort();
-
-    // Resolve the user's enabled set, intersected with installed packages
-    const { enabled } = await getEnabledVoicePackages(installed);
-    const enabledSet = new Set(enabled);
-
-    // Filter books by the enabled set
-    const filteredBooks =
-      enabledSet.size === installed.length
-        ? allBooks
-        : allBooks.filter((b) => enabledSet.has(b.package_id));
-
-    // Group by package_id while preserving insertion order from the source file.
-    const grouped = new Map<string, Array<{ id: string; title: string; author: string | null; era: string | null; source: string | null }>>();
-    for (const b of filteredBooks) {
-      const pid = b.package_id;
-      if (!grouped.has(pid)) grouped.set(pid, []);
-      grouped.get(pid)!.push({
-        id: b.id,
-        title: b.title,
-        author: b.author,
-        era: b.era,
-        source: b.source,
-      });
+    // Build bookId → packageId map for legacy migration + UI grouping
+    const bookIdToPackage = new Map<string, string>();
+    for (const b of allBooks) {
+      bookIdToPackage.set(b.id, b.package_id);
     }
 
-    const packages = Array.from(grouped.entries()).map(([packageId, pkgBooks]) => ({
-      packageId,
-      label: packageLabel(packageId),
-      books: pkgBooks,
-    }));
+    const installedIds = allBooks.map((b) => b.id).sort();
+    const { enabled, mode } = await getEnabledVoiceBooks(installedIds, bookIdToPackage);
+    const enabledSet = new Set(enabled);
 
-    return NextResponse.json({ packages });
+    // Flat list, sorted by package then title
+    const books = allBooks
+      .map((b) => ({
+        id: b.id,
+        title: b.title,
+        author: b.author ?? null,
+        era: b.era ?? null,
+        source: b.source ?? null,
+        packageId: b.package_id,
+        packageLabel: packageLabel(b.package_id),
+        enabled: enabledSet.has(b.id),
+      }))
+      .sort((a, b) => {
+        const pkgCmp = a.packageId.localeCompare(b.packageId);
+        if (pkgCmp !== 0) return pkgCmp;
+        return a.title.localeCompare(b.title);
+      });
+
+    return NextResponse.json({ books, mode });
   } catch (err) {
     return NextResponse.json(
       { error: 'Internal server error', detail: err instanceof Error ? err.message : String(err) },

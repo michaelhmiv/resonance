@@ -255,6 +255,17 @@ export async function setSetting(key: string, value: string) {
   return { ok: true };
 }
 
+export async function deleteSetting(key: string) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const { error } = await sb.from('user_settings')
+    .delete()
+    .eq('user_id', uid)
+    .eq('key', key);
+  if (error) throw error;
+  return { ok: true };
+}
+
 // ── Reading events ─────────────────────────────────────────────────────────
 
 export async function recordReadingEvent(bookId: string, chapter: number, verseRef: string, timestamp?: number) {

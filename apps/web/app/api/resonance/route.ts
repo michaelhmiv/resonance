@@ -26,7 +26,7 @@ import {
 } from '../../../lib/db';
 import { ensureCorpusIndex } from '../../../lib/corpus-index';
 import { getCachedUserEmbeddings, invalidateUser } from '../../../lib/user-vector-store';
-import { getEnabledVoicePackages } from '../../../lib/library-prefs';
+import { getEnabledVoiceBooks } from '../../../lib/library-prefs';
 import { observeLatencyMs, incCounter, recordEvent, setGauge } from '../../../lib/resonance-metrics';
 
 const VECTORS_BASE = process.env.VECTORS_PATH || '/data/vectors';
@@ -135,15 +135,15 @@ function loadBookIdToPackage(): Map<string, string> {
 }
 
 /**
- * Returns true if the user has enabled the package that the given voice book
- * belongs to. Voice passages whose book_id is not in the catalog (shouldn't
- * happen, but defensive) are treated as "in an unknown package" — we let them
- * through rather than silently hiding them.
+ * Returns true if the user has enabled this voice book. Voice passages
+ * whose book_id is not in the catalog (shouldn't happen, but defensive)
+ * are treated as "in an unknown book" — we let them through rather than
+ * silently hiding them.
  */
-function isVoicePackageEnabled(bookId: string, enabledPackages: Set<string>): boolean {
-  const pkg = loadBookIdToPackage().get(bookId);
-  if (!pkg) return true; // unknown → don't filter
-  return enabledPackages.has(pkg);
+function isVoiceBookEnabled(bookId: string, enabledBooks: Set<string>): boolean {
+  if (enabledBooks.has(bookId)) return true;
+  // Unknown book — don't filter (defensive)
+  return !loadBookIdToPackage().has(bookId);
 }
 
 async function ensureMetadata(): Promise<void> {
@@ -602,16 +602,17 @@ export async function POST(req: NextRequest) {
             return toCard(meta[m], s.sim, 'scripture');
           });
 
-        // Resolve user's enabled voice packages (intersected with installed set)
-        const installedPackageIds = [...new Set(loadBookIdToPackage().values())].sort();
-        const { enabled: enabledPackageList } = await getEnabledVoicePackages(installedPackageIds);
-        const enabledPackages = new Set(enabledPackageList);
+        // Resolve user's enabled voice books (intersected with installed set)
+        const bookIdToPackage = loadBookIdToPackage();
+        const installedBookIds = [...bookIdToPackage.keys()].sort();
+        const { enabled: enabledBookList } = await getEnabledVoiceBooks(installedBookIds, bookIdToPackage);
+        const enabledBooks = new Set(enabledBookList);
 
         const topVoices = scored
           .filter((s) => {
             const m = keyToMeta.get(s.key);
             if (m === undefined || meta[m].translation != null) return false;
-            return isVoicePackageEnabled(meta[m].book_id, enabledPackages);
+            return isVoiceBookEnabled(meta[m].book_id, enabledBooks);
           })
           .slice(0, MAX_PER_CATEGORY)
           .map((s) => {
@@ -691,16 +692,17 @@ export async function POST(req: NextRequest) {
             return toCard(meta[m], s.sim, 'scripture');
           });
 
-        // Resolve user's enabled voice packages (intersected with installed set)
-        const installedPackageIds = [...new Set(loadBookIdToPackage().values())].sort();
-        const { enabled: enabledPackageList } = await getEnabledVoicePackages(installedPackageIds);
-        const enabledPackages = new Set(enabledPackageList);
+        // Resolve user's enabled voice books (intersected with installed set)
+        const bookIdToPackage = loadBookIdToPackage();
+        const installedBookIds = [...bookIdToPackage.keys()].sort();
+        const { enabled: enabledBookList } = await getEnabledVoiceBooks(installedBookIds, bookIdToPackage);
+        const enabledBooks = new Set(enabledBookList);
 
         const topVoices = scored
           .filter((s) => {
             const m = keyToMeta.get(s.key);
             if (m === undefined || meta[m].translation != null) return false;
-            return isVoicePackageEnabled(meta[m].book_id, enabledPackages);
+            return isVoiceBookEnabled(meta[m].book_id, enabledBooks);
           })
           .slice(0, MAX_PER_CATEGORY)
           .map((s) => {
