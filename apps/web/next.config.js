@@ -24,11 +24,19 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       'react-native$': 'react-native-web',
     };
+    // hnswlib-node is a native C++ addon (.node) — Next.js can't bundle it.
+    // Must be resolved at runtime from node_modules on the server.
+    if (isServer) {
+      config.externals = config.externals || [];
+      if (Array.isArray(config.externals)) {
+        config.externals.push('hnswlib-node');
+      }
+    }
     return config;
   },
 };
