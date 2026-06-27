@@ -79,6 +79,8 @@ interface LoadedModel {
   dim: number;
   passageCount: number;
   dtype: string;
+  /** Cached float32 vectors — built lazily from int8 on first search. ~2.5 GB for 265K×2560. */
+  float32Vectors?: Float32Array;
 }
 
 // ── Module-level caches ───────────────────────────────────────────────────
@@ -333,40 +335,86 @@ async function loadModelUncached(modelId: string): Promise<LoadedModel | null> {
   }
 }
 
-async function scoreAllRows(loaded: LoadedModel, queryVecs: number[][]): Promise<Map<string, number>> {
-  const simMap = new Map<string, number>();
-  const rowsPerChunk = Math.max(1, Math.floor((4 * 1024 * 1024) / loaded.dim));
+/**
+ * Convert int8 Buffer to Float32Array (signed int8 → float32).
+ * This costs ~2.5 GB for 265K×2560 but eliminates the per-byte branch
+ * `byte > 127 ? byte - 256 : byte` on every request.
+ */
+function int8BufferToFloat32(buf: Buffer, dim: number, passageCount: number): Float32Array {
+  const out = new Float32Array(passageCount * dim);
+  for (let i = 0; i < buf.length; i++) {
+    const byte = buf[i]!;
+    out[i] = byte > 127 ? byte - 256 : byte;
+  }
+  return out;
+}
+
+/**
+ * Ensure the loaded model has cached float32 vectors.
+ * Reads the int8 file once, converts to Float32Array, frees the Buffer.
+ * On Railway (ephemeral), this survives for the container's lifetime.
+ */
+async function ensureFloat32Vectors(loaded: LoadedModel): Promise<Float32Array> {
+  if (loaded.float32Vectors) return loaded.float32Vectors;
+
+  console.log(`[resonance] converting int8 → float32 for ${loaded.passageCount} × ${loaded.dim} vectors…`);
+  const t0 = Date.now();
   const fd = await open(loaded.vectorPath, 'r');
   try {
-    for (let startRow = 0; startRow < loaded.passageCount; startRow += rowsPerChunk) {
-      const rowsThisChunk = Math.min(rowsPerChunk, loaded.passageCount - startRow);
-      const bytesToRead = rowsThisChunk * loaded.dim;
-      const chunk = Buffer.allocUnsafe(bytesToRead);
-      await fd.read(chunk, 0, bytesToRead, startRow * loaded.dim);
-      for (let r = 0; r < rowsThisChunk; r++) {
-        const rowIndex = startRow + r;
-        const rowKey = orderedPassageKeys[rowIndex];
-        if (rowKey === undefined) continue;
-        const base = r * loaded.dim;
-        let bestSim = Number.NEGATIVE_INFINITY;
-        for (const query of queryVecs) {
-          let dot = 0;
-          for (let d = 0; d < loaded.dim; d++) {
-            const byte = chunk[base + d]!;
-            const signed = byte > 127 ? byte - 256 : byte;
-            dot += signed * query[d];
-          }
-          const sim = dot / loaded.rowNorms[rowIndex]!;
-          if (sim > bestSim) bestSim = sim;
-        }
-        if (bestSim >= MIN_SIMILARITY) {
-          const existing = simMap.get(rowKey) ?? Number.NEGATIVE_INFINITY;
-          if (bestSim > existing) simMap.set(rowKey, bestSim);
-        }
-      }
-    }
+    // Read the entire file at once — it's ~678 MB for 265K×2560 int8
+    const totalBytes = loaded.passageCount * loaded.dim;
+    const buf = Buffer.allocUnsafe(totalBytes);
+    await fd.read(buf, 0, totalBytes, 0);
+    const vecs = int8BufferToFloat32(buf, loaded.dim, loaded.passageCount);
+    loaded.float32Vectors = vecs;
+    console.log(`[resonance] int8→float32 conversion done in ${Date.now() - t0} ms (${(vecs.byteLength / 1024 / 1024).toFixed(1)} MB)`);
+    return vecs;
   } finally {
     await fd.close();
+  }
+}
+
+async function scoreAllRows(loaded: LoadedModel, queryVecs: number[][]): Promise<Map<string, number>> {
+  const simMap = new Map<string, number>();
+  const vecs = await ensureFloat32Vectors(loaded);
+
+  // L2-normalize query vectors once so we can do just a dot product
+  // instead of dot / rowNorm per row.
+  const normedQueries: Float32Array[] = [];
+  for (const q of queryVecs) {
+    let norm = 0;
+    for (let d = 0; d < loaded.dim; d++) norm += q[d]! * q[d]!;
+    norm = Math.sqrt(norm) || 1;
+    const nq = new Float32Array(loaded.dim);
+    for (let d = 0; d < loaded.dim; d++) nq[d] = q[d]! / norm;
+    normedQueries.push(nq);
+  }
+
+  const dim = loaded.dim;
+  const rowNorms = loaded.rowNorms;
+
+  for (let row = 0; row < loaded.passageCount; row++) {
+    const rowKey = orderedPassageKeys[row];
+    if (rowKey === undefined) continue;
+    const base = row * dim;
+    const rowNorm = rowNorms[row]! || 1;
+    let bestSim = Number.NEGATIVE_INFINITY;
+
+    for (let qi = 0; qi < normedQueries.length; qi++) {
+      const nq = normedQueries[qi]!;
+      let dot = 0;
+      const vBase = base;
+      // Unrolled inner loop — V8 JIT loves simple Float32Array access
+      for (let d = 0; d < dim; d++) {
+        dot += vecs[vBase + d] * nq[d];
+      }
+      const sim = dot / rowNorm;
+      if (sim > bestSim) bestSim = sim;
+    }
+    if (bestSim >= MIN_SIMILARITY) {
+      const existing = simMap.get(rowKey) ?? Number.NEGATIVE_INFINITY;
+      if (bestSim > existing) simMap.set(rowKey, bestSim);
+    }
   }
   return simMap;
 }
