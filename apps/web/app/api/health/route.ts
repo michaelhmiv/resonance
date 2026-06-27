@@ -12,7 +12,12 @@ import path from 'path';
 
 const VECTORS_DIR = '/data/vectors/pplx-embed-v1-4b';
 const MANIFEST_PATH = path.join(VECTORS_DIR, 'manifest.json');
-const VECTORS_BIN = path.join(VECTORS_DIR, 'vectors_pplx_embed_v1_4b.bin');
+
+/** Read shard filename from manifest, or fall back to vectors.bin */
+function shardFileFromManifest(manifest: Record<string, unknown>): string {
+  const shards = manifest.shards as Array<{ file: string }> | undefined;
+  return shards?.[0]?.file || 'vectors.bin';
+}
 
 export async function GET() {
   let vectorInfo = {
@@ -27,10 +32,12 @@ export async function GET() {
     try {
       const { readFileSync } = await import('fs');
       const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf-8'));
-      const hasBin = existsSync(VECTORS_BIN);
+      const vectorsBinFile = shardFileFromManifest(manifest);
+      const vectorsBinPath = path.join(VECTORS_DIR, vectorsBinFile);
+      const hasBin = existsSync(vectorsBinPath);
       let binSize = 0;
       if (hasBin) {
-        try { binSize = statSync(VECTORS_BIN).size; } catch {}
+        try { binSize = statSync(vectorsBinPath).size; } catch {}
       }
       vectorInfo = {
         loaded: hasBin,
