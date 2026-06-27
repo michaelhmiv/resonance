@@ -545,6 +545,89 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ── Brute-force int8 fallback (HNSW index unavailable) ───────────
+    // If HNSW didn't load, fall back to streaming int8 vectors from disk.
+    // This is slower (O(N)) but uses only ~678 MB int8 on disk vs 2.8 GB HNSW.
+    if (vector && vector.length > 0) {
+      const loaded = await loadModel(ONLINE_MODEL);
+
+      if (loaded && loaded.passageCount > 0 && vector.length === loaded.dim) {
+        await ensureMetadata();
+        const meta = passageMetadata || [];
+
+        let highlightNoteVecs: number[][] = [];
+        let highlightRefs = new Set<string>();
+        const devUserId = await getDevUserId();
+        try {
+          [highlightNoteVecs, highlightRefs] = await Promise.all([
+            getCachedUserEmbeddings(devUserId).catch(() => [] as number[][]),
+            getHighlights().then(
+              (rows: { verse_ref: string }[]) =>
+                new Set(rows.map((r) => normalizeVerseRef(r.verse_ref))),
+            ).catch(() => new Set<string>()),
+          ]);
+        } catch {
+          // personalization is additive, not critical
+        }
+
+        const keyToMeta = new Map<string, number>();
+        for (let m = 0; m < meta.length; m++) {
+          keyToMeta.set(passageKey(meta[m]), m);
+        }
+
+        const queryVecs = [vector, ...highlightNoteVecs.filter((noteVec) => noteVec.length === loaded.dim)];
+        const simMap = await scoreAllRows(loaded, queryVecs);
+
+        const scored: { key: string; sim: number }[] = [];
+        for (const [rowKey, sim] of Array.from(simMap.entries())) {
+          const m = keyToMeta.get(rowKey);
+          if (m === undefined) continue;
+          let finalSim = sim;
+          if (highlightRefs.has(normalizeVerseRef(verseRefFromMeta(meta[m])))) {
+            finalSim = sim * HIGHLIGHT_BOOST;
+          }
+          scored.push({ key: rowKey, sim: finalSim });
+        }
+        scored.sort((a, b) => b.sim - a.sim);
+
+        const topScripture = scored
+          .filter((s) => {
+            const m = keyToMeta.get(s.key);
+            return m !== undefined && meta[m].translation != null;
+          })
+          .slice(0, MAX_PER_CATEGORY)
+          .map((s) => {
+            const m = keyToMeta.get(s.key)!;
+            return toCard(meta[m], s.sim, 'scripture');
+          });
+
+        const topVoices = scored
+          .filter((s) => {
+            const m = keyToMeta.get(s.key);
+            return m !== undefined && meta[m].translation == null;
+          })
+          .slice(0, MAX_PER_CATEGORY)
+          .map((s) => {
+            const m = keyToMeta.get(s.key)!;
+            return toCard(meta[m], s.sim, 'voice');
+          });
+
+        const result = {
+          scripture: topScripture,
+          voices: topVoices,
+          pastEntries: [],
+          method: highlightNoteVecs.length > 0 ? 'semantic-int8+highlight-notes' : 'semantic-int8',
+          model: ONLINE_MODEL,
+          dim: loaded.dim,
+          passageCount: loaded.passageCount,
+        };
+        await persistResultIfSourced(result);
+        observeLatencyMs('resonance.total_ms', Date.now() - t0);
+        incCounter('resonance.requests_int8_fallback');
+        return NextResponse.json(result);
+      }
+    }
+
     // ── Lexical fallback (no vector or model unavailable) ────────────
     await ensureMetadata();
     const meta = passageMetadata || [];
