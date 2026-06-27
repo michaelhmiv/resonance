@@ -98,9 +98,25 @@ function computeSourceFingerprint(model: string): SourceFingerprint | null {
 
 function isIndexStale(idmap: Record<string, unknown>, model: string): boolean {
   const builtFrom = idmap.builtFrom as SourceFingerprint | undefined;
+  // Check idmap.passageCount against the current manifest. If they differ,
+  // the index is definitely stale regardless of builtFrom (e.g. someone
+  // re-uploaded a new vectors.bin with a different passage count).
+  try {
+    const mf = JSON.parse(readFileSync(resolve(VECTORS_BASE, model, 'manifest.json'), 'utf-8'));
+    const idmapCount = idmap.passageCount as number | undefined;
+    if (typeof idmapCount === 'number' && typeof mf.passage_count === 'number'
+        && idmapCount !== mf.passage_count) {
+      console.warn(
+        `[corpus-index] idmap.passageCount=${idmapCount} != ` +
+        `manifest.passage_count=${mf.passage_count} — marking stale for rebuild`
+      );
+      return true;
+    }
+  } catch { /* manifest unreadable; fall through to other checks */ }
   if (!builtFrom) {
-    // Old-format idmap without builtFrom — can't detect staleness.
-    // Assume fresh (already loaded). Next rebuild will stamp builtFrom.
+    // Old-format idmap without builtFrom — can't detect staleness via fingerprint.
+    // If passageCount matched (above), assume fresh. If not, the count check
+    // already triggered the rebuild.
     return false;
   }
   // Check if idmap has voice keys — if not, it was built with broken alignment
