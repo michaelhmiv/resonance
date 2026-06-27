@@ -54,6 +54,11 @@ LOCAL_VECTORS = Path("/data/resonance/build/output/seeded_library")
 LOCAL_VECTORS_BUILD = Path("/data/resonance/build/output")  # for vectors_gte-small.bin (legacy)
 LOCAL_PACKAGES = Path("/data/resonance/build/output/packages")
 
+# Mobile download pipeline artifacts (Phase 0, built 2026-06-27):
+# 75 per-book voice shards + 1 scripture bundle. Total ~6.2 GB on volume.
+LOCAL_SHARDS = LOCAL_VECTORS / "library_shards"
+LOCAL_SCRIPTURE = LOCAL_VECTORS / "scripture_bundle"
+
 # All files we want on the volume, in upload order.
 # Vector index first (largest), then bible metadata, then voice metadata.
 UPLOADS = [
@@ -75,8 +80,29 @@ UPLOADS = [
     ("file", LOCAL_CONTENT / "bible_books.json", "seeded_library/bible_books.json", 1),
     ("file", LOCAL_CONTENT / "voice_books.json", "seeded_library/voice_books.json", 1),
     ("file", LOCAL_VECTORS / "library_manifest.json", "seeded_library/library_manifest.json", 1),
-    # packages/ directory — only the JSONs; binary shards would be huge
+    # Mobile download pipeline — voice shards (auto-discovered)
+    # and scripture bundle are added below by _add_pipeline_uploads().
 ]
+
+
+def _add_pipeline_uploads():
+    """Append entries for the 75 voice shards + scripture bundle to UPLOADS."""
+    if (LOCAL_SHARDS / "manifest.json").exists():
+        UPLOADS.append(("file", LOCAL_SHARDS / "manifest.json", "seeded_library/library_shards/manifest.json", 1))
+    if LOCAL_SHARDS.is_dir():
+        for book_dir in sorted(LOCAL_SHARDS.iterdir()):
+            if not book_dir.is_dir():
+                continue
+            for filename in ("idmap.json", "vectors.bin", "corpus.hnsw"):
+                p = book_dir / filename
+                if p.exists():
+                    chunk = 8 if filename != "idmap.json" else 1
+                    UPLOADS.append((("file", p, f"seeded_library/library_shards/{book_dir.name}/{filename}", chunk)))
+    if LOCAL_SCRIPTURE.is_dir():
+        for p in sorted(LOCAL_SCRIPTURE.iterdir()):
+            if p.is_file():
+                chunk = 1 if p.suffix == ".json" else 8
+                UPLOADS.append((("file", p, f"seeded_library/scripture_bundle/{p.name}", chunk)))
 
 
 def curl_upload_chunk(url: str, token: str, file_bytes: bytes, headers: dict) -> dict:
@@ -186,6 +212,17 @@ def main():
     print("Current volume state:")
     status = check_status(args.url, args.token)
     print(f"  vectors: {status}")
+    print()
+
+    # Auto-discover voice shards + scripture bundle on disk
+    _add_pipeline_uploads()
+    def _upload_remote_path(spec):
+        # 4-tuple ("file", local, remote, chunk_mb) → spec[2] is remote
+        # 5-tuple ("vectors", local, model, filename, chunk_mb) → filename is spec[3]
+        return spec[2] if spec[0] == "file" else spec[3]
+    n_shards = sum(1 for s in UPLOADS if "library_shards" in _upload_remote_path(s))
+    n_bundle = sum(1 for s in UPLOADS if "scripture_bundle" in _upload_remote_path(s))
+    print(f"  Upload queue: {len(UPLOADS)} entries (incl. {n_shards} shard files + {n_bundle} bundle files)")
     print()
 
     if not args.force and status.get("loaded"):
