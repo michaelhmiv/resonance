@@ -20,11 +20,18 @@ function shardFileFromManifest(manifest: Record<string, unknown>): string {
 }
 
 export async function GET() {
-  let vectorInfo = {
+  let vectorInfo: {
+    loaded: boolean;
+    model: string;
+    passageCount: number;
+    method: string;
+    vectorsFileSize: number;
+    hnswAvailable?: boolean;
+  } = {
     loaded: false,
     model: 'pplx-embed-v1-4b',
     passageCount: 0,
-    method: 'lexical-fallback' as string,
+    method: 'lexical-fallback',
     vectorsFileSize: 0,
   };
 
@@ -39,12 +46,24 @@ export async function GET() {
       if (hasBin) {
         try { binSize = statSync(vectorsBinPath).size; } catch {}
       }
+      // Check for HNSW index on the volume
+      const hnswPath = path.join(VECTORS_DIR, 'corpus.hnsw');
+      const idmapPath = path.join(VECTORS_DIR, 'corpus.idmap');
+      const hasHnsw = existsSync(hnswPath) && existsSync(idmapPath);
+
+      let method: string;
+      if (hasHnsw) method = 'semantic-vector';
+      else if (hasBin) method = 'semantic-int8';
+      else if (existsSync(MANIFEST_PATH)) method = 'manifest-only';
+      else method = 'lexical-fallback';
+
       vectorInfo = {
         loaded: hasBin,
         model: manifest.model || 'pplx-embed-v1-4b',
         passageCount: manifest.passage_count || 0,
-        method: hasBin ? 'semantic-int8' : (existsSync(MANIFEST_PATH) ? 'manifest-only' : 'lexical-fallback'),
+        method,
         vectorsFileSize: binSize,
+        hnswAvailable: hasHnsw,
       };
     } catch {
       // manifest corrupted or unreadable
