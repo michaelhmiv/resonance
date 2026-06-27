@@ -24,7 +24,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync, existsSync, statSync } from 'fs';
-import { getEnabledVoicePackages } from '../../../lib/library-prefs';
+import { getEnabledVoicePackages } from '../../../../lib/library-prefs';
 
 const VOLUME_PATH = '/data/seeded_library/voice_books.json';
 const BUNDLED_PATH = './data/seeded_library/voice_books.json';
