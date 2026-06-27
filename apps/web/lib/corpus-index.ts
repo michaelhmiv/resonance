@@ -171,9 +171,15 @@ function triggerBackgroundBuild(model: string): void {
   console.log(`[corpus-index] Output dir: ${outDir}, vectors shard: ${shardFile}`);
   console.log(`[corpus-index] Semantic search will be unavailable until build completes (~20-30 min).`);
 
+  // The build is memory-hungry: 504k vectors × 2560 dims × 4 bytes (Float32) ≈ 5 GB
+  // working set, plus the HNSW graph. Node's default --max-old-space-size=4096
+  // OOMs at that scale. Pass 8 GB and give it 60 min to finish.
+  // Observed failure: 2026-06-27 21:29 build hit the 30-min timeout with zero
+  // [build-hnsw] log output — was almost certainly GC-thrashing / OOM-killed by
+  // the OS under the default heap, never reaching the first addPoint log.
   const child = execFile(
     'node',
-    [script],
+    ['--max-old-space-size=8192', script],
     {
       env: {
         ...process.env,
@@ -186,8 +192,14 @@ function triggerBackgroundBuild(model: string): void {
         // Passage alignment fallback — these are git-tracked so always available
         BIBLE_PASSAGES_PATH: resolve(process.cwd(), 'data/seeded_library/bible_passages.json'),
         VOICE_PASSAGES_PATH: resolve(process.cwd(), 'data/seeded_library/voice_passages.json'),
+        // Force unbuffered stdout so progress logs flush even if the process is
+        // killed (SIGTERM from the execFile timeout) — the previous run produced
+        // zero [build-hnsw] lines because the buffer was lost on kill.
+        NODE_DISABLE_COLORS: '1',
+        FORCE_COLOR: '0',
       },
-      timeout: 30 * 60 * 1000, // 30 min hard cap
+      timeout: 60 * 60 * 1000, // 60 min — observed 13 min for 265k vectors, 25-30 min for 504k
+      maxBuffer: 32 * 1024 * 1024, // 32 MB stdout/stderr buffer (default 1 MB truncates)
     },
     (err, stdout, stderr) => {
       if (err) {
