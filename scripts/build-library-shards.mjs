@@ -47,6 +47,9 @@ const M = parseInt(process.env.HNSW_M || '32', 10);
 const EF_CONSTRUCTION = parseInt(process.env.HNSW_EF_CONSTRUCTION || '200', 10);
 const DIM = 2560;
 
+const SKIP_VOICE = process.env.SKIP_VOICE === '1';
+const SKIP_SCRIPTURE = process.env.SKIP_SCRIPTURE === '1';
+
 const BATCH_LOG = parseInt(process.env.BATCH_LOG || '5000', 10);
 const t0 = Date.now();
 function log(...args) { console.log(`[build-shards] +${((Date.now() - t0) / 1000).toFixed(1)}s`, ...args); }
@@ -133,9 +136,13 @@ mkdirSync(bundleDir, { recursive: true });
 // ── Build voice shards ─────────────────────────────────────────────────────
 const shardManifestEntries = [];
 const bookIds = [...bookMeta.keys()].sort();
-log(`building ${bookIds.length} voice shards...`);
+if (SKIP_VOICE) {
+  log(`SKIP_VOICE=1 — skipping ${bookIds.length} voice shards`);
+} else {
+  log(`building ${bookIds.length} voice shards...`);
+}
 
-for (const bookId of bookIds) {
+if (!SKIP_VOICE) for (const bookId of bookIds) {
   const meta = bookMeta.get(bookId);
   const rows = rowsByBook.get(bookId) || [];
   if (rows.length === 0) {
@@ -217,13 +224,12 @@ for (const bookId of bookIds) {
     sha256Hnsw: shaHnsw,
     sha256Idmap: shaIdmap,
   });
-
   const elapsed = (Date.now() - tBook) / 1000;
   log(`  ${bookId}: ${rows.length} passages, ${(totalBytes / 1024 / 1024).toFixed(1)} MB, ${elapsed.toFixed(1)}s`);
 }
 
 // ── Build scripture bundle ─────────────────────────────────────────────────
-if (bibleRows.length > 0) {
+if (!SKIP_SCRIPTURE && bibleRows.length > 0) {
   log(`building scripture bundle (${bibleRows.length} passages)...`);
   const tBundle = Date.now();
   const biblePassages = JSON.parse(readFileSync(BIBLE_PASSAGES_PATH, 'utf-8'));
@@ -316,16 +322,20 @@ if (bibleRows.length > 0) {
 await vecFd.close();
 
 // ── Write shard manifest ───────────────────────────────────────────────────
-const shardManifest = {
-  version: 1,
-  model: 'pplx-embed-v1-4b',
-  dim: DIM,
-  dtype: 'int8',
-  shardCount: shardManifestEntries.length,
-  totalBytes: shardManifestEntries.reduce((a, e) => a + e.totalBytes, 0),
-  shards: shardManifestEntries.sort((a, b) => a.bookId.localeCompare(b.bookId)),
-};
-writeFileSync(join(shardsDir, 'manifest.json'), JSON.stringify(shardManifest, null, 2));
+if (SKIP_VOICE) {
+  log(`SKIP_VOICE=1 — keeping existing manifest at ${join(shardsDir, 'manifest.json')}`);
+} else {
+  const shardManifest = {
+    version: 1,
+    model: 'pplx-embed-v1-4b',
+    dim: DIM,
+    dtype: 'int8',
+    shardCount: shardManifestEntries.length,
+    totalBytes: shardManifestEntries.reduce((a, e) => a + e.totalBytes, 0),
+    shards: shardManifestEntries.sort((a, b) => a.bookId.localeCompare(b.bookId)),
+  };
+  writeFileSync(join(shardsDir, 'manifest.json'), JSON.stringify(shardManifest, null, 2));
+}
 
 const elapsed = (Date.now() - t0) / 1000;
-log(`done. ${shardManifestEntries.length} shards, total ${(shardManifest.totalBytes / 1024 / 1024 / 1024).toFixed(2)} GB, ${(elapsed / 60).toFixed(1)} min`);
+log(`done. ${SKIP_VOICE ? '(skipped voice)' : shardManifestEntries.length + ' shards'}, total ${(shardManifestEntries.reduce((a, e) => a + e.totalBytes, 0) / 1024 / 1024 / 1024).toFixed(2)} GB, ${(elapsed / 60).toFixed(1)} min`);
