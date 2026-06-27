@@ -59,6 +59,37 @@ export class MobileDataLayer implements DataLayer {
     return getLibraryPackages();
   }
 
+  /**
+   * Mobile free-tier stub: returns all packages as enabled, mode 'all'.
+   * Free-tier users always see the full catalog (no per-device opt-in).
+   * When the user upgrades to premium and signs in, the cloud-backed
+   * per-package prefs will take over (this method is replaced by a
+   * network-backed implementation in the premium tier).
+   */
+  async getLibraryPackagePrefs() {
+    const packages = await getLibraryPackages();
+    return {
+      installed: packages.map((p) => ({
+        packageId: p.package_id,
+        label: p.label,
+        bookCount: p.books.length,
+        enabled: true,
+      })),
+      mode: 'all' as const,
+    };
+  }
+
+  /** Free-tier stub: toggle is a no-op. */
+  async setLibraryPackageEnabled(_packageId: string, _enabled: boolean): Promise<{ enabledList: string[] }> {
+    // No-op on free tier — settings persist only when the user has a cloud account.
+    return { enabledList: [] };
+  }
+
+  /** Free-tier stub: reset is a no-op. */
+  async resetLibraryPackages(): Promise<void> {
+    // No-op on free tier.
+  }
+
   async getLibraryBook(bookId: string) {
     return getLibraryBook(bookId);
   }

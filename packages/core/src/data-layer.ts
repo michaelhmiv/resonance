@@ -40,6 +40,23 @@ export interface DataLayer {
   getLibraryPackages(): Promise<LibraryPackage[]>;
   getLibraryBook(bookId: string): Promise<LibraryBook | null>;
   getLibraryPassages(bookId: string): Promise<LibraryPassage[]>;
+  /**
+   * Returns the installed voice packages with the current user's opt-in state
+   * for each. Used by the Settings UI to render per-package toggles.
+   */
+  getLibraryPackagePrefs(): Promise<{
+    installed: Array<{ packageId: string; label: string; bookCount: number; enabled: boolean }>;
+    mode: 'all' | 'none' | 'subset';
+  }>;
+  /**
+   * Toggle one package's opt-in state. Idempotent. Throws on unknown packageId.
+   */
+  setLibraryPackageEnabled(packageId: string, enabled: boolean): Promise<{ enabledList: string[] }>;
+  /**
+   * Reset to "all enabled" (clears the user's opt-in preference).
+   * Subsequent reads will return the full installed set.
+   */
+  resetLibraryPackages(): Promise<void>;
 
   // ── Journal segments ───────────────────────────────────────────────────
   loadSegments(): Promise<JournalSegment[]>;

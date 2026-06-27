@@ -174,7 +174,12 @@ export function SettingsScreen({
         </Pressable>
       </Section>
 
-      {/* 5. Privacy & Data */}
+      {/* 5. Library Contents — per-package opt-in */}
+      <Section title="Library Contents">
+        <LibraryContentsSection />
+      </Section>
+
+      {/* 6. Privacy & Data */}
       <Section title="Privacy & Data">
         {onExportJournal && (
           <Pressable onPress={onExportJournal} style={styles.row}>
@@ -193,12 +198,12 @@ export function SettingsScreen({
         </Text>
       </Section>
 
-      {/* 6. Storage */}
+      {/* 7. Storage */}
       <Section title="Storage">
         <Row label="Total storage used" subtext={`${(storageSizeBytes / 1024).toFixed(1)} KB`} />
       </Section>
 
-      {/* 7. Accessibility */}
+      {/* 8. Accessibility */}
       <Section title="Accessibility">
         <Pressable onPress={() => updateSetting('textScale', cycleValue(settings.textScale, TEXT_SCALES))} style={styles.row}>
           <Text style={styles.rowLabel}>Text Scale</Text>
@@ -210,7 +215,7 @@ export function SettingsScreen({
         </Pressable>
       </Section>
 
-      {/* 8. Licenses */}
+      {/* 9. Licenses */}
       <Section title="Licenses & Acknowledgments">
         <LicenseGroup title="Bible Translations" items={[
           { name: 'KJV', license: 'Public Domain' },
@@ -257,6 +262,114 @@ export function SettingsScreen({
 }
 
 // ── Sub-components ──────────────────────────────────────────────────
+
+interface LibraryPackagePref {
+  packageId: string;
+  label: string;
+  bookCount: number;
+  enabled: boolean;
+}
+
+/**
+ * Per-package opt-in toggles for the Library.
+ *
+ * Reads installed packages + per-user opt-in state from dataLayer.
+ * Toggles are optimistic: the UI updates immediately, rolls back on error.
+ * "Reset to all enabled" re-enables everything (server side: exits subset mode).
+ */
+function LibraryContentsSection(): ReactNode {
+  const dataLayer = useDataLayer();
+  const [prefs, setPrefs] = useState<{
+    installed: LibraryPackagePref[];
+    mode: 'all' | 'none' | 'subset';
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    dataLayer.getLibraryPackagePrefs()
+      .then(setPrefs)
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  }, [dataLayer]);
+
+  const toggle = useCallback(async (packageId: string, enabled: boolean) => {
+    if (!prefs) return;
+    // Optimistic update
+    setPrefs({
+      ...prefs,
+      installed: prefs.installed.map((p) =>
+        p.packageId === packageId ? { ...p, enabled } : p,
+      ),
+      mode: 'subset',
+    });
+    setError(null);
+    try {
+      await dataLayer.setLibraryPackageEnabled(packageId, enabled);
+    } catch (e) {
+      // Rollback
+      setPrefs({
+        ...prefs,
+        installed: prefs.installed.map((p) =>
+          p.packageId === packageId ? { ...p, enabled: !enabled } : p,
+        ),
+      });
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, [prefs, dataLayer]);
+
+  const reset = useCallback(async () => {
+    if (!prefs) return;
+    setError(null);
+    try {
+      await dataLayer.resetLibraryPackages();
+      const fresh = await dataLayer.getLibraryPackagePrefs();
+      setPrefs(fresh);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, [prefs, dataLayer]);
+
+  if (!prefs) {
+    return (
+      <View style={styles.libraryLoading}>
+        <ActivityIndicator size="small" color="#8b7355" />
+      </View>
+    );
+  }
+
+  return (
+    <View>
+      <Text style={styles.description}>
+        Pick the voices of the Church that appear in your Library and in
+        resonance results. You can change these anytime.
+      </Text>
+      {prefs.installed.map((pkg) => (
+        <Pressable
+          key={pkg.packageId}
+          onPress={() => toggle(pkg.packageId, !pkg.enabled)}
+          style={styles.row}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: pkg.enabled }}
+          accessibilityLabel={`${pkg.label} — ${pkg.bookCount} works`}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowLabel}>{pkg.label}</Text>
+            <Text style={styles.rowSubtext}>{pkg.bookCount} works</Text>
+          </View>
+          <View style={[styles.checkbox, pkg.enabled && styles.checkboxOn]}>
+            {pkg.enabled && <Text style={styles.checkboxMark}>✓</Text>}
+          </View>
+        </Pressable>
+      ))}
+      {prefs.mode !== 'all' && (
+        <Pressable onPress={reset} style={styles.row}>
+          <Text style={styles.actionText}>Reset to all enabled</Text>
+        </Pressable>
+      )}
+      {error && <Text style={styles.errorText}>{error}</Text>}
+    </View>
+  );
+}
+
 function Section({ title, children }: { title: string; children: ReactNode }): ReactNode {
   return (
     <View style={styles.section}>
@@ -325,4 +438,13 @@ const styles = StyleSheet.create({
   confirmCancelText: { fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: '500', color: '#7a7368' },
   confirmDelete: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, backgroundColor: '#c9a0a0' },
   confirmDeleteText: { fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: '600', color: '#ffffff' },
+  // Library Contents section
+  libraryLoading: { paddingVertical: 24, alignItems: 'center' },
+  checkbox: {
+    width: 24, height: 24, borderRadius: 4, borderWidth: 1.5, borderColor: '#c4bdb1',
+    backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center',
+  },
+  checkboxOn: { backgroundColor: '#8b7355', borderColor: '#8b7355' },
+  checkboxMark: { fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: '700', color: '#ffffff', lineHeight: 16 },
+  errorText: { fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#c9a0a0', paddingHorizontal: 16, paddingVertical: 8 },
 });

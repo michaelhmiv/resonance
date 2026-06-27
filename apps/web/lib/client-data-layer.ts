@@ -228,6 +228,35 @@ export class WebDataLayer implements DataLayer {
     }));
   }
 
+  async getLibraryPackagePrefs(): Promise<{
+    installed: Array<{ packageId: string; label: string; bookCount: number; enabled: boolean }>;
+    mode: 'all' | 'none' | 'subset';
+  }> {
+    return api<{
+      installed: Array<{ packageId: string; label: string; bookCount: number; enabled: boolean }>;
+      mode: 'all' | 'none' | 'subset';
+    }>('/api/library/packages');
+  }
+
+  async setLibraryPackageEnabled(packageId: string, enabled: boolean): Promise<{ enabledList: string[] }> {
+    return api<{ packageId: string; enabled: boolean; enabledList: string[] }>(
+      `/api/library/packages/${encodeURIComponent(packageId)}`,
+      { method: 'PUT', body: JSON.stringify({ enabled }) },
+    ).then((r) => ({ enabledList: r.enabledList }));
+  }
+
+  async resetLibraryPackages(): Promise<void> {
+    // No dedicated reset endpoint; toggle every package on to clear the subset list.
+    // The server's `toggleEnabledVoicePackage` treats a no-op (already enabled) as
+    // a no-op write, so this just exits 'subset' mode.
+    const prefs = await this.getLibraryPackagePrefs();
+    for (const pkg of prefs.installed) {
+      if (!pkg.enabled) {
+        await this.setLibraryPackageEnabled(pkg.packageId, true);
+      }
+    }
+  }
+
   async getLibraryBook(bookId: string): Promise<LibraryBook | null> {
     const packages = await this.getLibraryPackages();
     for (const pkg of packages) {

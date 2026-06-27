@@ -81,7 +81,7 @@ export function LibraryBrowser({ onOpenBook }: LibraryBrowserProps): ReactNode {
       <View style={[styles.container, styles.center]}>
         <Text style={styles.emptyTitle}>The Library is empty.</Text>
         <Text style={styles.emptyDescription}>
-          Additional Book Packages can be added from Settings.
+          You can opt back in to any package from Settings → Library Contents.
         </Text>
       </View>
     );
