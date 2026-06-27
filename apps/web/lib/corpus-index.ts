@@ -135,8 +135,15 @@ function triggerBackgroundBuild(model: string): void {
   const script = resolve(projectRoot, 'scripts/build-hnsw-index.mjs');
   const outDir = resolve(VECTORS_BASE, model);
 
+  // Read shard filename from manifest (actual binary name, e.g. "vectors.bin")
+  let shardFile = 'vectors.bin'; // sensible default
+  try {
+    const mf = JSON.parse(readFileSync(resolve(VECTORS_BASE, model, 'manifest.json'), 'utf-8'));
+    if (mf.shards?.[0]?.file) shardFile = mf.shards[0].file;
+  } catch { /* use default */ }
+
   console.log(`[corpus-index] Spawning background HNSW build: node ${script}`);
-  console.log(`[corpus-index] Output dir: ${outDir}`);
+  console.log(`[corpus-index] Output dir: ${outDir}, vectors shard: ${shardFile}`);
   console.log(`[corpus-index] Semantic search will be unavailable until build completes (~20-30 min).`);
 
   const child = execFile(
@@ -148,7 +155,8 @@ function triggerBackgroundBuild(model: string): void {
         OUTPUT_DIR: outDir,
         // Tell the build script where to find the production vectors + manifest.
         // These env vars override the build script's local-dev defaults.
-        VECTORS_PATH: resolve(VECTORS_BASE, model, `vectors_${model.replace(/-/g, '_')}.bin`),
+        // Use the actual shard filename from the manifest, not a guessed name.
+        VECTORS_PATH: resolve(VECTORS_BASE, model, shardFile || 'vectors.bin'),
         MANIFEST_PATH: resolve(VECTORS_BASE, model, 'manifest.json'),
       },
       timeout: 30 * 60 * 1000, // 30 min hard cap
