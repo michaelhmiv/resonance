@@ -11,13 +11,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { embedText } from '../../../lib/embed-text';
 import { timingSafeEqual } from 'crypto';
-
-const MODEL = 'perplexity/pplx-embed-v1-4b';
-const DIM = 2560;
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/embeddings';
-const REQUEST_TIMEOUT_MS = 30_000;
-const MAX_RETRIES = 3;
 
 // ── Auth: the dev session cookie gates the whole app, so this is best-effort.
 //    The middleware already blocks anonymous requests before we get here. ──
@@ -31,68 +26,7 @@ function authed(req: NextRequest): boolean {
   return timingSafeEqual(a, b);
 }
 
-// ── OpenRouter call with retry/backoff ─────────────────────────────────────
-
-interface EmbeddingResponse {
-  data: { embedding: number[]; index: number; object: string }[];
-  model: string;
-  usage: { prompt_tokens: number; total_tokens: number; cost?: number };
-  id?: string;
-}
-
-async function callOpenRouter(text: string, apiKey: string): Promise<EmbeddingResponse> {
-  let lastError: string | null = null;
-
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-    try {
-      const res = await fetch(OPENROUTER_URL, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://resonance.app',
-          'X-Title': 'Resonance',
-        },
-        body: JSON.stringify({ model: MODEL, input: text }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeout);
-
-      if (res.status === 429 || res.status >= 500) {
-        const body = await res.text();
-        lastError = `OpenRouter ${res.status}: ${body.slice(0, 200)}`;
-        // Exponential backoff: 1s, 2s, 4s
-        await new Promise((r) => setTimeout(r, 1000 * 2 ** (attempt - 1)));
-        continue;
-      }
-
-      if (!res.ok) {
-        const body = await res.text();
-        // Don't retry 4xx (except 429) — bad request, auth, etc.
-        throw new Error(`OpenRouter ${res.status}: ${body.slice(0, 300)}`);
-      }
-
-      return (await res.json()) as EmbeddingResponse;
-    } catch (err) {
-      clearTimeout(timeout);
-      if (err instanceof Error && err.name === 'AbortError') {
-        lastError = `OpenRouter timeout after ${REQUEST_TIMEOUT_MS}ms`;
-      } else if (err instanceof Error) {
-        throw err; // Hard 4xx — don't retry
-      } else {
-        lastError = String(err);
-      }
-    }
-  }
-
-  throw new Error(lastError ?? 'OpenRouter request failed after retries');
-}
-
-// ── Route handler ──────────────────────────────────────────────────────────
+// ── Route handler (uses shared embedText from lib/embed-text.ts) ───────────
 
 export async function POST(req: NextRequest) {
   if (!authed(req)) {
@@ -114,40 +48,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Text too short' }, { status: 400 });
     }
 
-    // Truncate very long inputs — pplx-embed-v1-4b has a 32K context but we
-    // don't want to ship 30K-token journal entries through a single call.
-    const truncated = text.length > 8000 ? text.slice(0, 8000) : text;
-
-    const result = await callOpenRouter(truncated, apiKey);
-    const vec = result.data?.[0]?.embedding;
-
-    if (!vec || vec.length !== DIM) {
-      return NextResponse.json(
-        { error: 'Unexpected embedding shape from provider' },
-        { status: 502 },
-      );
-    }
-
-    // L2-normalize the vector. OpenRouter returns values in [-1, 1] but
-    // does NOT normalize the vector to unit length. The resonance route's
-    // cosine similarity assumes both sides are unit vectors, so we
-    // normalize here at the boundary.
-    let norm = 0;
-    for (const v of vec) norm += v * v;
-    norm = Math.sqrt(norm);
-    if (norm > 0) {
-      for (let i = 0; i < vec.length; i++) vec[i] = vec[i] / norm;
-    }
+    const result = await embedText(text, apiKey);
 
     return NextResponse.json({
-      vector: vec,
-      dim: DIM,
+      vector: result.vector,
+      dim: result.dim,
       model: 'pplx-embed-v1-4b',
-      cost_usd: result.usage.cost ?? 0,
-      usage: {
-        prompt_tokens: result.usage.prompt_tokens,
-        total_tokens: result.usage.total_tokens,
-      },
+      cost_usd: result.cost_usd,
+      usage: result.usage,
       normalized: true,
     });
   } catch (err) {

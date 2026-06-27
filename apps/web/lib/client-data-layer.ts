@@ -355,40 +355,11 @@ export class WebDataLayer implements DataLayer {
   async findResonance(journalText: string, segmentId?: string): Promise<ResonanceResult | null> {
     if (journalText.trim().length < 3) return null;
 
-    if (segmentId) {
-      try {
-        const cached = await api<{ cached: boolean; result: ResonanceResult | null }>(
-          `/api/resonance/cache?sourceId=${encodeURIComponent(segmentId)}`,
-        );
-        if (cached.cached && cached.result) return cached.result;
-      } catch {
-        // Cache is an optimization; fall through to live resonance.
-      }
-    }
-
-    // 1. Embed the journal text via /api/embed (pplx-embed-v1-4b via OpenRouter)
-    let vector: number[] | undefined;
-    let model = 'pplx-embed-v1-4b';
-    try {
-      const embedResult = await api<{ vector: number[]; dim: number; model: string }>('/api/embed', {
-        method: 'POST',
-        body: JSON.stringify({ text: journalText }),
-      });
-      if (embedResult.vector && embedResult.vector.length > 0) {
-        vector = embedResult.vector;
-        model = embedResult.model || model;
-      }
-    } catch (err) {
-      console.warn('[resonance] Embedding call failed, will use lexical fallback:', err);
-    }
-
-    // 2. Send vector + text to /api/resonance — semantic when vector is available, lexical fallback otherwise
+    // ── Single-request resonance: server handles cache + embed + search ──
+    // Server checks Supabase cache first (if sourceId provided), then falls
+    // back to server-side embed + HNSW search. One call handles everything.
     const body: Record<string, unknown> = { text: journalText };
     if (segmentId) body.sourceId = segmentId;
-    if (vector) {
-      body.vector = vector;
-      body.model = model;
-    }
 
     const data = await api<ResonanceResult>('/api/resonance', {
       method: 'POST',

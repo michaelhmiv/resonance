@@ -27,7 +27,7 @@ function getSupabase(): SupabaseClient {
 // Default dev user ID (pre-auth, service role bypasses RLS)
 const DEV_USER_ID = '00000000-0000-0000-0000-000000000000';
 
-async function getDevUserId(): Promise<string> {
+export async function getDevUserId(): Promise<string> {
   const sb = getSupabase();
   const { data } = await sb.from('profiles').select('id').eq('email', 'dev@resonance.local').single();
   return data?.id || DEV_USER_ID;

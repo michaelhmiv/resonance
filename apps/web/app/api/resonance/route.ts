@@ -1,12 +1,11 @@
 /**
  * POST /api/resonance — find the most resonant Library passages
- * for a given journal text vector.
+ * for a given journal text (or vector).
  *
  * Single embedding model on the server: pplx-embed-v1-4b (2560d int8).
- * The client sends a 2560d vector; we score it against the on-volume index.
- *
- * POST body:
- *   { vector: number[] }  (or { text: string } for lexical fallback)
+ * The client sends either:
+ *   { text: string }           → server embeds + HNSW search (single request)
+ *   { vector: number[], text }  → skip server embed, use provided vector
  *
  * Returns up to MAX_PER_CATEGORY scripture + voice passages sorted by cosine
  * similarity. Personalizes with a 1.12× boost for passages the user has
@@ -18,12 +17,16 @@ import { open, readFile, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { lexicalResonance } from '../../../lib/resonance-fallback';
 import {
-  getUserHighlightEmbeddings,
+  getDevUserId,
   getHighlights,
   resonanceContentHash,
   storeResonanceCache,
   replaceResonanceEdges,
+  getFreshResonanceCacheForSource,
 } from '../../../lib/db';
+import { ensureCorpusIndex } from '../../../lib/corpus-index';
+import { getCachedUserEmbeddings, invalidateUser } from '../../../lib/user-vector-store';
+import { observeLatencyMs, incCounter, recordEvent, setGauge } from '../../../lib/resonance-metrics';
 
 const VECTORS_BASE = process.env.VECTORS_PATH || '/data/vectors';
 const ONLINE_MODEL = 'pplx-embed-v1-4b'; // the only server-side model
@@ -371,8 +374,10 @@ async function scoreAllRows(loaded: LoadedModel, queryVecs: number[][]): Promise
 // ── Route handler ─────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const t0 = Date.now();
+  incCounter('resonance.requests_total');
   try {
-    const { vector, text, sourceId, entryId, sourceNodeId, sourceType } = (await req.json()) as {
+    let { vector, text, sourceId, entryId, sourceNodeId, sourceType } = (await req.json()) as {
       vector?: number[];
       text?: string;
       sourceId?: string;
@@ -381,6 +386,24 @@ export async function POST(req: NextRequest) {
       sourceType?: 'journal_entry' | 'highlight' | 'note' | 'reading_event' | 'corpus_passage' | 'theme_snapshot';
     };
     const resolvedSourceId = sourceId ?? entryId;
+
+    // ── Server-side cache: if sourced, check Supabase cache before embed+search ──
+    // This eliminates the client needing a separate GET /api/resonance/cache call.
+    // Fresh cache hit → instant return (no embed API call, no HNSW search).
+    if (resolvedSourceId) {
+      try {
+        const cached = await getFreshResonanceCacheForSource(resolvedSourceId, sourceType);
+        if (cached) {
+          incCounter('resonance.cache_hits');
+          observeLatencyMs('resonance.total_ms', Date.now() - t0);
+          console.log('[resonance] cache hit for', resolvedSourceId);
+          return NextResponse.json({ ...cached, _fromCache: true });
+        }
+        incCounter('resonance.cache_misses');
+      } catch (err) {
+        console.warn('[resonance] cache lookup failed, computing fresh:', err instanceof Error ? err.message : err);
+      }
+    }
 
     const persistResultIfSourced = async (result: Record<string, unknown>) => {
       if (!resolvedSourceId || !sourceNodeId || !text?.trim()) return;
@@ -402,26 +425,42 @@ export async function POST(req: NextRequest) {
       }
     };
 
-    // ── Semantic vector path ─────────────────────────────────────────
-    if (vector && vector.length > 0) {
-      const loaded = await loadModel(ONLINE_MODEL);
+    // ── Server-side embed: when client sends text without a vector, ──
+    // embed on the server to eliminate the client→embed→resonance waterfall.
+    if ((!vector || vector.length === 0) && text && text.trim().length >= 3) {
+      const apiKey = process.env.OPENROUTER_API_KEY;
+      if (apiKey) {
+        try {
+          const { embedText } = await import('../../../lib/embed-text');
+          const t1 = Date.now();
+          const embedResult = await embedText(text, apiKey);
+          observeLatencyMs('resonance.embed_ms', Date.now() - t1);
+          vector = embedResult.vector;
+          console.log(`[resonance] Server-side embed: ${embedResult.dim}d, cost=$${embedResult.cost_usd.toFixed(6)}`);
+        } catch (err) {
+          incCounter('resonance.embed_errors');
+          console.warn('[resonance] Server-side embed failed, using lexical fallback:', err instanceof Error ? err.message : err);
+        }
+      } else {
+        console.warn('[resonance] OPENROUTER_API_KEY not set, skipping server-side embed');
+      }
+    }
 
-      if (loaded && loaded.passageCount > 0 && vector.length === loaded.dim) {
+    // ── Semantic vector path (HNSW Zone A + brute-force Zone B) ────
+    if (vector && vector.length > 0) {
+      const corpus = await ensureCorpusIndex(ONLINE_MODEL);
+
+      if (corpus && corpus.passageCount > 0 && vector.length === corpus.dim) {
         await ensureMetadata();
         const meta = passageMetadata || [];
 
-        // Quick sanity: check that the loaded vectors for the first passage_id
-        // match the renormalized row in memory
-        const firstKey = orderedPassageKeys[0];
-        const firstMeta = meta.find(m => passageKey(m) === firstKey);
-        console.log(`[resonance] first vector row corresponds to ${firstKey} (${firstMeta?.book_id ?? 'unknown'})`);
-
-        // Fetch user highlights and their note embeddings
+        // Fetch user highlights and their note embeddings (Zone B: in-memory cache)
         let highlightNoteVecs: number[][] = [];
         let highlightRefs = new Set<string>();
+        const devUserId = await getDevUserId();
         try {
           [highlightNoteVecs, highlightRefs] = await Promise.all([
-            getUserHighlightEmbeddings().catch(() => [] as number[][]),
+            getCachedUserEmbeddings(devUserId).catch(() => [] as number[][]),
             getHighlights().then(
               (rows: { verse_ref: string }[]) =>
                 new Set(rows.map((r) => normalizeVerseRef(r.verse_ref))),
@@ -431,22 +470,35 @@ export async function POST(req: NextRequest) {
           // personalization is additive, not critical
         }
 
-        // Build id → meta-index lookup so we can resolve the correct
-        // metadata for each vector row via its passage id.
+        // Build id → meta-index lookup
         const keyToMeta = new Map<string, number>();
         for (let m = 0; m < meta.length; m++) {
           keyToMeta.set(passageKey(meta[m]), m);
         }
 
-        // Score all query vectors in a single streamed pass over the int8 file.
-        const queryVecs = [vector, ...highlightNoteVecs.filter((noteVec) => noteVec.length === loaded.dim)];
-        const simMap = await scoreAllRows(loaded, queryVecs);
+        // ── Zone A: HNSW search over static corpus ────────────────────
+        // Search each query vector and take the best similarity per passage key.
+        // We request more candidates than MAX_PER_CATEGORY because we need
+        // enough scripture AND voice results after filtering.
+        const SEARCH_K = Math.max(100, MAX_PER_CATEGORY * 20);
+        const queryVecs = [vector, ...highlightNoteVecs.filter((noteVec) => noteVec.length === corpus.dim)];
+        const bestSim = new Map<string, number>(); // passageKey → best sim across queries
+
+        for (const qVec of queryVecs) {
+          const hits = corpus.search(qVec, SEARCH_K, 200);
+          for (const hit of hits) {
+            const existing = bestSim.get(hit.key) ?? Number.NEGATIVE_INFINITY;
+            if (hit.similarity > existing) {
+              bestSim.set(hit.key, hit.similarity);
+            }
+          }
+        }
 
         // Apply highlight boost and sort
         const scored: { key: string; sim: number }[] = [];
-        for (const [rowKey, sim] of Array.from(simMap.entries())) {
+        for (const [rowKey, sim] of Array.from(bestSim)) {
           const m = keyToMeta.get(rowKey);
-          if (m === undefined) continue; // passage not in current metadata
+          if (m === undefined) continue;
           let finalSim = sim;
           if (highlightRefs.has(normalizeVerseRef(verseRefFromMeta(meta[m])))) {
             finalSim = sim * HIGHLIGHT_BOOST;
@@ -483,10 +535,12 @@ export async function POST(req: NextRequest) {
           pastEntries: [],
           method: highlightNoteVecs.length > 0 ? 'semantic-vector+highlight-notes' : 'semantic-vector',
           model: ONLINE_MODEL,
-          dim: loaded.dim,
-          passageCount: loaded.passageCount,
+          dim: corpus.dim,
+          passageCount: corpus.passageCount,
         };
         await persistResultIfSourced(result);
+        observeLatencyMs('resonance.total_ms', Date.now() - t0);
+        incCounter('resonance.requests_semantic');
         return NextResponse.json(result);
       }
     }
@@ -521,8 +575,11 @@ export async function POST(req: NextRequest) {
       note: `No semantic vectors available. Using transparent lexical fallback.`,
     };
     await persistResultIfSourced(fallbackResult);
+    observeLatencyMs('resonance.total_ms', Date.now() - t0);
+    incCounter('resonance.requests_fallback');
     return NextResponse.json(fallbackResult);
   } catch (err) {
+    incCounter('resonance.errors');
     console.error('[resonance] route error:', err);
     return NextResponse.json(
       {
