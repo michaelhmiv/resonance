@@ -47,6 +47,9 @@ export function LibraryBrowser({ onOpenBook }: LibraryBrowserProps): ReactNode {
   });
   const dataLayer = useDataLayer();
   const [expandedPkg, setExpandedPkg] = useState<string | null>(null);
+  // First-visit onboarding prompt. Persisted via user_settings('library_seen_at').
+  // null = still loading the check, false = show prompt, true = hide.
+  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,10 +62,34 @@ export function LibraryBrowser({ onOpenBook }: LibraryBrowserProps): ReactNode {
         }
       }
     });
+    // Check whether the onboarding prompt has been dismissed in the past.
+    // The /api/settings endpoint returns defaults for missing keys, so we
+    // check the raw key. If 'library_seen_at' is set, the user has seen
+    // (and dismissed) the prompt before.
+    fetch('/api/settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((settings) => {
+        if (cancelled) return;
+        setShowOnboarding(!settings?.library_seen_at);
+      })
+      .catch(() => {
+        if (!cancelled) setShowOnboarding(false);
+      });
     return () => {
       cancelled = true;
     };
   }, [dataLayer]);
+
+  const dismissOnboarding = useCallback(async () => {
+    setShowOnboarding(false);
+    try {
+      await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'library_seen_at', value: new Date().toISOString() }),
+      });
+    } catch { /* best-effort */ }
+  }, []);
 
   const togglePackage = useCallback((pkgId: string) => {
     setExpandedPkg((prev) => (prev === pkgId ? null : pkgId));
@@ -89,6 +116,24 @@ export function LibraryBrowser({ onOpenBook }: LibraryBrowserProps): ReactNode {
 
   return (
     <View style={styles.container}>
+      {showOnboarding && (
+        <View style={styles.onboardingCard}>
+          <Text style={styles.onboardingTitle}>Customize your Library</Text>
+          <Text style={styles.onboardingBody}>
+            You can choose which collections of voices appear here and in
+            resonance results — from Settings → Library Contents, anytime.
+            For now, everything is enabled.
+          </Text>
+          <Pressable
+            onPress={dismissOnboarding}
+            style={styles.onboardingDismiss}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss"
+          >
+            <Text style={styles.onboardingDismissText}>Got it</Text>
+          </Pressable>
+        </View>
+      )}
       <FlatList
         data={packages}
         keyExtractor={(item) => item.package_id}
@@ -223,5 +268,37 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textTertiary,
     marginTop: spacing.xs,
+  },
+  // First-visit onboarding prompt
+  onboardingCard: {
+    margin: layout.cardPadding,
+    marginBottom: 0,
+    padding: layout.cardPadding,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.sm,
+  },
+  onboardingTitle: {
+    fontFamily: fontFamilies.serifSemibold,
+    fontSize: 17,
+    color: colors.textPrimary,
+  },
+  onboardingBody: {
+    ...serifText,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.textSecondary,
+  },
+  onboardingDismiss: {
+    alignSelf: 'flex-end',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  onboardingDismissText: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 14,
+    color: colors.accent,
   },
 });
