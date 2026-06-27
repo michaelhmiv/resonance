@@ -17,7 +17,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir, readFile, unlink, readdir, rename } from 'fs/promises';
+import { writeFile, mkdir, readFile, unlink, readdir, rename, appendFile, stat } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 
@@ -90,18 +90,23 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Assemble
+      // Stream-assemble to avoid Buffer.concat OOM on multi-GB files.
+      // The previous Buffer.concat approach needed `totalFileSize` bytes resident
+      // in the Node process — 5.3 GB HNSW upload OOMs the Next.js worker.
+      // We append each chunk to a .upload temp file in order; the OS page cache
+      // handles the rest. Then atomic rename to the final destination.
       await mkdir(path.dirname(destPath), { recursive: true });
-      const chunks: Buffer[] = [];
+      const finalTmp = destPath + '.upload';
+      // Truncate the temp file (in case of a retry)
+      await writeFile(finalTmp, Buffer.alloc(0));
+      let assembledSize = 0;
       for (let i = 0; i < totalChunks; i++) {
         const p = path.join(chunkDir, `chunk_${i}`);
-        chunks.push(await readFile(p));
+        const chunkBuf = await readFile(p);
+        await appendFile(finalTmp, chunkBuf);
+        assembledSize += chunkBuf.length;
       }
-      const assembled = Buffer.concat(chunks);
-
-      // Write atomically: write to .tmp first, then rename
-      const finalTmp = destPath + '.upload';
-      await writeFile(finalTmp, assembled);
+      // Atomic rename into place
       await rename(finalTmp, destPath);
 
       // Clean up chunks
@@ -118,7 +123,7 @@ export async function POST(req: NextRequest) {
         ok: true,
         path: destPath,
         rel_path: relPath,
-        size: assembled.length,
+        size: assembledSize,
         chunks: totalChunks,
       });
     }
