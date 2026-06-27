@@ -103,6 +103,15 @@ function isIndexStale(idmap: Record<string, unknown>, model: string): boolean {
     // Assume fresh (already loaded). Next rebuild will stamp builtFrom.
     return false;
   }
+  // Check if idmap has voice keys — if not, it was built with broken alignment
+  const passageKeys = idmap.passageKeys as string[] | undefined;
+  if (Array.isArray(passageKeys) && passageKeys.length > 0) {
+    const hasVoices = passageKeys.some(k => k.startsWith('voice:'));
+    if (!hasVoices) {
+      console.warn('[corpus-index] idmap has no voice keys — marking stale for rebuild');
+      return true;
+    }
+  }
   const current = computeSourceFingerprint(model);
   if (!current) return false; // can't check if source files gone
   const stale = (
@@ -158,6 +167,9 @@ function triggerBackgroundBuild(model: string): void {
         // Use the actual shard filename from the manifest, not a guessed name.
         VECTORS_PATH: resolve(VECTORS_BASE, model, shardFile || 'vectors.bin'),
         MANIFEST_PATH: resolve(VECTORS_BASE, model, 'manifest.json'),
+        // Passage alignment fallback — these are git-tracked so always available
+        BIBLE_PASSAGES_PATH: resolve(process.cwd(), 'data/seeded_library/bible_passages.json'),
+        VOICE_PASSAGES_PATH: resolve(process.cwd(), 'data/seeded_library/voice_passages.json'),
       },
       timeout: 30 * 60 * 1000, // 30 min hard cap
     },

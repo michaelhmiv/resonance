@@ -528,7 +528,7 @@ export async function POST(req: NextRequest) {
         // Search each query vector and take the best similarity per passage key.
         // We request more candidates than MAX_PER_CATEGORY because we need
         // enough scripture AND voice results after filtering.
-        const SEARCH_K = Math.max(100, MAX_PER_CATEGORY * 20);
+        const SEARCH_K = Math.max(200, MAX_PER_CATEGORY * 100);
         const queryVecs = [vector, ...highlightNoteVecs.filter((noteVec) => noteVec.length === corpus.dim)];
         const bestSim = new Map<string, number>(); // passageKey → best sim across queries
 

@@ -97,8 +97,45 @@ if (
     process.exit(1);
   }
 } else {
-  console.error('[build-hnsw] no alignment data available');
-  process.exit(1);
+  // Fallback: generate alignment from bible_passages.json + voice_passages.json
+  // These are checked in git and available on Railway at /app/apps/web/data/seeded_library/
+  // or /data/seeded_library/
+  const BIBLE_PATH = process.env.BIBLE_PASSAGES_PATH || resolve(__dirname, '../apps/web/data/seeded_library/bible_passages.json');
+  const VOICE_PATH = process.env.VOICE_PASSAGES_PATH || resolve(__dirname, '../apps/web/data/seeded_library/voice_passages.json');
+  // Also check alt paths (Railway cwd is /app/apps/web)
+  const BIBLE_ALT = '/data/seeded_library/bible_passages.json';
+  const VOICE_ALT = '/data/seeded_library/voice_passages.json';
+  const BIBLE_ALT2 = resolve(__dirname, '../../data/seeded_library/bible_passages.json');
+  const VOICE_ALT2 = resolve(__dirname, '../../data/seeded_library/voice_passages.json');
+
+  const bPath = [BIBLE_PATH, BIBLE_ALT, BIBLE_ALT2].find(p => existsSync(p));
+  const vPath = [VOICE_PATH, VOICE_ALT, VOICE_ALT2].find(p => existsSync(p));
+
+  if (bPath && vPath) {
+    console.log(`[build-hnsw] loading passages from ${bPath} + ${vPath}`);
+    const biblePassages = JSON.parse(readFileSync(bPath, 'utf-8'));
+    const voicePassages = JSON.parse(readFileSync(vPath, 'utf-8'));
+    biblePassages.sort((a, b) => a.id - b.id);
+    voicePassages.sort((a, b) => a.id - b.id);
+
+    if (biblePassages.length + voicePassages.length === PASSAGE_COUNT) {
+      alignmentIds = [
+        ...biblePassages.map(p => p.id),
+        ...voicePassages.map(p => p.id),
+      ];
+      alignmentSources = [
+        ...biblePassages.map(() => 'bible'),
+        ...voicePassages.map(() => 'voice'),
+      ];
+      console.log(`[build-hnsw] using alignment from passage JSON files (${biblePassages.length} bible + ${voicePassages.length} voice = ${PASSAGE_COUNT})`);
+    } else {
+      console.error(`[build-hnsw] passage JSON count mismatch: ${biblePassages.length} bible + ${voicePassages.length} voice = ${biblePassages.length + voicePassages.length}, expected ${PASSAGE_COUNT}`);
+      process.exit(1);
+    }
+  } else {
+    console.error(`[build-hnsw] no alignment data available (tried manifest, sidecar, passage JSONs)`);
+    process.exit(1);
+  }
 }
 
 // Build passageKeys: "source:id" for each vector row
