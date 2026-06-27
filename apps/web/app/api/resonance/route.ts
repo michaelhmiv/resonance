@@ -14,7 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { open, readFile, writeFile } from 'fs/promises';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync, statSync } from 'fs';
 import { lexicalResonance } from '../../../lib/resonance-fallback';
 import {
   getDevUserId,
@@ -26,6 +26,7 @@ import {
 } from '../../../lib/db';
 import { ensureCorpusIndex } from '../../../lib/corpus-index';
 import { getCachedUserEmbeddings, invalidateUser } from '../../../lib/user-vector-store';
+import { getEnabledVoicePackages } from '../../../lib/library-prefs';
 import { observeLatencyMs, incCounter, recordEvent, setGauge } from '../../../lib/resonance-metrics';
 
 const VECTORS_BASE = process.env.VECTORS_PATH || '/data/vectors';
@@ -109,6 +110,41 @@ const VOICE_PASSAGES_PATH = existsSync('/data/seeded_library/voice_passages.json
   ? '/data/seeded_library/voice_passages.json'
   : './data/seeded_library/voice_passages.json';
 const SIDECAR_ALIGNMENT_PATH = '/data/seeded_library/vectors_gte-small_manifest.json';
+const VOICE_BOOKS_PATH = existsSync('/data/seeded_library/voice_books.json')
+  ? '/data/seeded_library/voice_books.json'
+  : './data/seeded_library/voice_books.json';
+
+// Cached book_id → package_id map. Invalidated on volume file mtime change,
+// so a re-upload picks up the new catalog on the next request.
+let cachedBookIdToPackage: Map<string, string> | null = null;
+let cachedVoiceBooksMtimeMs = 0;
+
+function loadBookIdToPackage(): Map<string, string> {
+  const stat = statSync(VOICE_BOOKS_PATH);
+  if (cachedBookIdToPackage && stat.mtimeMs === cachedVoiceBooksMtimeMs) {
+    return cachedBookIdToPackage;
+  }
+  const books = JSON.parse(readFileSync(VOICE_BOOKS_PATH, 'utf-8')) as Array<{ id: string; package_id: string }>;
+  const map = new Map<string, string>();
+  for (const b of books) {
+    map.set(b.id, b.package_id);
+  }
+  cachedBookIdToPackage = map;
+  cachedVoiceBooksMtimeMs = stat.mtimeMs;
+  return map;
+}
+
+/**
+ * Returns true if the user has enabled the package that the given voice book
+ * belongs to. Voice passages whose book_id is not in the catalog (shouldn't
+ * happen, but defensive) are treated as "in an unknown package" — we let them
+ * through rather than silently hiding them.
+ */
+function isVoicePackageEnabled(bookId: string, enabledPackages: Set<string>): boolean {
+  const pkg = loadBookIdToPackage().get(bookId);
+  if (!pkg) return true; // unknown → don't filter
+  return enabledPackages.has(pkg);
+}
 
 async function ensureMetadata(): Promise<void> {
   if (passageMetadata) return;
@@ -566,10 +602,16 @@ export async function POST(req: NextRequest) {
             return toCard(meta[m], s.sim, 'scripture');
           });
 
+        // Resolve user's enabled voice packages (intersected with installed set)
+        const installedPackageIds = [...new Set(loadBookIdToPackage().values())].sort();
+        const { enabled: enabledPackageList } = await getEnabledVoicePackages(installedPackageIds);
+        const enabledPackages = new Set(enabledPackageList);
+
         const topVoices = scored
           .filter((s) => {
             const m = keyToMeta.get(s.key);
-            return m !== undefined && meta[m].translation == null;
+            if (m === undefined || meta[m].translation != null) return false;
+            return isVoicePackageEnabled(meta[m].book_id, enabledPackages);
           })
           .slice(0, MAX_PER_CATEGORY)
           .map((s) => {
@@ -649,10 +691,16 @@ export async function POST(req: NextRequest) {
             return toCard(meta[m], s.sim, 'scripture');
           });
 
+        // Resolve user's enabled voice packages (intersected with installed set)
+        const installedPackageIds = [...new Set(loadBookIdToPackage().values())].sort();
+        const { enabled: enabledPackageList } = await getEnabledVoicePackages(installedPackageIds);
+        const enabledPackages = new Set(enabledPackageList);
+
         const topVoices = scored
           .filter((s) => {
             const m = keyToMeta.get(s.key);
-            return m !== undefined && meta[m].translation == null;
+            if (m === undefined || meta[m].translation != null) return false;
+            return isVoicePackageEnabled(meta[m].book_id, enabledPackages);
           })
           .slice(0, MAX_PER_CATEGORY)
           .map((s) => {

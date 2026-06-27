@@ -83,6 +83,46 @@ requireMatch(clientPath, client, /findResonance\(journalText:\s*string,\s*segmen
 requireMatch(clientPath, client, /\/api\/resonance\/cache/, 'web findResonance must check server cache before embedding');
 requireMatch(clientPath, client, /sourceId/, 'web findResonance must pass source id to /api/resonance');
 
+// ── Library opt-in contract (Phase 1, added 2026-06-27) ───────────────────
+
+const libraryPrefsPath = 'apps/web/lib/library-prefs.ts';
+const libraryBooksPath = 'apps/web/app/api/library/books/route.ts';
+const libraryPackagesPath = 'apps/web/app/api/library/packages/route.ts';
+const libraryPackageIdPath = 'apps/web/app/api/library/packages/[packageId]/route.ts';
+
+const libraryPrefs = read(libraryPrefsPath);
+for (const fn of [
+  'getEnabledVoicePackages',
+  'setEnabledVoicePackages',
+  'toggleEnabledVoicePackage',
+  'clearEnabledVoicePackages',
+]) {
+  requireMatch(libraryPrefsPath, libraryPrefs, new RegExp(`export\\s+async\\s+function\\s+${fn}\\b`), `library-prefs must export ${fn}`);
+}
+requireMatch(libraryPrefsPath, libraryPrefs, /enabled_voice_packages/, 'library-prefs must read/write the enabled_voice_packages key');
+requireMatch(libraryPrefsPath, libraryPrefs, /getSettings/, 'library-prefs must read user_settings via getSettings helper');
+requireMatch(libraryPrefsPath, libraryPrefs, /setSetting/, 'library-prefs must write user_settings via setSetting helper');
+
+const libraryBooks = read(libraryBooksPath);
+requireMatch(libraryBooksPath, libraryBooks, /getEnabledVoicePackages/, '/api/library/books must filter by user opt-in prefs');
+requireMatch(libraryBooksPath, libraryBooks, /loadVoiceBooks/, '/api/library/books must read voice_books.json');
+requireMatch(libraryBooksPath, libraryBooks, /packageId/, '/api/library/books response must include packageId');
+
+const libraryPackages = read(libraryPackagesPath);
+requireMatch(libraryPackagesPath, libraryPackages, /getEnabledVoicePackages/, 'GET /api/library/packages must read user opt-in prefs');
+requireMatch(libraryPackagesPath, libraryPackages, /installed/, 'GET /api/library/packages response must include installed array');
+requireMatch(libraryPackagesPath, libraryPackages, /enabled/, 'GET /api/library/packages response must include per-package enabled state');
+requireMatch(libraryPackagesPath, libraryPackages, /mode/, 'GET /api/library/packages response must include mode (all|none|subset)');
+
+const libraryPackageId = read(libraryPackageIdPath);
+requireMatch(libraryPackageIdPath, libraryPackageId, /toggleEnabledVoicePackage/, 'PUT /api/library/packages/[packageId] must call toggleEnabledVoicePackage');
+requireMatch(libraryPackageIdPath, libraryPackageId, /404/, 'PUT /api/library/packages/[packageId] must return 404 for unknown packages');
+requireMatch(libraryPackageIdPath, libraryPackageId, /enabled:\s*boolean/, 'PUT /api/library/packages/[packageId] must validate body shape (enabled: boolean)');
+
+// Resonance route must filter voices by user opt-in
+requireMatch(resonancePath, resonance, /isVoicePackageEnabled/, '/api/resonance must filter voice candidates by user opt-in');
+requireMatch(resonancePath, resonance, /getEnabledVoicePackages/, '/api/resonance must read user voice opt-in prefs');
+
 if (failures.length > 0) {
   console.error('Adaptive resonance contract verification failed:');
   for (const failure of failures) console.error(`- ${failure}`);

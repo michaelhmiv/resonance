@@ -1,10 +1,16 @@
 /**
  * GET /api/library/books — return the catalog of voice library works,
- * grouped into packages.
+ * grouped into packages, filtered by the user's opt-in preferences.
  *
  * Reads voice_books.json. The Railway volume is the source of truth in
  * production; the bundled copy in ./data/seeded_library/ is the dev fallback
  * (so local dev without a volume still works).
+ *
+ * Filtering:
+ *   - Reads user_settings(key='enabled_voice_packages')
+ *   - null / unset = 'all' mode → return all packages
+ *   - subset = 'subset' mode → return only packages the user has enabled
+ *   - empty list = 'none' mode → return zero packages (with empty-state handled in UI)
  *
  * Response:
  *   {
@@ -18,6 +24,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync, existsSync, statSync } from 'fs';
+import { getEnabledVoicePackages } from '../../../lib/library-prefs';
 
 const VOLUME_PATH = '/data/seeded_library/voice_books.json';
 const BUNDLED_PATH = './data/seeded_library/voice_books.json';
@@ -63,11 +70,24 @@ function packageLabel(packageId: string): string {
 
 export async function GET(_request: NextRequest) {
   try {
-    const books = loadVoiceBooks();
+    const allBooks = loadVoiceBooks();
 
-    // Group by package_id while preserving insertion order.
+    // Get installed package_ids (unique, sorted for stable caching)
+    const installed = [...new Set(allBooks.map((b) => b.package_id))].sort();
+
+    // Resolve the user's enabled set, intersected with installed packages
+    const { enabled } = await getEnabledVoicePackages(installed);
+    const enabledSet = new Set(enabled);
+
+    // Filter books by the enabled set
+    const filteredBooks =
+      enabledSet.size === installed.length
+        ? allBooks
+        : allBooks.filter((b) => enabledSet.has(b.package_id));
+
+    // Group by package_id while preserving insertion order from the source file.
     const grouped = new Map<string, Array<{ id: string; title: string; author: string | null; era: string | null; source: string | null }>>();
-    for (const b of books) {
+    for (const b of filteredBooks) {
       const pid = b.package_id;
       if (!grouped.has(pid)) grouped.set(pid, []);
       grouped.get(pid)!.push({

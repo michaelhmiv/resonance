@@ -1,10 +1,23 @@
 #!/usr/bin/env python3
 """
-Restore the Railway volume data for Resonance from local /data/resonance/build/output/.
+Restore the Railway volume data for Resonance.
 
-Uploads the corpus + vector index to the new project's /data/ via the
-chunked admin upload endpoints. Skips files that are already present on
-the volume (or restores the whole thing with --force).
+Source of truth (as of 2026-06-27):
+  - Voice / Bible *content* (JSON, ~245 MB total) lives in
+    /data/resonance/apps/web/data/seeded_library/  (built 2026-06-25).
+  - Vector index (HNSW + raw vectors.bin, ~3.4 GB) and small helpers
+    (library_manifest.json, manifests/) live in
+    /data/resonance/build/output/seeded_library/  (built 2026-06-26).
+
+These are two different build pipelines. Before 2026-06-25 the content
+also lived in build/output/, but the canonical content snapshot moved
+to apps/web/data/ when the route files were repointed to read from there.
+The script must point at the *current* location of each file, not assume
+a single source directory.
+
+Uploads the corpus + vector index to the Railway volume via the chunked
+admin upload endpoints. Skips files that are already present on the
+volume (or restores the whole thing with --force).
 
 Usage:
   python3 restore-volume.py
@@ -27,7 +40,17 @@ from pathlib import Path
 # Defaults
 DEFAULT_TOKEN = "_HmP3b31UMpC1Hs0FptT_tpxB0H8j3VpW56zD4zdq7M"
 DEFAULT_URL = "https://resonanceweb-production-276b.up.railway.app"
-LOCAL_BUILD = Path("/data/resonance/build/output/seeded_library")
+
+# Content source: voice_books.json, voice_passages.json, bible_books.json,
+# bible_passages.json. This is the canonical 75-book / 201 MB snapshot built
+# on 2026-06-25. The old build/output/ copy of these is the 18-book legacy
+# snapshot from 2026-06-23 — DO NOT use it.
+LOCAL_CONTENT = Path("/data/resonance/apps/web/data/seeded_library")
+
+# Vector / manifest source: HNSW index (corpus.hnsw ~2.7 GB, corpus.idmap ~7 MB),
+# raw vectors.bin (~678 MB), manifests/, library_manifest.json. Lives in the
+# older build/output/ tree because the vector pipeline was last run there.
+LOCAL_VECTORS = Path("/data/resonance/build/output/seeded_library")
 LOCAL_VECTORS_BUILD = Path("/data/resonance/build/output")  # for vectors_gte-small.bin (legacy)
 LOCAL_PACKAGES = Path("/data/resonance/build/output/packages")
 
@@ -38,20 +61,20 @@ UPLOADS = [
     # kind: "vectors" uses /api/admin/upload-vectors (X-Model, X-Filename)
     #       "file"    uses /api/admin/upload-file    (X-Path)
     # pplx vectors: model=pplx-embed-v1-4b, file=vectors.bin
-    ("vectors", LOCAL_BUILD / "vectors_pplx/vectors_pplx-embed-v1-4b.bin", "pplx-embed-v1-4b", "vectors.bin", 8),
+    ("vectors", LOCAL_VECTORS / "vectors_pplx/vectors_pplx-embed-v1-4b.bin", "pplx-embed-v1-4b", "vectors.bin", 8),
     # pplx manifest
-    ("file", LOCAL_BUILD / "manifests/pplx-embed-v1-4b/manifest.json", "vectors/pplx-embed-v1-4b/manifest.json", 1),
+    ("file", LOCAL_VECTORS / "manifests/pplx-embed-v1-4b/manifest.json", "vectors/pplx-embed-v1-4b/manifest.json", 1),
     # gte-small manifest (legacy but the route code references it)
-    ("file", LOCAL_BUILD / "manifests/gte-small/manifest.json", "seeded_library/manifests/gte-small/manifest.json", 1),
-    # bible + voice passage metadata
-    ("file", LOCAL_BUILD / "bible_passages.json", "seeded_library/bible_passages.json", 8),
-    ("file", LOCAL_BUILD / "voice_passages.json", "seeded_library/voice_passages.json", 8),
+    ("file", LOCAL_VECTORS / "manifests/gte-small/manifest.json", "seeded_library/manifests/gte-small/manifest.json", 1),
+    # bible + voice passage metadata — canonical snapshot from apps/web/data/
+    ("file", LOCAL_CONTENT / "bible_passages.json", "seeded_library/bible_passages.json", 8),
+    ("file", LOCAL_CONTENT / "voice_passages.json", "seeded_library/voice_passages.json", 8),
     # gte-small vectors (legacy file, but the route has logic for it)
     ("file", LOCAL_VECTORS_BUILD / "vectors_gte-small.bin", "seeded_library/vectors_gte-small.bin", 8),
     # Top-level helper files
-    ("file", LOCAL_BUILD / "bible_books.json", "seeded_library/bible_books.json", 1),
-    ("file", LOCAL_BUILD / "voice_books.json", "seeded_library/voice_books.json", 1),
-    ("file", LOCAL_BUILD / "library_manifest.json", "seeded_library/library_manifest.json", 1),
+    ("file", LOCAL_CONTENT / "bible_books.json", "seeded_library/bible_books.json", 1),
+    ("file", LOCAL_CONTENT / "voice_books.json", "seeded_library/voice_books.json", 1),
+    ("file", LOCAL_VECTORS / "library_manifest.json", "seeded_library/library_manifest.json", 1),
     # packages/ directory — only the JSONs; binary shards would be huge
 ]
 
