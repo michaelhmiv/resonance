@@ -33,7 +33,7 @@ export const TTL_MS: Record<string, number> = {
   '/api/embeddings/status':   30_000,
   '/api/vectors/status':      30_000,
   '/api/packages':            5 * 60_000,
-  '/api/library/packages':    5 * 60_000,
+  '/api/library/books':       5 * 60_000,
 };
 
 export function ttlFor(path: string): number {

@@ -8,7 +8,7 @@
 
 // ── Counter types ──────────────────────────────────────────────────────────
 
-interface HistogramEntry {
+export interface HistogramEntry {
   count: number;
   sum: number;
   min: number;

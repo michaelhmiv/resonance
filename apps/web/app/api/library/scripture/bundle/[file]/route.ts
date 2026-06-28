@@ -17,9 +17,9 @@ const ALLOWED_FILES = ['bible_passages.json', 'vectors.bin', 'idmap.json', 'corp
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { file: string } }
+  { params }: { params: Promise<{ file: string }> }
 ) {
-  const { file } = params;
+  const { file } = await params;
 
   if (!ALLOWED_FILES.includes(file)) {
     return new Response(

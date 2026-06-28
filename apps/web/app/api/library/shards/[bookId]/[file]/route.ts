@@ -22,9 +22,9 @@ const ALLOWED_FILES = new Set(['vectors.bin', 'idmap.json', 'corpus.hnsw']);
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { bookId: string; file: string } }
+  { params }: { params: Promise<{ bookId: string; file: string }> }
 ) {
-  const { bookId, file } = params;
+  const { bookId, file } = await params;
 
   // Validate bookId (alphanumeric + dash + underscore only, to prevent path traversal)
   if (!/^[a-z0-9_-]+$/i.test(bookId)) {

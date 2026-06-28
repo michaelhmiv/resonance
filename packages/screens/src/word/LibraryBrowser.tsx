@@ -30,7 +30,7 @@ import {
   serifText,
   spacing,
 } from '@resonance/theme';
-import { type LibraryPackage, type LibraryBook, getCachedSync } from '@resonance/core';
+import { type LibraryPackage, type LibraryBook } from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
 
 interface LibraryBrowserProps {
@@ -38,15 +38,10 @@ interface LibraryBrowserProps {
 }
 
 export function LibraryBrowser({ onOpenBook }: LibraryBrowserProps): ReactNode {
-  // Lazy initializer reads from cache synchronously. If the user previously
-  // visited this tab, the packages list paints on the first render — no
-  // spinner flash. If the cache is cold, we render null and let the effect
-  // fill it in.
-  const [packages, setPackages] = useState<LibraryPackage[] | null>(() => {
-    return getCachedSync<LibraryPackage[]>('/api/library/packages');
-  });
+  const [packages, setPackages] = useState<LibraryPackage[] | null>(null);
   const dataLayer = useDataLayer();
   const [expandedPkg, setExpandedPkg] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   // First-visit onboarding prompt. Persisted via user_settings('library_seen_at').
   // null = still loading the check, false = show prompt, true = hide.
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
@@ -56,10 +51,16 @@ export function LibraryBrowser({ onOpenBook }: LibraryBrowserProps): ReactNode {
     dataLayer.getLibraryPackages().then((pkgs) => {
       if (!cancelled) {
         setPackages(pkgs);
+        setLoadError(null);
         // Auto-expand the first package on initial load.
         if (pkgs.length > 0) {
           setExpandedPkg((prev) => prev ?? pkgs[0].package_id);
         }
+      }
+    }).catch((err) => {
+      if (!cancelled) {
+        setLoadError(err instanceof Error ? err.message : 'Unable to load Library.');
+        setPackages([]);
       }
     });
     // Check whether the onboarding prompt has been dismissed in the past.
@@ -106,9 +107,9 @@ export function LibraryBrowser({ onOpenBook }: LibraryBrowserProps): ReactNode {
   if (packages.length === 0) {
     return (
       <View style={[styles.container, styles.center]}>
-        <Text style={styles.emptyTitle}>The Library is empty.</Text>
+        <Text style={styles.emptyTitle}>{loadError ? 'Unable to load Library.' : 'The Library is empty.'}</Text>
         <Text style={styles.emptyDescription}>
-          You can opt back in to any package from Settings → Library Contents.
+          {loadError ?? 'You can opt back in to any package from Settings → Library Contents.'}
         </Text>
       </View>
     );

@@ -158,10 +158,15 @@ interface WebSearchRow {
   source: string | null;
 }
 
-interface WebLibraryPackage {
+interface WebLibraryBookRow {
+  id: string;
+  title: string | null;
+  author: string | null;
+  era: string | null;
+  source?: string | null;
   packageId: string;
-  label: string;
-  books: { id: string; title: string | null; author: string | null; era: string | null; source?: string | null }[];
+  packageLabel: string;
+  enabled: boolean;
 }
 
 export class WebDataLayer implements DataLayer {
@@ -214,18 +219,27 @@ export class WebDataLayer implements DataLayer {
   }
 
   async getLibraryPackages(): Promise<LibraryPackage[]> {
-    const data = await api<{ packages: WebLibraryPackage[] }>('/api/library/books');
-    return data.packages.map((pkg) => ({
-      package_id: pkg.packageId,
-      label: pkg.label,
-      books: pkg.books.map((book) => ({
+    const data = await cachedApi<{ books: WebLibraryBookRow[]; mode: 'all' | 'none' | 'subset' }>('/api/library/books');
+    const byPackage = new Map<string, LibraryPackage>();
+
+    for (const book of data.books) {
+      const packageId = book.packageId;
+      const existing = byPackage.get(packageId) ?? {
+        package_id: packageId,
+        label: book.packageLabel,
+        books: [],
+      };
+      existing.books.push({
         id: book.id,
         title: book.title,
         author: book.author,
         era: book.era,
-        package_id: pkg.packageId,
-      })),
-    }));
+        package_id: packageId,
+      });
+      byPackage.set(packageId, existing);
+    }
+
+    return Array.from(byPackage.values()).sort((a, b) => a.package_id.localeCompare(b.package_id));
   }
 
   async getLibraryBookPrefs(): Promise<{

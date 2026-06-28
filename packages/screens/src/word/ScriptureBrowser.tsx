@@ -53,11 +53,19 @@ export function ScriptureBrowser({
   });
   const dataLayer = useDataLayer();
   const [chapterView, setChapterView] = useState<ChapterData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    setBooks(null);
+    setLoadError(null);
     dataLayer.getBooks(translation).then((nextBooks) => {
       if (!cancelled) setBooks(nextBooks);
+    }).catch((err) => {
+      if (!cancelled) {
+        setLoadError(err instanceof Error ? err.message : 'Unable to load Scripture.');
+        setBooks([]);
+      }
     });
     return () => {
       cancelled = true;
@@ -126,6 +134,15 @@ export function ScriptureBrowser({
 
   const otBooks = books.filter((b) => b.testament === 'OT');
   const ntBooks = books.filter((b) => b.testament === 'NT');
+
+  if (loadError) {
+    return (
+      <View style={[styles.container, styles.center]}>
+        <Text style={styles.emptyText}>Unable to load Scripture.</Text>
+        <Text style={styles.emptyText}>{loadError}</Text>
+      </View>
+    );
+  }
 
   const sections = [
     { title: 'Old Testament', data: otBooks },
