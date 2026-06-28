@@ -358,10 +358,9 @@ export async function ensureHighlightVectorsTable(): Promise<void> {
 const RESONANCE_MODEL_ID = 'pplx-embed-v1-4b';
 const OPENROUTER_EMBED_MODEL = 'perplexity/pplx-embed-v1-4b';
 const EMBEDDING_DIM = 2560;
-// Stored resonance results are durable derived data, not an ephemeral process cache.
-// They remain valid until their content_hash/model/corpus inputs change. Keep a
-// long future expires_at because the current table/query shape requires a date.
-export const STORED_RESONANCE_VALID_DAYS = 3650;
+// Stored resonance results are durable derived data — they remain valid
+// until their content_hash/model/corpus inputs change, not a calendar date.
+// Lookups use only status + content_hash + model_id (no expires_at check).
 
 export function resonanceContentHash(text: string): string {
   return createHash('sha256').update(text.trim().replace(/\s+/g, ' ').toLowerCase(), 'utf8').digest('hex');
@@ -610,7 +609,6 @@ export async function getFreshResonanceCacheForSource(sourceId: string, sourceTy
     .eq('content_hash', node.content_hash)
     .eq('model_id', RESONANCE_MODEL_ID)
     .eq('status', 'fresh')
-    .gt('expires_at', new Date().toISOString())
     .order('computed_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -629,7 +627,6 @@ export async function getStoredResonanceForNode(input: {
     .eq('content_hash', input.contentHash)
     .eq('model_id', RESONANCE_MODEL_ID)
     .eq('status', 'fresh')
-    .gt('expires_at', new Date().toISOString())
     .order('computed_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -734,7 +731,6 @@ export async function storeResonanceCache(input: {
   const sb = getSupabase();
   const uid = await getDevUserId();
   const computedAt = new Date();
-  const expiresAt = new Date(computedAt.getTime() + STORED_RESONANCE_VALID_DAYS * 24 * 60 * 60 * 1000);
   const { data, error } = await sb.from('resonance_result_cache')
     .upsert({
       user_id: uid,
@@ -747,7 +743,6 @@ export async function storeResonanceCache(input: {
       result_json: input.result,
       status: 'fresh',
       computed_at: computedAt.toISOString(),
-      expires_at: expiresAt.toISOString(),
       metadata: input.metadata ?? {},
     }, { onConflict: 'cache_key' })
     .select()

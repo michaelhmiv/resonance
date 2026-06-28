@@ -22,11 +22,8 @@ try { prewarmScript = read(prewarmScriptPath); } catch { fail(prewarmScriptPath,
 const pkg = read(packagePath);
 
 // Contract 1: stored resonance is durable derived data, not a 7-day short-lived cache.
-if (/RESONANCE_CACHE_TTL_DAYS\s*=\s*7\b/.test(db)) {
-  fail(dbPath, 'must not expire stored resonance results after only 7 days. Results should stay valid until content_hash/model/corpus inputs change.');
-}
-if (!/STORED_RESONANCE_VALID_DAYS\s*=\s*3650\b/.test(db)) {
-  fail(dbPath, 'must use a long-lived stored-result validity window (3650 days) instead of short cache TTL semantics.');
+if (/\.gt\('expires_at',/.test(db)) {
+  fail(dbPath, 'must not check expires_at on stored resonance lookups — status + content_hash + model_id is sufficient.');
 }
 if (!/getStoredResonanceForNode\b/.test(db)) {
   fail(dbPath, 'must expose getStoredResonanceForNode for deterministic source-node/content-hash verification.');
