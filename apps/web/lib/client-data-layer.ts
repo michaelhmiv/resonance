@@ -357,7 +357,6 @@ export class WebDataLayer implements DataLayer {
     const data = await cachedApi<{ entries: { id: string; text: string; created_at: number; updated_at?: number }[] }>('/api/journal/entries');
     return data.entries
       .slice()
-      .reverse()
       .map((entry, index) => {
         const ts = (val: unknown): number =>
           typeof val === 'number' ? val * 1000 : typeof val === 'string' ? new Date(val).getTime() : Date.now();

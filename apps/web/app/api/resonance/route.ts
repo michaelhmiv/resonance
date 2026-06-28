@@ -23,6 +23,7 @@ import {
   storeResonanceCache,
   replaceResonanceEdges,
   getFreshResonanceCacheForSource,
+  getOrCreateResonanceNodeForSource,
 } from '../../../lib/db';
 import { ensureCorpusIndex } from '../../../lib/corpus-index';
 import { getCachedUserEmbeddings, invalidateUser } from '../../../lib/user-vector-store';
@@ -470,6 +471,20 @@ export async function POST(req: NextRequest) {
       sourceType?: 'journal_entry' | 'highlight' | 'note' | 'reading_event' | 'corpus_passage' | 'theme_snapshot';
     };
     const resolvedSourceId = sourceId ?? entryId;
+    let resolvedSourceNodeId = sourceNodeId;
+
+    if (resolvedSourceId && text?.trim() && !resolvedSourceNodeId) {
+      try {
+        const node = await getOrCreateResonanceNodeForSource({
+          sourceId: resolvedSourceId,
+          bodyText: text,
+          sourceType: sourceType ?? 'journal_entry',
+        });
+        resolvedSourceNodeId = node?.id ?? resolvedSourceNodeId;
+      } catch (err) {
+        console.warn('[resonance] source node resolution failed, continuing without persistence:', err instanceof Error ? err.message : err);
+      }
+    }
 
     // ── Server-side cache: if sourced, check Supabase cache before embed+search ──
     // This eliminates the client needing a separate GET /api/resonance/cache call.
@@ -490,19 +505,19 @@ export async function POST(req: NextRequest) {
     }
 
     const persistResultIfSourced = async (result: Record<string, unknown>) => {
-      if (!resolvedSourceId || !sourceNodeId || !text?.trim()) return;
+      if (!resolvedSourceId || !resolvedSourceNodeId || !text?.trim()) return;
       try {
         const contentHash = resonanceContentHash(text);
         await Promise.all([
           storeResonanceCache({
-            sourceNodeId,
+            sourceNodeId: resolvedSourceNodeId,
             sourceId: resolvedSourceId,
             sourceType: sourceType ?? 'journal_entry',
             contentHash,
             result,
             metadata: { route: '/api/resonance' },
           }),
-          replaceResonanceEdges({ sourceNodeId, result }),
+          replaceResonanceEdges({ sourceNodeId: resolvedSourceNodeId, result }),
         ]);
       } catch (err) {
         console.warn('[resonance] sourced persistence failed:', err);

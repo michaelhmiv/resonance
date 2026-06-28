@@ -6,7 +6,7 @@
  * Resonance is curation, not generation — no AI-written content.
  */
 
-import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -130,26 +130,10 @@ export function JournalScreen({ fetchVerseOfDay, onNavigateToBook }: JournalScre
     }
   }, [dataLayer, resonanceMap, loadingResonance]);
 
-  // On first paint, show resonance for only the newest text entry. Older
-  // entries stay lazy and load when the user taps ✦. This preserves the
-  // visible "resonance is here" affordance without fanning out one expensive
-  // /api/embed + /api/resonance request per historical entry.
-  const autoExpandArmed = useRef(false);
-  useEffect(() => {
-    if (autoExpandArmed.current) return;
-    if (segments.length === 0) return;
-    autoExpandArmed.current = true;
-    const top = segments.find((s) => s.segment_type === 'text' && s.text);
-    if (top) {
-      setExpandedFootnotes((prev) => {
-        if (prev.has(top.id)) return prev;
-        const next = new Set(prev);
-        next.add(top.id);
-        return next;
-      });
-      loadResonance(top.id, top.text!);
-    }
-  }, [segments, loadResonance]);
+  // Do not auto-expand or auto-load resonance on first paint. The ✦ controls
+  // remain visible for every entry, but the expensive /api/resonance path only
+  // starts after an explicit user tap. This keeps the Journal page itself fast
+  // even when the HNSW index/container is cold.
 
   const toggleFootnote = useCallback((segId: string, text: string) => {
     setExpandedFootnotes(prev => {
@@ -199,7 +183,7 @@ export function JournalScreen({ fetchVerseOfDay, onNavigateToBook }: JournalScre
     } finally {
       setSaving(false);
     }
-  }, [currentText, segments, dataLayer, loadResonance]);
+  }, [currentText, segments, dataLayer]);
 
   const handleDelete = useCallback(async (id: string) => {
     await dataLayer.deleteSegment(id);

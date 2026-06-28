@@ -442,6 +442,46 @@ export async function upsertJournalResonanceNode(entry: { id: string; text: stri
   });
 }
 
+export async function getOrCreateResonanceNodeForSource(input: {
+  sourceId: string;
+  bodyText: string;
+  sourceType?: AdaptiveSourceType;
+}) {
+  const sb = getSupabase();
+  const uid = await getDevUserId();
+  const nodeType = input.sourceType ?? 'journal_entry';
+  const contentHash = resonanceContentHash(input.bodyText);
+
+  const { data: existing, error } = await sb.from('resonance_nodes')
+    .select('*')
+    .eq('user_id', uid)
+    .eq('node_type', nodeType)
+    .eq('source_id', input.sourceId)
+    .eq('status', 'active')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (existing?.id && existing.content_hash === contentHash) return existing;
+
+  const sourceTableByType: Record<AdaptiveSourceType, string> = {
+    journal_entry: 'journal_entries',
+    highlight: 'highlights',
+    note: 'highlights',
+    reading_event: 'reading_events',
+    corpus_passage: 'corpus_passages',
+    theme_snapshot: 'theme_snapshots',
+  };
+
+  return upsertResonanceSourceNode({
+    nodeType,
+    sourceTable: sourceTableByType[nodeType] ?? 'journal_entries',
+    sourceId: input.sourceId,
+    bodyText: input.bodyText,
+    metadata: { self_healed_from_source_id: true },
+  });
+}
+
 
 export async function markJournalResonanceNodeDeleted(entryId: string) {
   return markResonanceSourceNodeDeleted({ nodeType: 'journal_entry', sourceId: entryId });
