@@ -15,6 +15,8 @@
     "typecheck:packages": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/theme/tsconfig.json && tsc --noEmit -p packages/ui/tsconfig.json && tsc --noEmit -p packages/screens/tsconfig.json",
     "verify:resonance-hotpath": "node scripts/verify-resonance-hotpath.mjs",
     "verify:journal-loading": "node scripts/verify-journal-loading-contract.mjs",
+    "verify:persistent-resonance": "node scripts/verify-persistent-resonance-contract.mjs",
+    "prewarm:journal-resonance": "node scripts/prewarm-journal-resonance.mjs",
     "verify:adaptive-resonance": "node scripts/verify-adaptive-resonance-contract.mjs",
     "simulate:adaptive-resonance": "node scripts/simulate-adaptive-resonance-live.mjs"
   },

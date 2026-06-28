@@ -358,7 +358,10 @@ export async function ensureHighlightVectorsTable(): Promise<void> {
 const RESONANCE_MODEL_ID = 'pplx-embed-v1-4b';
 const OPENROUTER_EMBED_MODEL = 'perplexity/pplx-embed-v1-4b';
 const EMBEDDING_DIM = 2560;
-const RESONANCE_CACHE_TTL_DAYS = 7;
+// Stored resonance results are durable derived data, not an ephemeral process cache.
+// They remain valid until their content_hash/model/corpus inputs change. Keep a
+// long future expires_at because the current table/query shape requires a date.
+export const STORED_RESONANCE_VALID_DAYS = 3650;
 
 export function resonanceContentHash(text: string): string {
   return createHash('sha256').update(text.trim().replace(/\s+/g, ' ').toLowerCase(), 'utf8').digest('hex');
@@ -615,6 +618,72 @@ export async function getFreshResonanceCacheForSource(sourceId: string, sourceTy
   return data?.result_json ?? null;
 }
 
+export async function getStoredResonanceForNode(input: {
+  sourceNodeId: string;
+  contentHash: string;
+}) {
+  const sb = getSupabase();
+  const { data, error } = await sb.from('resonance_result_cache')
+    .select('*')
+    .eq('source_node_id', input.sourceNodeId)
+    .eq('content_hash', input.contentHash)
+    .eq('model_id', RESONANCE_MODEL_ID)
+    .eq('status', 'fresh')
+    .gt('expires_at', new Date().toISOString())
+    .order('computed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function precomputeJournalEntryResonance(input: {
+  entry: { id: string; text: string; created_at?: string; updated_at?: string };
+  origin: string;
+  force?: boolean;
+}) {
+  const text = String(input.entry.text ?? '').trim();
+  if (text.length < 3) return { ok: false, skipped: true, reason: 'text_too_short', entry_id: input.entry.id };
+
+  const node = await upsertJournalResonanceNode(input.entry);
+  const existing = await getStoredResonanceForNode({ sourceNodeId: node.id, contentHash: node.content_hash });
+  if (existing?.id && !input.force) {
+    return { ok: true, skipped: true, reason: 'already_stored', entry_id: input.entry.id, source_node_id: node.id, cache_id: existing.id };
+  }
+  if (existing?.id && input.force) {
+    const refreshed = await storeResonanceCache({
+      sourceNodeId: node.id,
+      sourceId: input.entry.id,
+      sourceType: 'journal_entry',
+      contentHash: node.content_hash,
+      result: existing.result_json,
+      metadata: { route: '/api/resonance/prewarm', refreshed_from_cache_id: existing.id },
+    });
+    return { ok: true, skipped: false, refreshed: true, entry_id: input.entry.id, source_node_id: node.id, cache_id: refreshed.id };
+  }
+
+  const res = await fetch(`${input.origin.replace(/\/$/, '')}/api/resonance`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text,
+      sourceId: input.entry.id,
+      sourceNodeId: node.id,
+      sourceType: 'journal_entry',
+    }),
+  });
+  if (!res.ok) throw new Error(`/api/resonance ${res.status}: ${(await res.text()).slice(0, 500)}`);
+  const result = await res.json();
+  return {
+    ok: true,
+    skipped: false,
+    entry_id: input.entry.id,
+    source_node_id: node.id,
+    fromCache: result?._fromCache === true,
+    method: result?.method ?? null,
+  };
+}
+
 
 export async function storeResonanceEmbedding(input: {
   nodeId: string;
@@ -665,7 +734,7 @@ export async function storeResonanceCache(input: {
   const sb = getSupabase();
   const uid = await getDevUserId();
   const computedAt = new Date();
-  const expiresAt = new Date(computedAt.getTime() + RESONANCE_CACHE_TTL_DAYS * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(computedAt.getTime() + STORED_RESONANCE_VALID_DAYS * 24 * 60 * 60 * 1000);
   const { data, error } = await sb.from('resonance_result_cache')
     .upsert({
       user_id: uid,

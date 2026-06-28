@@ -6,7 +6,15 @@ import {
   markJournalResonanceNodeDeleted,
   appendResonanceEvent,
   enqueueResonanceJob,
+  precomputeJournalEntryResonance,
 } from '../../../../../lib/db';
+
+function requestOrigin(req: NextRequest): string {
+  const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
+  const forwardedHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
+  if (forwardedHost) return `${forwardedProto}://${forwardedHost}`;
+  return new URL(req.url).origin;
+}
 
 export async function PUT(
   req: NextRequest,
@@ -32,7 +40,12 @@ export async function PUT(
       sourceId: id,
       payload: { event: 'journal.updated' },
     });
-    return NextResponse.json({ ...updated, resonance_job_id: job.id });
+    const resonance = await precomputeJournalEntryResonance({
+      entry: { id, text: String(text).trim(), updated_at: new Date().toISOString() },
+      origin: requestOrigin(req),
+      force: true,
+    });
+    return NextResponse.json({ ...updated, resonance_job_id: job.id, resonance_precomputed: resonance });
   } catch {
     return NextResponse.json({ error: 'Failed to update' }, { status: 500 });
   }

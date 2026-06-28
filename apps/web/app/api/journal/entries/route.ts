@@ -5,7 +5,15 @@ import {
   upsertJournalResonanceNode,
   appendResonanceEvent,
   enqueueResonanceJob,
+  precomputeJournalEntryResonance,
 } from '../../../../lib/db';
+
+function requestOrigin(req: NextRequest): string {
+  const forwardedProto = req.headers.get('x-forwarded-proto') || 'https';
+  const forwardedHost = req.headers.get('x-forwarded-host') || req.headers.get('host');
+  if (forwardedHost) return `${forwardedProto}://${forwardedHost}`;
+  return new URL(req.url).origin;
+}
 
 export async function GET() {
   try {
@@ -44,7 +52,11 @@ export async function POST(req: NextRequest) {
       sourceId: entry.id,
       payload: { event: 'journal.created' },
     });
-    return NextResponse.json({ ...entry, resonance_job_id: job.id }, { status: 201 });
+    const resonance = await precomputeJournalEntryResonance({
+      entry,
+      origin: requestOrigin(req),
+    });
+    return NextResponse.json({ ...entry, resonance_job_id: job.id, resonance_precomputed: resonance }, { status: 201 });
   } catch {
     return NextResponse.json({ error: 'Failed to create entry' }, { status: 500 });
   }
