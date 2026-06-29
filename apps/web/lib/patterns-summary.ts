@@ -123,6 +123,32 @@ async function getUserId(): Promise<string> {
   }
 }
 
+function evidenceType(raw: unknown): PatternEvidence['type'] {
+  switch (raw) {
+    case 'journal':
+    case 'journal_entry':
+      return 'journal';
+    case 'reading':
+    case 'reading_event':
+    case 'scripture_passage':
+    case 'voice_passage':
+      return 'reading';
+    case 'highlight':
+      return 'highlight';
+    case 'note':
+      return 'note';
+    case 'bookmark':
+      return 'bookmark';
+    case 'echo':
+    case 'resonance':
+      return 'echo';
+    case 'edge':
+      return 'edge';
+    default:
+      return 'theme';
+  }
+}
+
 function emptyCounts(): ActivityCounts {
   return { journal: 0, reading: 0, highlight: 0, note: 0, bookmark: 0, echo: 0 };
 }
@@ -279,7 +305,7 @@ function mapThemes(raw: RawData, start: string, end: string): PatternTheme[] {
   const fromSnapshots = raw.snapshots.map((row, index) => {
     const evidenceRaw = Array.isArray(row.evidence) ? row.evidence : Array.isArray(row.metadata?.evidence) ? row.metadata.evidence : [];
     const evidence = evidenceRaw.slice(0, 8).map((item: any): PatternEvidence => ({
-      type: item.source_type ?? 'theme',
+      type: evidenceType(item.source_type),
       id: item.source_id ?? item.source_node_id,
       date: normalizeDate(item.seen_at ?? item.created_at) ?? undefined,
       title: item.title ?? item.source_type ?? 'Evidence',
