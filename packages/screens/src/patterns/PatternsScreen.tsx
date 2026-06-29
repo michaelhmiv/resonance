@@ -25,7 +25,7 @@ import { type JournalSegment, getCachedSync } from '@resonance/core';
 
 type ActivityType = 'journal' | 'reading' | 'highlight' | 'note' | 'bookmark' | 'echo';
 type ActivityCounts = Record<ActivityType, number>;
-type ConnectionKind = 'echo' | 'returned_to' | 'theme' | 'trail' | 'co_occurrence';
+type ConnectionKind = 'echo' | 'returned_to' | 'theme' | 'trail';
 
 interface PatternEvidence {
   type: ActivityType | 'theme' | 'edge';
@@ -188,7 +188,6 @@ const CONNECTION_KIND_COLORS: Record<ConnectionKind, string> = {
   returned_to: '#c9a25a',
   theme: '#8b7355',
   trail: '#6b9e6b',
-  co_occurrence: '#9a9388',
 };
 
 const CONNECTION_KIND_LABELS: Record<ConnectionKind, string> = {
@@ -196,7 +195,6 @@ const CONNECTION_KIND_LABELS: Record<ConnectionKind, string> = {
   returned_to: 'Returned to',
   theme: 'Theme',
   trail: 'Trail',
-  co_occurrence: 'Also this day',
 };
 
 export function PatternsScreen(): ReactNode {
@@ -453,6 +451,8 @@ function DetailSection<T extends { id: string; connections: PatternConnection[] 
   );
 }
 
+const VISIBLE_CONNECTION_KINDS: ReadonlySet<ConnectionKind> = new Set(['echo', 'returned_to', 'theme', 'trail']);
+
 function ActivityItemRow<T extends { id: string; connections: PatternConnection[] }>({
   item,
   renderBody,
@@ -460,24 +460,28 @@ function ActivityItemRow<T extends { id: string; connections: PatternConnection[
   item: T;
   renderBody: () => ReactNode;
 }): ReactNode {
-  const [expanded, setExpanded] = useState(item.connections.length > 0);
+  const visibleConnections = item.connections.filter((connection) => VISIBLE_CONNECTION_KINDS.has(connection.kind));
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <View style={styles.activityItem}>
-      <Pressable onPress={() => item.connections.length > 0 && setExpanded(!expanded)} disabled={item.connections.length === 0}>
+      <Pressable
+        onPress={() => visibleConnections.length > 0 && setExpanded(!expanded)}
+        disabled={visibleConnections.length === 0}
+      >
         <View style={styles.activityItemHeader}>
           <View style={styles.activityItemBody}>{renderBody()}</View>
-          {item.connections.length > 0 ? (
+          {visibleConnections.length > 0 ? (
             <View style={styles.expandChip}>
-              <Text style={styles.expandChipText}>{expanded ? 'Hide' : `${item.connections.length} related`}</Text>
+              <Text style={styles.expandChipText}>{expanded ? 'Hide' : `${visibleConnections.length} related`}</Text>
             </View>
           ) : null}
         </View>
       </Pressable>
 
-      {expanded && item.connections.length > 0 ? (
+      {expanded && visibleConnections.length > 0 ? (
         <View style={styles.connectionThread}>
-          {item.connections.map((connection, index) => (
+          {visibleConnections.slice(0, 3).map((connection) => (
             <View key={`${connection.kind}-${connection.id}`} style={styles.connectionThreadItem}>
               <View style={[styles.threadLine, { borderLeftColor: CONNECTION_KIND_COLORS[connection.kind] }]} />
               <View style={styles.connectionThreadContent}>
@@ -489,7 +493,7 @@ function ActivityItemRow<T extends { id: string; connections: PatternConnection[
                 <Text style={styles.threadSummary}>{connection.summary}</Text>
                 {connection.evidence.length > 0 ? (
                   <View style={styles.threadEvidenceList}>
-                    {connection.evidence.slice(0, 2).map((ev, evIndex) => (
+                    {connection.evidence.slice(0, 1).map((ev, evIndex) => (
                       <Text key={evIndex} style={styles.threadEvidenceText} numberOfLines={2}>
                         {ev.ref ? `${ev.ref} · ` : ''}{ev.excerpt || ev.title || 'Evidence'}
                       </Text>

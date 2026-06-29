@@ -18,7 +18,7 @@ interface PatternEvidence {
   excerpt?: string | null;
 }
 
-export type ConnectionKind = 'echo' | 'returned_to' | 'theme' | 'trail' | 'co_occurrence';
+export type ConnectionKind = 'echo' | 'returned_to' | 'theme' | 'trail';
 
 /**
  * A connection is an edge between one or more activity traces.
@@ -349,9 +349,9 @@ function fallbackThemes(raw: RawData, start: string, end: string): PatternTheme[
   }
 
   return Array.from(buckets.entries())
-    .filter(([, evidence]) => evidence.length >= 2)
+    .filter(([, evidence]) => evidence.length >= 3)
     .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
-    .slice(0, 5)
+    .slice(0, 4)
     .map(([label, evidence], index) => ({
       id: `fallback-theme-${index}-${label}`,
       label,
@@ -387,7 +387,10 @@ function mapThemes(raw: RawData, start: string, end: string): PatternTheme[] {
     };
   });
 
-  return fromSnapshots.length > 0 ? fromSnapshots : fallbackThemes(raw, start, end);
+  const themes = fromSnapshots.length > 0 ? fromSnapshots : fallbackThemes(raw, start, end);
+  return themes
+    .filter((theme) => theme.confidence >= 0.6 || theme.evidence.length >= 3)
+    .slice(0, 5);
 }
 
 function mapEchoes(raw: RawData): PatternEcho[] {
@@ -412,7 +415,9 @@ function mapEchoes(raw: RawData): PatternEcho[] {
       lastSeenAt: isoTimestamp(row.last_seen_at ?? row.created_at),
       evidence,
     };
-  });
+  })
+    .filter((echo) => echo.confidence >= 0.55 && echo.evidence.length >= 2)
+    .slice(0, 5);
 }
 
 function returnedTo(raw: RawData): ReturnedSignal[] {
@@ -437,7 +442,7 @@ function returnedTo(raw: RawData): ReturnedSignal[] {
   }
 
   return Array.from(groups.values())
-    .filter((signal) => signal.count >= 2 || signal.activityTypes.length >= 2)
+    .filter((signal) => signal.count >= 2 && signal.activityTypes.length >= 2)
     .sort((a, b) => b.count - a.count)
     .slice(0, 6)
     .map((signal) => ({ ...signal, evidence: signal.evidence.slice(0, 6) }));
@@ -446,7 +451,7 @@ function returnedTo(raw: RawData): ReturnedSignal[] {
 function mapTrails(themes: PatternTheme[], echoes: PatternEcho[], returned: ReturnedSignal[]): PatternTrail[] {
   const trails: PatternTrail[] = [];
   for (const theme of themes.slice(0, 3)) {
-    if (theme.evidence.length >= 2) {
+    if (theme.evidence.length >= 3 && theme.confidence >= 0.6) {
       trails.push({
         id: `trail-theme-${theme.id}`,
         label: `A thread around ${theme.label}`,
@@ -467,7 +472,7 @@ function mapTrails(themes: PatternTheme[], echoes: PatternEcho[], returned: Retu
     const echo = echoes[0];
     trails.push({ id: `trail-echo-${echo.id}`, label: echo.title, summary: echo.reason, evidence: echo.evidence });
   }
-  return trails.slice(0, 4);
+  return trails.slice(0, 3);
 }
 
 // ── Connections (unified edge shape for inline rendering and future clouds) ──
@@ -520,66 +525,6 @@ function trailToConnection(trail: PatternTrail): PatternConnection {
     evidence: trail.evidence,
     sourceNodeIds: nodeIdsFromEvidence(trail.evidence),
   };
-}
-
-function coOccurrenceConnection(
-  date: string,
-  source: { id: string; type: ActivityType; label: string; ref?: string | null; excerpt?: string | null },
-  others: Array<{ id: string; type: ActivityType; label: string; ref?: string | null; excerpt?: string | null }>
-): PatternConnection | null {
-  if (others.length === 0) return null;
-  const evidence: PatternEvidence[] = others.map((item) => ({
-    type: item.type,
-    id: item.id,
-    title: item.label,
-    ref: item.ref ?? null,
-    excerpt: item.excerpt ?? null,
-  }));
-  const labelByType: Record<ActivityType, string> = {
-    journal: 'Also on this day',
-    reading: 'Related from this reading',
-    highlight: 'Context this day',
-    note: 'Context this day',
-    bookmark: 'Context this day',
-    echo: 'Related echoes',
-  };
-  return {
-    kind: 'co_occurrence',
-    id: `co-occurrence-${date}-${source.id}`,
-    label: labelByType[source.type] ?? 'Related on this day',
-    summary: `${others.length} related trace${others.length === 1 ? '' : 's'}`,
-    evidence,
-    sourceNodeIds: [source.id],
-    targetNodeIds: others.map((item) => item.id),
-  };
-}
-
-function buildCoOccurrenceConnections(
-  date: string,
-  items: {
-    journal: JournalDayItem[];
-    reading: ReadingDayItem[];
-    highlights: HighlightDayItem[];
-    notes: NoteDayItem[];
-    bookmarks: BookmarkDayItem[];
-  }
-): PatternConnection[] {
-  const all: Array<{ id: string; type: ActivityType; label: string; ref?: string | null; excerpt?: string | null }> = [
-    ...items.journal.map((j) => ({ id: j.id, type: 'journal' as ActivityType, label: 'Journal', excerpt: j.excerpt })),
-    ...items.reading.map((r) => ({ id: r.id, type: 'reading' as ActivityType, label: r.label, ref: r.ref })),
-    ...items.highlights.map((h) => ({ id: h.id, type: 'highlight' as ActivityType, label: h.verseRef || 'Highlight', excerpt: h.selectedText })),
-    ...items.notes.map((n) => ({ id: n.id, type: 'note' as ActivityType, label: n.verseRef || 'Note', excerpt: n.noteExcerpt })),
-    ...items.bookmarks.map((b) => ({ id: b.id, type: 'bookmark' as ActivityType, label: b.verseRef || b.label || 'Bookmark' })),
-  ];
-
-  const connections: PatternConnection[] = [];
-  for (const source of all) {
-    const others = all.filter((item) => item.id !== source.id && item.type !== source.type);
-    if (others.length === 0) continue;
-    const connection = coOccurrenceConnection(date, source, others);
-    if (connection) connections.push(connection);
-  }
-  return connections;
 }
 
 function buildItemConnectionIndex(connections: PatternConnection[]): Map<string, PatternConnection[]> {
@@ -715,14 +660,17 @@ export async function buildPatternDayDetail(date: string): Promise<PatternDayDet
     ...returned.map(returnedToToConnection),
     ...themes.map(themeToConnection),
     ...trails.map(trailToConnection),
-  ];
+  ]
+    .filter((connection) => {
+      if (connection.kind === 'echo') return connection.confidence !== undefined && connection.confidence >= 0.55 && connection.evidence.length >= 2;
+      if (connection.kind === 'returned_to') return connection.evidence.length >= 2;
+      if (connection.kind === 'theme') return connection.confidence !== undefined ? connection.confidence >= 0.6 && connection.evidence.length >= 3 : connection.evidence.length >= 3;
+      if (connection.kind === 'trail') return connection.evidence.length >= 3;
+      return false;
+    })
+    .slice(0, 8);
 
-  // Same-day co-occurrence links every item to the other traces that happened
-  // on the same day. This keeps the UI meaningful even before the adaptive
-  // tables (`resonance_edges`, `theme_snapshots`) have learned anything.
-  const coOccurrenceConnections = buildCoOccurrenceConnections(date, { journal, reading, highlights, notes, bookmarks });
-
-  const allConnections = [...backendConnections, ...coOccurrenceConnections];
+  const allConnections = backendConnections;
   const index = buildItemConnectionIndex(allConnections);
 
   // Attach connections to each item.
