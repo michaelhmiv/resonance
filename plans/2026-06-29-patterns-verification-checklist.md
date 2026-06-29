@@ -11,6 +11,16 @@ The Patterns tab must never appear dead. It should render one of:
 - a partial state explaining missing data
 - a local fallback state when the backend summary is unavailable
 
+## Quick checks
+
+| Area | Check | Status | Notes |
+|---|---|---|---|
+| Code Quality | `npm run typecheck:packages` passes. | ⚪ | |
+| Code Quality | `npm run typecheck:web` passes. | ⚪ | |
+| UI / UX | There is no separate Connections card. | ⚪ | |
+| UI / UX | Echoes, returned-to, themes, and trails appear only as inline threads attached to specific activity rows. | ⚪ | |
+| UI / UX | Recently, Activity (calendar + day detail), and A Quiet Question are the only Pattern sections. | ⚪ | |
+
 ## Data-state scenarios
 
 ### 1. No activity
@@ -21,7 +31,7 @@ Expected:
 - Calendar renders current month.
 - No dots appear.
 - Day click shows no activity found, not an error.
-- Echoes, Returned To, Themes, and Trails show empty-state copy.
+- No separate Connections card is shown.
 
 ### 2. One journal entry
 
@@ -149,8 +159,8 @@ Expected:
 Expected:
 
 - Activity groups render normally.
-- Connected rows expand to show relationships.
-- Window-level Connections card still renders as an overview.
+- Connected rows expand to show inline relationship threads.
+- No separate Connections card is rendered.
 
 ## Feedback route scenarios
 

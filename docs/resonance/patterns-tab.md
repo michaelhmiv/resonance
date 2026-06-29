@@ -68,13 +68,19 @@ Required groups:
 
 Each activity item should be expandable when it has connections. Expanding an item reveals the related connections with their evidence, so the user sees *why* a pattern appeared without leaving the activity context.
 
+There is no separate "Connections" card. Connections are shown only as branches bound directly to the item that produced them.
+
 The day detail should be useful even when only journal and reading data exist. Missing optional adaptive tables must not crash the day view.
 
-### Echoes Worth Revisiting
+### Connection types
 
-Echoes are specific relationships, usually backed by `resonance_edges`.
+Connections surface in the day detail, attached to the activity traces that generated them. A trace may have zero, one, or several connections.
 
-A card should show:
+#### Echo
+
+Echoes are specific relationships, usually backed by `resonance_edges`. When an echo relates to a journal entry, reading, highlight, note, or bookmark, it appears as an inline branch on that item.
+
+Show:
 
 - source label
 - target label
@@ -94,9 +100,9 @@ Avoid language:
 - `God is telling you...`
 - `Your spiritual condition is...`
 
-### Returned To
+#### Returned To
 
-Returned To is based on repeated durable activity, not model interpretation.
+Returned To is based on repeated durable activity, not model interpretation. It appears inline on the reading, highlight, note, bookmark, or journal entry that is part of the repeated set.
 
 Examples:
 
@@ -105,13 +111,13 @@ Examples:
 - bookmark plus later reading on the same reference
 - repeated journal entries sitting near the same passage or theme after graph tables are wired
 
-The detail view must show dates and activity types.
+The inline view must show dates and activity types.
 
-### Recurring Themes
+#### Recurring Theme
 
-Themes are provisional, time-windowed summaries. They are not identity labels.
+Themes are provisional, time-windowed summaries. They are not identity labels. A theme appears inline on every participating trace.
 
-Theme cards should show:
+Theme inline cards should show:
 
 - label
 - summary
@@ -121,9 +127,9 @@ Theme cards should show:
 
 Themes should be backed by `theme_snapshots` when available. If snapshots are missing, a local keyword fallback is acceptable only as a temporary degraded state and must still avoid identity claims.
 
-### Trails
+#### Trail
 
-A trail is a chain, not a single semantic match.
+A trail is a chain, not a single semantic match. Trails appear inline on each trace that participates in the chain.
 
 Example shape:
 

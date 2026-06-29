@@ -323,10 +323,6 @@ export function PatternsScreen(): ReactNode {
         ) : null}
       </View>
 
-      {/* Connections — window-level overview */}
-      <Text style={styles.sectionLabel}>Connections</Text>
-      <ConnectionsCard summary={summary} />
-
       {/* A Quiet Question */}
       <Text style={styles.sectionLabel}>A Quiet Question</Text>
       <View style={styles.card}>
@@ -339,103 +335,6 @@ export function PatternsScreen(): ReactNode {
         )}
       </View>
     </ScrollView>
-  );
-}
-
-function ConnectionsCard({ summary }: { summary: PatternsSummary | null }): ReactNode {
-  const echoes = summary?.echoes ?? [];
-  const returnedTo = summary?.returnedTo ?? [];
-  const themes = summary?.themes ?? [];
-  const trails = summary?.trails ?? [];
-  const hasAny = echoes.length || returnedTo.length || themes.length || trails.length;
-
-  if (!hasAny) {
-    return (
-      <View style={styles.card}>
-        <Text style={styles.mutedText}>
-          Connections will appear as your traces begin sitting near each other across days and activity types.
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.card}>
-      {echoes.length > 0 && (
-        <View style={styles.connectionGroupFirst}>
-          <Text style={styles.connectionHeading}>Echoes Worth Revisiting</Text>
-          {echoes.slice(0, 3).map((echo) => (
-            <EvidenceCard key={echo.id} title={echo.title} subtitle={echo.reason} evidence={echo.evidence} />
-          ))}
-        </View>
-      )}
-
-      {returnedTo.length > 0 && (
-        <View style={styles.connectionGroup}>
-          <Text style={styles.connectionHeading}>Returned To</Text>
-          {returnedTo.slice(0, 4).map((signal) => (
-            <EvidenceCard
-              key={signal.id}
-              title={signal.label}
-              subtitle={`${signal.count} traces across ${signal.activityTypes.map((t) => ACTIVITY_LABELS[t]).join(', ')}`}
-              evidence={signal.evidence}
-            />
-          ))}
-        </View>
-      )}
-
-      {themes.length > 0 && (
-        <View style={styles.connectionGroup}>
-          <Text style={styles.connectionHeading}>Recurring Themes</Text>
-          <View style={styles.themeRow}>
-            {themes.slice(0, 5).map((theme) => (
-              <View key={theme.id} style={[styles.themePill, { opacity: 0.4 + (theme.confidence * 0.6) }]}>
-                <Text style={styles.themePillText}>{theme.label}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {trails.length > 0 && (
-        <View style={styles.connectionGroup}>
-          <Text style={styles.connectionHeading}>Trails</Text>
-          {trails.slice(0, 3).map((trail) => (
-            <EvidenceCard key={trail.id} title={trail.label} subtitle={trail.summary} evidence={trail.evidence} />
-          ))}
-        </View>
-      )}
-    </View>
-  );
-}
-
-function EvidenceCard({
-  title,
-  subtitle,
-  body,
-  evidence,
-}: {
-  title: string;
-  subtitle?: string;
-  body?: string;
-  evidence?: PatternEvidence[];
-}): ReactNode {
-  return (
-    <View style={styles.evidenceCard}>
-      <Text style={styles.evidenceTitle}>{title}</Text>
-      {subtitle ? <Text style={styles.evidenceSubtitle}>{subtitle}</Text> : null}
-      {body ? <Text style={styles.cardText}>{body}</Text> : null}
-      {evidence?.length ? (
-        <View style={styles.evidenceList}>
-          {evidence.slice(0, 3).map((item, index) => (
-            <Text key={index} style={styles.evidenceText} numberOfLines={2}>
-              {item.date ? `${item.date} · ` : ''}{item.ref ? `${item.ref} · ` : ''}
-              {item.excerpt || item.title || 'Evidence'}
-            </Text>
-          ))}
-        </View>
-      ) : null}
-    </View>
   );
 }
 
@@ -559,56 +458,43 @@ function ActivityItemRow<T extends { id: string; connections: PatternConnection[
   item: T;
   renderBody: () => ReactNode;
 }): ReactNode {
-  const [expanded, setExpanded] = useState(false);
-  const hasConnections = item.connections.length > 0;
-  const kindCounts = item.connections.reduce((acc, c) => {
-    acc[c.kind] = (acc[c.kind] || 0) + 1;
-    return acc;
-  }, {} as Record<ConnectionKind, number>);
-  const kinds = Object.keys(kindCounts) as ConnectionKind[];
+  const [expanded, setExpanded] = useState(item.connections.length > 0);
 
   return (
     <View style={styles.activityItem}>
-      <Pressable onPress={() => hasConnections && setExpanded(!expanded)} disabled={!hasConnections}>
+      <Pressable onPress={() => item.connections.length > 0 && setExpanded(!expanded)} disabled={item.connections.length === 0}>
         <View style={styles.activityItemHeader}>
           <View style={styles.activityItemBody}>{renderBody()}</View>
-          {hasConnections ? (
-            <View style={styles.badgeRow}>
-              {kinds.slice(0, 2).map((kind) => (
-                <View key={kind} style={[styles.connectionBadge, { borderColor: CONNECTION_KIND_COLORS[kind] }]}>
-                  <View style={[styles.connectionBadgeDot, { backgroundColor: CONNECTION_KIND_COLORS[kind] }]} />
-                  <Text style={styles.connectionBadgeText}>{CONNECTION_KIND_LABELS[kind]}</Text>
-                  {kindCounts[kind] > 1 ? <Text style={styles.connectionBadgeCount}> {kindCounts[kind]}</Text> : null}
-                </View>
-              ))}
-              {kinds.length > 2 ? (
-                <Text style={styles.moreBadgeText}>+{kinds.length - 2}</Text>
-              ) : null}
-              <Text style={[styles.expandHint, expanded && styles.expandHintActive]}>{expanded ? '−' : '＋'}</Text>
+          {item.connections.length > 0 ? (
+            <View style={styles.expandChip}>
+              <Text style={styles.expandChipText}>{expanded ? 'Hide' : `${item.connections.length} related`}</Text>
             </View>
           ) : null}
         </View>
       </Pressable>
 
-      {expanded && hasConnections ? (
-        <View style={styles.inlineConnections}>
-          {item.connections.map((connection) => (
-            <View key={`${connection.kind}-${connection.id}`} style={styles.inlineConnection}>
-              <View style={styles.inlineConnectionHeader}>
-                <View style={[styles.inlineConnectionDot, { backgroundColor: CONNECTION_KIND_COLORS[connection.kind] }]} />
-                <Text style={styles.inlineConnectionKind}>{CONNECTION_KIND_LABELS[connection.kind]}</Text>
-              </View>
-              <Text style={styles.inlineConnectionLabel}>{connection.label}</Text>
-              <Text style={styles.inlineConnectionSummary}>{connection.summary}</Text>
-              {connection.evidence.length > 0 ? (
-                <View style={styles.inlineEvidenceList}>
-                  {connection.evidence.slice(0, 2).map((ev, index) => (
-                    <Text key={index} style={styles.inlineEvidenceText} numberOfLines={2}>
-                      {ev.ref ? `${ev.ref} · ` : ''}{ev.excerpt || ev.title || 'Evidence'}
-                    </Text>
-                  ))}
+      {expanded && item.connections.length > 0 ? (
+        <View style={styles.connectionThread}>
+          {item.connections.map((connection, index) => (
+            <View key={`${connection.kind}-${connection.id}`} style={styles.connectionThreadItem}>
+              <View style={[styles.threadLine, { borderLeftColor: CONNECTION_KIND_COLORS[connection.kind] }]} />
+              <View style={styles.connectionThreadContent}>
+                <View style={styles.connectionThreadHeader}>
+                  <View style={[styles.threadKindDot, { backgroundColor: CONNECTION_KIND_COLORS[connection.kind] }]} />
+                  <Text style={styles.threadKindText}>{CONNECTION_KIND_LABELS[connection.kind]}</Text>
                 </View>
-              ) : null}
+                <Text style={styles.threadLabel}>{connection.label}</Text>
+                <Text style={styles.threadSummary}>{connection.summary}</Text>
+                {connection.evidence.length > 0 ? (
+                  <View style={styles.threadEvidenceList}>
+                    {connection.evidence.slice(0, 2).map((ev, evIndex) => (
+                      <Text key={evIndex} style={styles.threadEvidenceText} numberOfLines={2}>
+                        {ev.ref ? `${ev.ref} · ` : ''}{ev.excerpt || ev.title || 'Evidence'}
+                      </Text>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
             </View>
           ))}
         </View>
@@ -865,32 +751,17 @@ const styles = StyleSheet.create({
   activityItemHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
   activityItemBody: { flex: 1 },
   detailBody: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 15, lineHeight: 21, color: '#3a3530' },
-  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  connectionBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  connectionBadgeDot: { width: 5, height: 5, borderRadius: 2.5 },
-  connectionBadgeText: { fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: '500', color: '#7a7368' },
-  connectionBadgeCount: { fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: '600', color: '#7a7368' },
-  moreBadgeText: { fontFamily: 'Inter, sans-serif', fontSize: 10, color: '#9a9388' },
-  expandHint: { fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#b8b0a4', marginLeft: 2 },
-  expandHintActive: { color: '#8b7355' },
-  inlineConnections: { gap: 8, paddingTop: 4, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: '#f0eee9', marginLeft: 4 },
-  inlineConnection: { gap: 3 },
-  inlineConnectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  inlineConnectionDot: { width: 5, height: 5, borderRadius: 2.5 },
-  inlineConnectionKind: { fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase', color: '#9a9388' },
-  inlineConnectionLabel: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 15, fontWeight: '500', color: '#3a3530' },
-  inlineConnectionSummary: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 14, lineHeight: 20, color: '#7a7368' },
-  inlineEvidenceList: { gap: 2, paddingTop: 2 },
-  inlineEvidenceText: { fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#9a9388', lineHeight: 16 },
-  evidenceCard: { paddingTop: 6, gap: 4 },
-  evidenceTitle: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 15, fontWeight: '500', color: '#3a3530' },
-  evidenceSubtitle: { fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#8b7355', lineHeight: 17 },
-  evidenceList: { gap: 3, paddingTop: 2 },
-  evidenceText: { fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#9a9388', lineHeight: 16 },
-  connectionGroupFirst: { gap: 6 },
-  connectionGroup: { gap: 6, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f0eee9' },
-  connectionHeading: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontStyle: 'italic', fontSize: 15, lineHeight: 22, color: '#7a7368' },
-  themeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  themePill: { paddingVertical: 4, paddingHorizontal: 12, borderWidth: 1, borderColor: '#e8e5e0', borderRadius: 999, backgroundColor: '#faf9f6' },
-  themePillText: { fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#3a3530' },
+  expandChip: { borderWidth: 1, borderColor: '#e8e5e0', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, backgroundColor: '#faf9f6' },
+  expandChipText: { fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: '500', color: '#8b7355' },
+  connectionThread: { gap: 8, paddingTop: 6, paddingLeft: 12 },
+  connectionThreadItem: { flexDirection: 'row' },
+  threadLine: { width: 0, borderLeftWidth: 1.5, marginRight: 12 },
+  connectionThreadContent: { flex: 1, gap: 3 },
+  connectionThreadHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  threadKindDot: { width: 5, height: 5, borderRadius: 2.5 },
+  threadKindText: { fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase', color: '#9a9388' },
+  threadLabel: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 15, fontWeight: '500', color: '#3a3530' },
+  threadSummary: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 14, lineHeight: 20, color: '#7a7368' },
+  threadEvidenceList: { gap: 2, paddingTop: 2 },
+  threadEvidenceText: { fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#9a9388', lineHeight: 16 },
 });
