@@ -2,7 +2,13 @@
  * Patterns screen — gentle, evidence-backed reflection on recurring activity.
  *
  * The backend owns pattern construction. This screen renders the summary:
- * activity dots by day, inline day detail, and related connections.
+ * activity dots by day, inline day detail with per-item connections, and a
+ * lightweight window-level Connections overview.
+ *
+ * Every activity row (journal, reading, highlight, note, bookmark) may expand
+ * to show connections — echoes, returned-to signals, themes, and trails — that
+ * are attached to that specific trace. This keeps the evidence and the pattern
+ * in the same place and provides the graph hooks for future cloud views.
  */
 
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
@@ -19,6 +25,7 @@ import { type JournalSegment, getCachedSync } from '@resonance/core';
 
 type ActivityType = 'journal' | 'reading' | 'highlight' | 'note' | 'bookmark' | 'echo';
 type ActivityCounts = Record<ActivityType, number>;
+type ConnectionKind = 'echo' | 'returned_to' | 'theme' | 'trail';
 
 interface PatternEvidence {
   type: ActivityType | 'theme' | 'edge';
@@ -27,6 +34,17 @@ interface PatternEvidence {
   title?: string;
   ref?: string | null;
   excerpt?: string | null;
+}
+
+interface PatternConnection {
+  kind: ConnectionKind;
+  id: string;
+  label: string;
+  summary: string;
+  confidence?: number;
+  evidence: PatternEvidence[];
+  sourceNodeIds?: string[];
+  targetNodeIds?: string[];
 }
 
 interface PatternDaySummary {
@@ -91,15 +109,55 @@ interface PatternsSummary {
   };
 }
 
+interface JournalDayItem {
+  id: string;
+  excerpt: string;
+  createdAt: string | null;
+  connections: PatternConnection[];
+}
+
+interface ReadingDayItem {
+  id: string;
+  label: string;
+  ref: string | null;
+  createdAt: string | null;
+  connections: PatternConnection[];
+}
+
+interface HighlightDayItem {
+  id: string;
+  verseRef: string | null;
+  selectedText: string | null;
+  color: string | null;
+  createdAt: string | null;
+  connections: PatternConnection[];
+}
+
+interface NoteDayItem {
+  id: string;
+  verseRef: string | null;
+  noteExcerpt: string;
+  updatedAt: string | null;
+  connections: PatternConnection[];
+}
+
+interface BookmarkDayItem {
+  id: string;
+  verseRef: string | null;
+  label: string | null;
+  createdAt: string | null;
+  connections: PatternConnection[];
+}
+
 interface PatternDayDetail {
   date: string;
   counts: ActivityCounts;
-  journal: Array<{ id: string; excerpt: string; createdAt: string | null }>;
-  reading: Array<{ id: string; label: string; ref: string | null; createdAt: string | null }>;
-  highlights: Array<{ id: string; verseRef: string | null; selectedText: string | null; color: string | null; createdAt: string | null }>;
-  notes: Array<{ id: string; verseRef: string | null; noteExcerpt: string; updatedAt: string | null }>;
-  bookmarks: Array<{ id: string; verseRef: string | null; label: string | null; createdAt: string | null }>;
-  echoes: PatternEcho[];
+  journal: JournalDayItem[];
+  reading: ReadingDayItem[];
+  highlights: HighlightDayItem[];
+  notes: NoteDayItem[];
+  bookmarks: BookmarkDayItem[];
+  connections: PatternConnection[];
 }
 
 interface ThemeItem {
@@ -123,6 +181,20 @@ const ACTIVITY_COLORS: Record<ActivityType, string> = {
   note: '#7d79a8',
   bookmark: '#b86f52',
   echo: '#6f8fb8',
+};
+
+const CONNECTION_KIND_COLORS: Record<ConnectionKind, string> = {
+  echo: '#6f8fb8',
+  returned_to: '#c9a25a',
+  theme: '#8b7355',
+  trail: '#6b9e6b',
+};
+
+const CONNECTION_KIND_LABELS: Record<ConnectionKind, string> = {
+  echo: 'Echo',
+  returned_to: 'Returned to',
+  theme: 'Theme',
+  trail: 'Trail',
 };
 
 export function PatternsScreen(): ReactNode {
@@ -178,7 +250,16 @@ export function PatternsScreen(): ReactNode {
       const detail = await res.json() as PatternDayDetail;
       setDayDetail(detail);
     } catch {
-      setDayDetail({ date: day.date, counts: day.counts, journal: [], reading: [], highlights: [], notes: [], bookmarks: [], echoes: [] });
+      setDayDetail({
+        date: day.date,
+        counts: day.counts,
+        journal: [],
+        reading: [],
+        highlights: [],
+        notes: [],
+        bookmarks: [],
+        connections: [],
+      });
     } finally {
       setLoadingDay(false);
     }
@@ -189,7 +270,7 @@ export function PatternsScreen(): ReactNode {
     setReflection(null);
     try {
       if (segments.length > 0) {
-        const excerpts = segments.filter(s => s.text).slice(0, 5).map(s => s.text!);
+        const excerpts = segments.filter((s) => s.text).slice(0, 5).map((s) => s.text!);
         const result = await dataLayer.generateReflectionPrompt(excerpts);
         if (result?.prompt) {
           setReflection(result.prompt);
@@ -242,7 +323,7 @@ export function PatternsScreen(): ReactNode {
         ) : null}
       </View>
 
-      {/* Connections */}
+      {/* Connections — window-level overview */}
       <Text style={styles.sectionLabel}>Connections</Text>
       <ConnectionsCard summary={summary} />
 
@@ -385,32 +466,61 @@ function DayDetailInline({
     day: 'numeric',
   });
 
+  if (loading) {
+    return (
+      <View style={styles.dayDetailWrap}>
+        <Text style={styles.dateStamp}>{displayDate}</Text>
+        <ActivityIndicator size="small" color="#8b7355" />
+      </View>
+    );
+  }
+
+  if (!detail) return null;
+
   return (
     <View style={styles.dayDetailWrap}>
       <View style={styles.dayDetailHeader}>
         <Text style={styles.dateStamp}>{displayDate}</Text>
-        <CountLine counts={detail?.counts ?? emptyCounts()} />
+        <CountLine counts={detail.counts} />
       </View>
-      {loading ? <ActivityIndicator size="small" color="#8b7355" /> : null}
-      {detail ? (
-        <>
-          <DetailSection title="Journal" rows={detail.journal.map((j) => j.excerpt)} />
-          <DetailSection title="Reading" rows={detail.reading.map((r) => r.label)} />
-          <DetailSection
-            title="Highlights"
-            rows={detail.highlights.map((h) => [h.verseRef, h.selectedText].filter(Boolean).join(' — '))}
-          />
-          <DetailSection
-            title="Notes"
-            rows={detail.notes.map((n) => [n.verseRef, n.noteExcerpt].filter(Boolean).join(' — '))}
-          />
-          <DetailSection
-            title="Bookmarks"
-            rows={detail.bookmarks.map((b) => [b.verseRef, b.label].filter(Boolean).join(' — '))}
-          />
-          <DetailSection title="Echoes" rows={detail.echoes.map((e) => e.title)} />
-        </>
-      ) : null}
+
+      <DetailSection
+        title="Journal"
+        items={detail.journal}
+        renderBody={(item) => <Text style={styles.detailBody}>{item.excerpt}</Text>}
+      />
+      <DetailSection
+        title="Reading"
+        items={detail.reading}
+        renderBody={(item) => <Text style={styles.detailBody}>{item.label}</Text>}
+      />
+      <DetailSection
+        title="Highlights"
+        items={detail.highlights}
+        renderBody={(item) => (
+          <Text style={styles.detailBody}>
+            {[item.verseRef, item.selectedText].filter(Boolean).join(' — ')}
+          </Text>
+        )}
+      />
+      <DetailSection
+        title="Notes"
+        items={detail.notes}
+        renderBody={(item) => (
+          <Text style={styles.detailBody}>
+            {[item.verseRef, item.noteExcerpt].filter(Boolean).join(' — ')}
+          </Text>
+        )}
+      />
+      <DetailSection
+        title="Bookmarks"
+        items={detail.bookmarks}
+        renderBody={(item) => (
+          <Text style={styles.detailBody}>
+            {[item.verseRef, item.label].filter(Boolean).join(' — ')}
+          </Text>
+        )}
+      />
     </View>
   );
 }
@@ -422,18 +532,87 @@ function CountLine({ counts }: { counts: ActivityCounts }): ReactNode {
   return <Text style={styles.hint}>{parts.length ? parts.join(' · ') : 'No activity found for this day.'}</Text>;
 }
 
-function DetailSection({ title, rows }: { title: string; rows: string[] }): ReactNode {
-  const filtered = rows.filter((row) => row && row.trim().length > 0);
-  if (filtered.length === 0) return null;
+function DetailSection<T extends { id: string; connections: PatternConnection[] }>({
+  title,
+  items,
+  renderBody,
+}: {
+  title: string;
+  items: T[];
+  renderBody: (item: T) => ReactNode;
+}): ReactNode {
+  if (items.length === 0) return null;
   return (
     <View style={styles.detailSection}>
       <Text style={styles.detailSectionTitle}>{title}</Text>
-      {filtered.slice(0, 5).map((row, index) => (
-        <View key={index} style={styles.detailRowWrap}>
-          <View style={styles.threadLine} />
-          <Text style={styles.detailRow} numberOfLines={2}>{row}</Text>
-        </View>
+      {items.map((item) => (
+        <ActivityItemRow key={item.id} item={item} renderBody={() => renderBody(item)} />
       ))}
+    </View>
+  );
+}
+
+function ActivityItemRow<T extends { id: string; connections: PatternConnection[] }>({
+  item,
+  renderBody,
+}: {
+  item: T;
+  renderBody: () => ReactNode;
+}): ReactNode {
+  const [expanded, setExpanded] = useState(false);
+  const hasConnections = item.connections.length > 0;
+  const kindCounts = item.connections.reduce((acc, c) => {
+    acc[c.kind] = (acc[c.kind] || 0) + 1;
+    return acc;
+  }, {} as Record<ConnectionKind, number>);
+  const kinds = Object.keys(kindCounts) as ConnectionKind[];
+
+  return (
+    <View style={styles.activityItem}>
+      <Pressable onPress={() => hasConnections && setExpanded(!expanded)} disabled={!hasConnections}>
+        <View style={styles.activityItemHeader}>
+          <View style={styles.activityItemBody}>{renderBody()}</View>
+          {hasConnections ? (
+            <View style={styles.badgeRow}>
+              {kinds.slice(0, 2).map((kind) => (
+                <View key={kind} style={[styles.connectionBadge, { borderColor: CONNECTION_KIND_COLORS[kind] }]}>
+                  <View style={[styles.connectionBadgeDot, { backgroundColor: CONNECTION_KIND_COLORS[kind] }]} />
+                  <Text style={styles.connectionBadgeText}>{CONNECTION_KIND_LABELS[kind]}</Text>
+                  {kindCounts[kind] > 1 ? <Text style={styles.connectionBadgeCount}> {kindCounts[kind]}</Text> : null}
+                </View>
+              ))}
+              {kinds.length > 2 ? (
+                <Text style={styles.moreBadgeText}>+{kinds.length - 2}</Text>
+              ) : null}
+              <Text style={[styles.expandHint, expanded && styles.expandHintActive]}>{expanded ? '−' : '＋'}</Text>
+            </View>
+          ) : null}
+        </View>
+      </Pressable>
+
+      {expanded && hasConnections ? (
+        <View style={styles.inlineConnections}>
+          {item.connections.map((connection) => (
+            <View key={`${connection.kind}-${connection.id}`} style={styles.inlineConnection}>
+              <View style={styles.inlineConnectionHeader}>
+                <View style={[styles.inlineConnectionDot, { backgroundColor: CONNECTION_KIND_COLORS[connection.kind] }]} />
+                <Text style={styles.inlineConnectionKind}>{CONNECTION_KIND_LABELS[connection.kind]}</Text>
+              </View>
+              <Text style={styles.inlineConnectionLabel}>{connection.label}</Text>
+              <Text style={styles.inlineConnectionSummary}>{connection.summary}</Text>
+              {connection.evidence.length > 0 ? (
+                <View style={styles.inlineEvidenceList}>
+                  {connection.evidence.slice(0, 2).map((ev, index) => (
+                    <Text key={index} style={styles.inlineEvidenceText} numberOfLines={2}>
+                      {ev.ref ? `${ev.ref} · ` : ''}{ev.excerpt || ev.title || 'Evidence'}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -680,11 +859,29 @@ const styles = StyleSheet.create({
   dayDetailWrap: { gap: 10 },
   dayDetailHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
   dateStamp: { fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: '500', color: '#9a9388', letterSpacing: 0.4 },
-  detailSection: { gap: 4 },
+  detailSection: { gap: 6 },
   detailSectionTitle: { fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase', color: '#9a9388' },
-  detailRowWrap: { flexDirection: 'row', gap: 8 },
-  threadLine: { width: 1, backgroundColor: '#e8e5e0', marginLeft: 4, marginTop: 4, marginBottom: 4 },
-  detailRow: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 15, lineHeight: 21, color: '#3a3530', flex: 1 },
+  activityItem: { gap: 6, paddingVertical: 4 },
+  activityItemHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 },
+  activityItemBody: { flex: 1 },
+  detailBody: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 15, lineHeight: 21, color: '#3a3530' },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  connectionBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  connectionBadgeDot: { width: 5, height: 5, borderRadius: 2.5 },
+  connectionBadgeText: { fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: '500', color: '#7a7368' },
+  connectionBadgeCount: { fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: '600', color: '#7a7368' },
+  moreBadgeText: { fontFamily: 'Inter, sans-serif', fontSize: 10, color: '#9a9388' },
+  expandHint: { fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#b8b0a4', marginLeft: 2 },
+  expandHintActive: { color: '#8b7355' },
+  inlineConnections: { gap: 8, paddingTop: 4, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: '#f0eee9', marginLeft: 4 },
+  inlineConnection: { gap: 3 },
+  inlineConnectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  inlineConnectionDot: { width: 5, height: 5, borderRadius: 2.5 },
+  inlineConnectionKind: { fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: '600', letterSpacing: 0.4, textTransform: 'uppercase', color: '#9a9388' },
+  inlineConnectionLabel: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 15, fontWeight: '500', color: '#3a3530' },
+  inlineConnectionSummary: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 14, lineHeight: 20, color: '#7a7368' },
+  inlineEvidenceList: { gap: 2, paddingTop: 2 },
+  inlineEvidenceText: { fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#9a9388', lineHeight: 16 },
   evidenceCard: { paddingTop: 6, gap: 4 },
   evidenceTitle: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontSize: 15, fontWeight: '500', color: '#3a3530' },
   evidenceSubtitle: { fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#8b7355', lineHeight: 17 },

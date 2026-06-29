@@ -56,7 +56,7 @@ Use a max-dot rule so the month view stays readable. Recommended behavior:
 
 ### Day detail
 
-Clicking a day opens grouped evidence for that date.
+Clicking a day opens grouped evidence for that date. Each journal entry, reading, highlight, note, and bookmark may carry inline connections (echoes, returned-to signals, themes, trails) that relate to that specific trace.
 
 Required groups:
 
@@ -65,7 +65,8 @@ Required groups:
 - Highlights
 - Notes
 - Bookmarks
-- Echoes
+
+Each activity item should be expandable when it has connections. Expanding an item reveals the related connections with their evidence, so the user sees *why* a pattern appeared without leaving the activity context.
 
 The day detail should be useful even when only journal and reading data exist. Missing optional adaptive tables must not crash the day view.
 
@@ -192,14 +193,61 @@ Response shape:
 {
   date: string;
   counts: ActivityCounts;
-  journal: JournalDayItem[];
-  reading: ReadingDayItem[];
-  highlights: HighlightDayItem[];
-  notes: NoteDayItem[];
-  bookmarks: BookmarkDayItem[];
-  echoes: PatternEcho[];
+  journal: Array<{
+    id: string;
+    excerpt: string;
+    createdAt: string | null;
+    connections: PatternConnection[];
+  }>;
+  reading: Array<{
+    id: string;
+    label: string;
+    ref: string | null;
+    createdAt: string | null;
+    connections: PatternConnection[];
+  }>;
+  highlights: Array<{
+    id: string;
+    verseRef: string | null;
+    selectedText: string | null;
+    color: string | null;
+    createdAt: string | null;
+    connections: PatternConnection[];
+  }>;
+  notes: Array<{
+    id: string;
+    verseRef: string | null;
+    noteExcerpt: string;
+    updatedAt: string | null;
+    connections: PatternConnection[];
+  }>;
+  bookmarks: Array<{
+    id: string;
+    verseRef: string | null;
+    label: string | null;
+    createdAt: string | null;
+    connections: PatternConnection[];
+  }>;
+  connections: PatternConnection[];
 }
 ```
+
+`PatternConnection` is the shared edge shape:
+
+```ts
+interface PatternConnection {
+  kind: 'echo' | 'returned_to' | 'theme' | 'trail';
+  id: string;
+  label: string;
+  summary: string;
+  confidence?: number;
+  evidence: PatternEvidence[];
+  sourceNodeIds?: string[];
+  targetNodeIds?: string[];
+}
+```
+
+Per-item `connections` attach a connection to the specific activity trace it relates to. The top-level `connections` array provides the full set of day-level connections for overview or future graph rendering.
 
 ### `POST /api/patterns/feedback`
 

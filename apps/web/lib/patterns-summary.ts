@@ -18,6 +18,25 @@ interface PatternEvidence {
   excerpt?: string | null;
 }
 
+export type ConnectionKind = 'echo' | 'returned_to' | 'theme' | 'trail';
+
+/**
+ * A connection is an edge between one or more activity traces.
+ * It is the shared shape used by echoes, returned-to signals, recurring themes,
+ * and trails. `sourceNodeIds` and `targetNodeIds` are optional graph hooks for
+ * future visualizations (idea clouds, Bible clouds, etc.).
+ */
+export interface PatternConnection {
+  kind: ConnectionKind;
+  id: string;
+  label: string;
+  summary: string;
+  confidence?: number;
+  evidence: PatternEvidence[];
+  sourceNodeIds?: string[];
+  targetNodeIds?: string[];
+}
+
 export interface PatternDaySummary {
   date: string;
   counts: ActivityCounts;
@@ -83,12 +102,52 @@ export interface PatternsSummary {
 export interface PatternDayDetail {
   date: string;
   counts: ActivityCounts;
-  journal: Array<{ id: string; excerpt: string; createdAt: string | null }>;
-  reading: Array<{ id: string; label: string; ref: string | null; createdAt: string | null }>;
-  highlights: Array<{ id: string; verseRef: string | null; selectedText: string | null; color: string | null; createdAt: string | null }>;
-  notes: Array<{ id: string; verseRef: string | null; noteExcerpt: string; updatedAt: string | null }>;
-  bookmarks: Array<{ id: string; verseRef: string | null; label: string | null; createdAt: string | null }>;
-  echoes: PatternEcho[];
+  journal: JournalDayItem[];
+  reading: ReadingDayItem[];
+  highlights: HighlightDayItem[];
+  notes: NoteDayItem[];
+  bookmarks: BookmarkDayItem[];
+  connections: PatternConnection[];
+}
+
+export interface JournalDayItem {
+  id: string;
+  excerpt: string;
+  createdAt: string | null;
+  connections: PatternConnection[];
+}
+
+export interface ReadingDayItem {
+  id: string;
+  label: string;
+  ref: string | null;
+  createdAt: string | null;
+  connections: PatternConnection[];
+}
+
+export interface HighlightDayItem {
+  id: string;
+  verseRef: string | null;
+  selectedText: string | null;
+  color: string | null;
+  createdAt: string | null;
+  connections: PatternConnection[];
+}
+
+export interface NoteDayItem {
+  id: string;
+  verseRef: string | null;
+  noteExcerpt: string;
+  updatedAt: string | null;
+  connections: PatternConnection[];
+}
+
+export interface BookmarkDayItem {
+  id: string;
+  verseRef: string | null;
+  label: string | null;
+  createdAt: string | null;
+  connections: PatternConnection[];
 }
 
 interface RawData {
@@ -411,6 +470,74 @@ function mapTrails(themes: PatternTheme[], echoes: PatternEcho[], returned: Retu
   return trails.slice(0, 4);
 }
 
+// ── Connections (unified edge shape for inline rendering and future clouds) ──
+
+function nodeIdsFromEvidence(evidence: PatternEvidence[]): string[] {
+  return evidence.map((e) => e.id).filter((id): id is string => Boolean(id));
+}
+
+function echoToConnection(echo: PatternEcho): PatternConnection {
+  return {
+    kind: 'echo',
+    id: echo.id,
+    label: echo.title,
+    summary: echo.reason,
+    confidence: echo.confidence,
+    evidence: echo.evidence,
+    sourceNodeIds: nodeIdsFromEvidence(echo.evidence),
+  };
+}
+
+function returnedToToConnection(signal: ReturnedSignal): PatternConnection {
+  return {
+    kind: 'returned_to',
+    id: signal.id,
+    label: signal.label,
+    summary: `${signal.count} traces across ${signal.activityTypes.join(', ')}`,
+    evidence: signal.evidence,
+    sourceNodeIds: nodeIdsFromEvidence(signal.evidence),
+  };
+}
+
+function themeToConnection(theme: PatternTheme): PatternConnection {
+  return {
+    kind: 'theme',
+    id: theme.id,
+    label: theme.label,
+    summary: theme.summary,
+    confidence: theme.confidence,
+    evidence: theme.evidence,
+    sourceNodeIds: nodeIdsFromEvidence(theme.evidence),
+  };
+}
+
+function trailToConnection(trail: PatternTrail): PatternConnection {
+  return {
+    kind: 'trail',
+    id: trail.id,
+    label: trail.label,
+    summary: trail.summary,
+    evidence: trail.evidence,
+    sourceNodeIds: nodeIdsFromEvidence(trail.evidence),
+  };
+}
+
+function buildItemConnectionIndex(connections: PatternConnection[]): Map<string, PatternConnection[]> {
+  const index = new Map<string, PatternConnection[]>();
+  for (const connection of connections) {
+    for (const evidence of connection.evidence) {
+      const id = evidence.id;
+      if (!id) continue;
+      const list = index.get(id) ?? [];
+      if (!list.some((c) => c.kind === connection.kind && c.id === connection.id)) {
+        list.push(connection);
+        index.set(id, list);
+      }
+    }
+  }
+  return index;
+}
+
 function recentlyText(themes: PatternTheme[], raw: RawData): string {
   if (themes.length > 0) {
     const labels = themes.slice(0, 3).map((t) => t.label).join(', ');
@@ -465,25 +592,75 @@ export async function buildPatternsSummary(start: string, end: string): Promise<
 export async function buildPatternDayDetail(date: string): Promise<PatternDayDetail> {
   const raw = await loadRawData(date, date);
   const day = summarizeDays(raw, date, date)[0] ?? { date, counts: emptyCounts(), dotTypes: [] };
+  const themes = mapThemes(raw, date, date);
   const echoes = mapEchoes(raw);
+  const returned = returnedTo(raw);
+  const trails = mapTrails(themes, echoes, returned);
+
+  const allConnections: PatternConnection[] = [
+    ...echoes.map(echoToConnection),
+    ...returned.map(returnedToToConnection),
+    ...themes.map(themeToConnection),
+    ...trails.map(trailToConnection),
+  ];
+
+  const index = buildItemConnectionIndex(allConnections);
+
+  const journal: JournalDayItem[] = raw.journal.map((row) => ({
+    id: String(row.id),
+    excerpt: excerpt(row.text, 220),
+    createdAt: isoTimestamp(row.created_at),
+    connections: index.get(String(row.id)) ?? [],
+  }));
+
+  const reading: ReadingDayItem[] = raw.reading.map((row) => {
+    const id = String(row.id ?? `${row.verse_ref ?? row.book_id}-${row.created_at}`);
+    return {
+      id,
+      label: String(row.verse_ref || [row.book_id, row.chapter].filter(Boolean).join(' ') || 'Reading'),
+      ref: row.verse_ref ?? null,
+      createdAt: isoTimestamp(row.created_at),
+      connections: index.get(id) ?? [],
+    };
+  });
+
+  const highlights: HighlightDayItem[] = raw.highlights
+    .filter((row) => inWindow(normalizeDate(row.created_at), date, date))
+    .map((row) => ({
+      id: String(row.id),
+      verseRef: row.verse_ref ?? null,
+      selectedText: row.selected_text ?? null,
+      color: row.color ?? null,
+      createdAt: isoTimestamp(row.created_at),
+      connections: index.get(String(row.id)) ?? [],
+    }));
+
+  const notes: NoteDayItem[] = raw.highlights
+    .filter((row) => row.note_text && inWindow(normalizeDate(row.note_updated_at ?? row.updated_at), date, date))
+    .map((row) => ({
+      id: String(row.id),
+      verseRef: row.verse_ref ?? null,
+      noteExcerpt: excerpt(row.note_text, 220),
+      updatedAt: isoTimestamp(row.note_updated_at ?? row.updated_at),
+      connections: index.get(String(row.id)) ?? [],
+    }));
+
+  const bookmarks: BookmarkDayItem[] = raw.bookmarks.map((row) => ({
+    id: String(row.id),
+    verseRef: row.verse_ref ?? null,
+    label: row.label ?? null,
+    createdAt: isoTimestamp(row.created_at),
+    connections: index.get(String(row.id)) ?? [],
+  }));
 
   return {
     date,
     counts: day.counts,
-    journal: raw.journal.map((row) => ({ id: String(row.id), excerpt: excerpt(row.text, 220), createdAt: isoTimestamp(row.created_at) })),
-    reading: raw.reading.map((row) => ({
-      id: String(row.id ?? `${row.verse_ref ?? row.book_id}-${row.created_at}`),
-      label: String(row.verse_ref || [row.book_id, row.chapter].filter(Boolean).join(' ') || 'Reading'),
-      ref: row.verse_ref ?? null,
-      createdAt: isoTimestamp(row.created_at),
-    })),
-    highlights: raw.highlights
-      .filter((row) => inWindow(normalizeDate(row.created_at), date, date))
-      .map((row) => ({ id: String(row.id), verseRef: row.verse_ref ?? null, selectedText: row.selected_text ?? null, color: row.color ?? null, createdAt: isoTimestamp(row.created_at) })),
-    notes: raw.highlights
-      .filter((row) => row.note_text && inWindow(normalizeDate(row.note_updated_at ?? row.updated_at), date, date))
-      .map((row) => ({ id: String(row.id), verseRef: row.verse_ref ?? null, noteExcerpt: excerpt(row.note_text, 220), updatedAt: isoTimestamp(row.note_updated_at ?? row.updated_at) })),
-    bookmarks: raw.bookmarks.map((row) => ({ id: String(row.id), verseRef: row.verse_ref ?? null, label: row.label ?? null, createdAt: isoTimestamp(row.created_at) })),
-    echoes,
+    journal,
+    reading,
+    highlights,
+    notes,
+    bookmarks,
+    connections: allConnections,
   };
 }

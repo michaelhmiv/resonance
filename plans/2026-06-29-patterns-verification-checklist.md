@@ -127,6 +127,31 @@ Expected:
 - Detail card shows available count data or empty detail fallback.
 - The screen does not crash.
 
+### 15. Per-item connections present
+
+Expected:
+
+- Journal/reading/highlight/note/bookmark rows with related echoes, returned-to signals, themes, or trails show connection badges.
+- Tapping a row expands inline connections.
+- Each inline connection shows its kind, label, summary, and supporting evidence excerpts.
+- The connection surface matches the shared `PatternConnection` edge shape.
+
+### 16. Activity item without connections
+
+Expected:
+
+- Row is not expandable.
+- No badge is shown.
+- The item still renders its normal body text.
+
+### 17. Day with both activity and connections
+
+Expected:
+
+- Activity groups render normally.
+- Connected rows expand to show relationships.
+- Window-level Connections card still renders as an overview.
+
 ## Feedback route scenarios
 
 ### Valid opened event
