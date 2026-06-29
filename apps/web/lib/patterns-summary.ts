@@ -18,7 +18,7 @@ interface PatternEvidence {
   excerpt?: string | null;
 }
 
-export type ConnectionKind = 'echo' | 'returned_to' | 'theme' | 'trail';
+export type ConnectionKind = 'echo' | 'returned_to' | 'theme' | 'trail' | 'co_occurrence';
 
 /**
  * A connection is an edge between one or more activity traces.
@@ -522,12 +522,75 @@ function trailToConnection(trail: PatternTrail): PatternConnection {
   };
 }
 
+function coOccurrenceConnection(
+  date: string,
+  source: { id: string; type: ActivityType; label: string; ref?: string | null; excerpt?: string | null },
+  others: Array<{ id: string; type: ActivityType; label: string; ref?: string | null; excerpt?: string | null }>
+): PatternConnection | null {
+  if (others.length === 0) return null;
+  const evidence: PatternEvidence[] = others.map((item) => ({
+    type: item.type,
+    id: item.id,
+    title: item.label,
+    ref: item.ref ?? null,
+    excerpt: item.excerpt ?? null,
+  }));
+  const labelByType: Record<ActivityType, string> = {
+    journal: 'Also on this day',
+    reading: 'Related from this reading',
+    highlight: 'Context this day',
+    note: 'Context this day',
+    bookmark: 'Context this day',
+    echo: 'Related echoes',
+  };
+  return {
+    kind: 'co_occurrence',
+    id: `co-occurrence-${date}-${source.id}`,
+    label: labelByType[source.type] ?? 'Related on this day',
+    summary: `${others.length} related trace${others.length === 1 ? '' : 's'}`,
+    evidence,
+    sourceNodeIds: [source.id],
+    targetNodeIds: others.map((item) => item.id),
+  };
+}
+
+function buildCoOccurrenceConnections(
+  date: string,
+  items: {
+    journal: JournalDayItem[];
+    reading: ReadingDayItem[];
+    highlights: HighlightDayItem[];
+    notes: NoteDayItem[];
+    bookmarks: BookmarkDayItem[];
+  }
+): PatternConnection[] {
+  const all: Array<{ id: string; type: ActivityType; label: string; ref?: string | null; excerpt?: string | null }> = [
+    ...items.journal.map((j) => ({ id: j.id, type: 'journal' as ActivityType, label: 'Journal', excerpt: j.excerpt })),
+    ...items.reading.map((r) => ({ id: r.id, type: 'reading' as ActivityType, label: r.label, ref: r.ref })),
+    ...items.highlights.map((h) => ({ id: h.id, type: 'highlight' as ActivityType, label: h.verseRef || 'Highlight', excerpt: h.selectedText })),
+    ...items.notes.map((n) => ({ id: n.id, type: 'note' as ActivityType, label: n.verseRef || 'Note', excerpt: n.noteExcerpt })),
+    ...items.bookmarks.map((b) => ({ id: b.id, type: 'bookmark' as ActivityType, label: b.verseRef || b.label || 'Bookmark' })),
+  ];
+
+  const connections: PatternConnection[] = [];
+  for (const source of all) {
+    const others = all.filter((item) => item.id !== source.id && item.type !== source.type);
+    if (others.length === 0) continue;
+    const connection = coOccurrenceConnection(date, source, others);
+    if (connection) connections.push(connection);
+  }
+  return connections;
+}
+
 function buildItemConnectionIndex(connections: PatternConnection[]): Map<string, PatternConnection[]> {
   const index = new Map<string, PatternConnection[]>();
   for (const connection of connections) {
-    for (const evidence of connection.evidence) {
-      const id = evidence.id;
-      if (!id) continue;
+    const ids = new Set<string>([
+      ...(connection.sourceNodeIds ?? []),
+      ...(connection.targetNodeIds ?? []),
+      ...connection.evidence.map((e) => e.id).filter((id): id is string => Boolean(id)),
+    ]);
+    for (const id of ids) {
       const list = index.get(id) ?? [];
       if (!list.some((c) => c.kind === connection.kind && c.id === connection.id)) {
         list.push(connection);
@@ -592,25 +655,13 @@ export async function buildPatternsSummary(start: string, end: string): Promise<
 export async function buildPatternDayDetail(date: string): Promise<PatternDayDetail> {
   const raw = await loadRawData(date, date);
   const day = summarizeDays(raw, date, date)[0] ?? { date, counts: emptyCounts(), dotTypes: [] };
-  const themes = mapThemes(raw, date, date);
-  const echoes = mapEchoes(raw);
-  const returned = returnedTo(raw);
-  const trails = mapTrails(themes, echoes, returned);
 
-  const allConnections: PatternConnection[] = [
-    ...echoes.map(echoToConnection),
-    ...returned.map(returnedToToConnection),
-    ...themes.map(themeToConnection),
-    ...trails.map(trailToConnection),
-  ];
-
-  const index = buildItemConnectionIndex(allConnections);
-
+  // Raw activity items without connections first.
   const journal: JournalDayItem[] = raw.journal.map((row) => ({
     id: String(row.id),
     excerpt: excerpt(row.text, 220),
     createdAt: isoTimestamp(row.created_at),
-    connections: index.get(String(row.id)) ?? [],
+    connections: [],
   }));
 
   const reading: ReadingDayItem[] = raw.reading.map((row) => {
@@ -620,7 +671,7 @@ export async function buildPatternDayDetail(date: string): Promise<PatternDayDet
       label: String(row.verse_ref || [row.book_id, row.chapter].filter(Boolean).join(' ') || 'Reading'),
       ref: row.verse_ref ?? null,
       createdAt: isoTimestamp(row.created_at),
-      connections: index.get(id) ?? [],
+      connections: [],
     };
   });
 
@@ -632,7 +683,7 @@ export async function buildPatternDayDetail(date: string): Promise<PatternDayDet
       selectedText: row.selected_text ?? null,
       color: row.color ?? null,
       createdAt: isoTimestamp(row.created_at),
-      connections: index.get(String(row.id)) ?? [],
+      connections: [],
     }));
 
   const notes: NoteDayItem[] = raw.highlights
@@ -642,7 +693,7 @@ export async function buildPatternDayDetail(date: string): Promise<PatternDayDet
       verseRef: row.verse_ref ?? null,
       noteExcerpt: excerpt(row.note_text, 220),
       updatedAt: isoTimestamp(row.note_updated_at ?? row.updated_at),
-      connections: index.get(String(row.id)) ?? [],
+      connections: [],
     }));
 
   const bookmarks: BookmarkDayItem[] = raw.bookmarks.map((row) => ({
@@ -650,8 +701,36 @@ export async function buildPatternDayDetail(date: string): Promise<PatternDayDet
     verseRef: row.verse_ref ?? null,
     label: row.label ?? null,
     createdAt: isoTimestamp(row.created_at),
-    connections: index.get(String(row.id)) ?? [],
+    connections: [],
   }));
+
+  // Backend-discovered connections (echoes, returned-to, themes, trails).
+  const themes = mapThemes(raw, date, date);
+  const echoes = mapEchoes(raw);
+  const returned = returnedTo(raw);
+  const trails = mapTrails(themes, echoes, returned);
+
+  const backendConnections: PatternConnection[] = [
+    ...echoes.map(echoToConnection),
+    ...returned.map(returnedToToConnection),
+    ...themes.map(themeToConnection),
+    ...trails.map(trailToConnection),
+  ];
+
+  // Same-day co-occurrence links every item to the other traces that happened
+  // on the same day. This keeps the UI meaningful even before the adaptive
+  // tables (`resonance_edges`, `theme_snapshots`) have learned anything.
+  const coOccurrenceConnections = buildCoOccurrenceConnections(date, { journal, reading, highlights, notes, bookmarks });
+
+  const allConnections = [...backendConnections, ...coOccurrenceConnections];
+  const index = buildItemConnectionIndex(allConnections);
+
+  // Attach connections to each item.
+  for (const item of journal) item.connections = index.get(item.id) ?? [];
+  for (const item of reading) item.connections = index.get(item.id) ?? [];
+  for (const item of highlights) item.connections = index.get(item.id) ?? [];
+  for (const item of notes) item.connections = index.get(item.id) ?? [];
+  for (const item of bookmarks) item.connections = index.get(item.id) ?? [];
 
   return {
     date,

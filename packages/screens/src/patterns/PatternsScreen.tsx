@@ -25,7 +25,7 @@ import { type JournalSegment, getCachedSync } from '@resonance/core';
 
 type ActivityType = 'journal' | 'reading' | 'highlight' | 'note' | 'bookmark' | 'echo';
 type ActivityCounts = Record<ActivityType, number>;
-type ConnectionKind = 'echo' | 'returned_to' | 'theme' | 'trail';
+type ConnectionKind = 'echo' | 'returned_to' | 'theme' | 'trail' | 'co_occurrence';
 
 interface PatternEvidence {
   type: ActivityType | 'theme' | 'edge';
@@ -188,6 +188,7 @@ const CONNECTION_KIND_COLORS: Record<ConnectionKind, string> = {
   returned_to: '#c9a25a',
   theme: '#8b7355',
   trail: '#6b9e6b',
+  co_occurrence: '#9a9388',
 };
 
 const CONNECTION_KIND_LABELS: Record<ConnectionKind, string> = {
@@ -195,6 +196,7 @@ const CONNECTION_KIND_LABELS: Record<ConnectionKind, string> = {
   returned_to: 'Returned to',
   theme: 'Theme',
   trail: 'Trail',
+  co_occurrence: 'Also this day',
 };
 
 export function PatternsScreen(): ReactNode {
