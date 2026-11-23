@@ -1,0 +1,8 @@
+Resonance — first Firebase test build (Phase 1: bootable APK).
+
+What's in this build:
+• Journal, Word, and Patterns tabs all open
+• The Word tab has the full Bible built in — World English Bible (default) and King James Version. Try opening Genesis 1 and switching translations at the top.
+• First launch takes a few extra seconds while it loads the Bible into the on-device database.
+
+Not in yet: accounts, sync, and the resonance connections between your journal and Scripture — those come in the next phase.
