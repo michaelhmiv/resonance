@@ -8,6 +8,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Text, View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   useFonts,
   CormorantGaramond_400Regular,
@@ -27,7 +30,11 @@ import { useDbStore } from './src/db/dbStore';
 import { useSettingsStore } from './src/settings/settingsStore';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
-export default function App(): ReactNode {
+// Keep the native splash up until fonts + database are ready, then hide
+// it from the effects below (issue #53, P1-15).
+void SplashScreen.preventAutoHideAsync();
+
+function AppContent(): ReactNode {
   const [fontsLoaded] = useFonts({
     CormorantGaramond_400Regular,
     CormorantGaramond_500Medium,
@@ -59,6 +66,12 @@ export default function App(): ReactNode {
         );
       });
   }, [fontsLoaded, setLoading, setReady, setError]);
+
+  useEffect(() => {
+    if (fontsLoaded && status !== 'loading') {
+      void SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, status]);
 
   if (!fontsLoaded) {
     return (
@@ -92,6 +105,21 @@ export default function App(): ReactNode {
       <StatusBar style="dark" />
       <RootNavigator />
     </>
+  );
+}
+
+/**
+ * Root: gesture-handler + safe-area providers wrap everything (issue
+ * #53, P1-08). Android 16 (API 36) is edge-to-edge mandatory — without
+ * SafeAreaProvider, headers/tabs overlap system bars and cutouts.
+ */
+export default function App(): ReactNode {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AppContent />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

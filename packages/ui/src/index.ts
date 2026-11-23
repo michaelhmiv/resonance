@@ -11,8 +11,8 @@ export { NoteModal } from './NoteModal';
 export type { NoteModalProps } from './NoteModal';
 export { HighlightContextMenu } from './HighlightContextMenu';
 export { FloatingHighlightToolbar } from './FloatingHighlightToolbar';
-export { BottomTabBar } from './BottomTabBar';
-export type { TabId } from './BottomTabBar';
+// BottomTabBar is web-only (next/link) and lives in apps/web/components
+// since Phase 1 (issue #53, P1-01) — it must not enter native bundles.
 export { TranslationSelector } from './TranslationSelector';
 export { CrossReferenceLinks } from './CrossReferenceLinks';
 export { CollapsibleCrossRefs } from './CollapsibleCrossRefs';
