@@ -67,16 +67,25 @@ jobs:
       - name: Sign with ephemeral preview key
         working-directory: apps/mobile/android
         run: |
-          keytool -genkeypair -v -keystore preview.keystore -alias preview \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass android -keypass android \
-            -dname "CN=Resonance Preview, O=Sportfolio Holdings"
           BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          UNSIGNED=$(ls app/build/outputs/apk/release/*-unsigned.apk | head -1)
-          "$BUILD_TOOLS/zipalign" -p -f 4 "$UNSIGNED" aligned.apk
-          "$BUILD_TOOLS/apksigner" sign \
-            --ks preview.keystore --ks-pass pass:android --key-pass pass:android \
-            --out resonance-preview.apk aligned.apk
+          ls app/build/outputs/apk/release/
+          UNSIGNED=$(ls app/build/outputs/apk/release/*-unsigned.apk 2>/dev/null | head -1)
+          if [ -n "$UNSIGNED" ]; then
+            keytool -genkeypair -v -keystore preview.keystore -alias preview \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=Resonance Preview, O=Sportfolio Holdings"
+            "$BUILD_TOOLS/zipalign" -p -f 4 "$UNSIGNED" aligned.apk
+            "$BUILD_TOOLS/apksigner" sign \
+              --ks preview.keystore --ks-pass pass:android --key-pass pass:android \
+              --out resonance-preview.apk aligned.apk
+          else
+            # Expo's generated config already signs release with the
+            # debug key — installable as-is for sideload testing.
+            SIGNED=$(ls app/build/outputs/apk/release/*.apk | head -1)
+            echo "No unsigned APK; using Gradle-signed output: $SIGNED"
+            cp "$SIGNED" resonance-preview.apk
+          fi
           "$BUILD_TOOLS/apksigner" verify --print-certs resonance-preview.apk
           ls -la resonance-preview.apk
       - uses: actions/upload-artifact@v4
