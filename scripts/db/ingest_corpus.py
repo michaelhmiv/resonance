@@ -51,11 +51,12 @@ def main() -> None:
                           b.get("type") or "bible", b.get("translation"),
                           "seeded_library (original build)", "public-domain translations (WEB/KJV/ASV)"))
     print("bible books:", len(books))
+    book_ids = {(b["translation"], b["title"]): b["id"] for b in books}
 
     passages = json.load(open(os.path.join(seed, "bible_passages.json")))
     with cur.copy("COPY passages (id,book_id,chapter,verse_start,verse_end,text,translation,chunk_id) FROM STDIN") as cp:
         for p in passages:
-            cp.write_row((int(p["id"]), f"{p['translation']}_{p['book']}", int(p["chapter"]),
+            cp.write_row((int(p["id"]), book_ids[(p["translation"], p["book"])], int(p["chapter"]),
                           int(p["verse_start"]), int(p["verse_end"]), p.get("text"),
                           p.get("translation"), int(p.get("chunk_id") or 0)))
     print("bible passages:", len(passages))
