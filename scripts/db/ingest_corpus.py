@@ -55,8 +55,9 @@ def main() -> None:
     passages = json.load(open(os.path.join(seed, "bible_passages.json")))
     with cur.copy("COPY passages (id,book_id,chapter,verse_start,verse_end,text,translation,chunk_id) FROM STDIN") as cp:
         for p in passages:
-            cp.write_row((p["id"], p["book_id"], p.get("chapter"), p.get("verse_start"),
-                          p.get("verse_end"), p.get("text"), p.get("translation"), p.get("chunk_id")))
+            cp.write_row((int(p["id"]), f"{p['translation']}_{p['book']}", int(p["chapter"]),
+                          int(p["verse_start"]), int(p["verse_end"]), p.get("text"),
+                          p.get("translation"), int(p.get("chunk_id") or 0)))
     print("bible passages:", len(passages))
 
     works = 0
