@@ -10,8 +10,8 @@ import json, re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-STAGING = ROOT / "corpus/staging_v3"
-OUT = ROOT / "corpus/chunks_v1.jsonl"
+STAGING = ROOT / "corpus/staging_v4_clean"
+OUT = ROOT / "corpus/chunks_v2.jsonl"
 MIN_W, MAX_W = 40, 200
 
 def words(s): return len(s.split())
@@ -40,7 +40,7 @@ def chunk_text(text: str) -> list[str]:
 def main():
     total, per_source = 0, {}
     with OUT.open("w") as f:
-        for sub in ["ccel", "ia", "gutenberg", "additions"]:
+        for sub in ["ccel", "ia", "gutenberg", "additions", "rescue"]:
             d = STAGING / sub
             if not d.exists(): continue
             for path in sorted(d.glob("*.txt")):

@@ -237,9 +237,9 @@
  {
   "slug": "desert-fathers-paradise-budge",
   "kind": "additions",
-  "chars": 970420,
+  "chars": 1413397,
   "status": "ok",
-  "from": "https://archive.org/download/paradiseorgarde03budggoog/paradiseorgarde03budggoog_djvu.txt",
+  "from": "https://archive.org/download/ParadiseOfTheHolyFathersV1/ParadiseOfTheHolyFathersV1_djvu.txt",
   "note": "IA pre-1928 edition"
  },
  {
@@ -259,8 +259,11 @@
  },
  {
   "slug": "fenelon-spiritual-letters",
-  "status": "pending",
-  "reason": "IA search unresolved: title:(fenelon) AND (letters OR counsel) AND date:[1700 TO 1928]"
+  "kind": "additions",
+  "chars": 548804,
+  "status": "ok",
+  "from": "https://archive.org/download/selectionsfromwr00fene/selectionsfromwr00fene_djvu.txt",
+  "note": "IA pre-1928 edition"
  },
  {
   "slug": "guyon-method-of-prayer",
