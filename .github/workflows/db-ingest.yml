@@ -1,0 +1,20 @@
+# Loads the corpus into the Railway Postgres database (workflow_dispatch only).
+# The database's only public route is its Railway TCP proxy; the ingest runs
+# here because Actions runners can reach it. Requires repo secret
+# RESONANCE_DATABASE_URL (postgresql://... via the TCP proxy).
+name: DB ingest (Railway Postgres)
+on:
+  workflow_dispatch: {}
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "psycopg[binary]"
+      - run: python scripts/db/ingest_corpus.py
+        env:
+          DATABASE_URL: ${{ secrets.RESONANCE_DATABASE_URL }}
