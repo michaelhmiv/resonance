@@ -5,6 +5,9 @@
 name: DB ingest (Railway Postgres)
 on:
   workflow_dispatch: {}
+  push:
+    branches: [phase1-bootable-apk]
+    paths: ["scripts/db/**", ".github/workflows/db-ingest.yml"]
 jobs:
   ingest:
     runs-on: ubuntu-latest
