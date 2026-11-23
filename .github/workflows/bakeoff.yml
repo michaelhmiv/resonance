@@ -1,0 +1,27 @@
+name: bakeoff
+on:
+  push:
+    branches: [phase1-bootable-apk]
+    paths: ['scripts/bakeoff/**', '.github/workflows/bakeoff.yml']
+  workflow_dispatch:
+    inputs:
+      mode: {description: 'spike or full', default: 'spike'}
+jobs:
+  bakeoff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Install deps
+        run: pip install --quiet sentence-transformers onnxruntime numpy huggingface_hub
+      - name: Run
+        run: python scripts/bakeoff/run_bakeoff.py ${{ inputs.mode || 'spike' }}
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bakeoff-results
+          path: bakeoff-results.json
+          if-no-files-found: ignore
