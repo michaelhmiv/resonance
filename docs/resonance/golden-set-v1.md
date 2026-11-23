@@ -168,6 +168,202 @@ Scoring per entry: recall@10 (any expected echo in top 10), recall@3 for the fir
 - Psalm 121 — "the LORD is your keeper... he who keeps you will not slumber"
 - Hannah dedicating Samuel, 1 Samuel 1:27-28 — entrusting a child to God
 
+### G23 — scrupulosity / religious OCD flavor
+**Journal:** "Confessed the same sin for the fourth time today because the third time I wasn't sure I meant it enough. I know how this sounds. My faith feels like a courtroom where I'm both the criminal and the exhausted judge."
+**Expected echoes:**
+- Romans 8:1 — "no condemnation for those who are in Christ Jesus"
+- Luther, *Commentary on Galatians* — law vs. gospel, the tormented conscience
+- Bunyan, *Grace Abounding* — his own tormented conscience and relief
+
+### G24 — detachment / selling a house full of stuff
+**Journal:** "Garage sale weekend. Twenty years of stuff on the driveway and I felt weirdly lighter with every box that left. Part of me wants to keep going until the house is almost bare. Is that crazy?"
+**Expected echoes:**
+- Matthew 6:19-21 — treasures on earth vs. heaven
+- Eckhart, *Selected Sermons* — detachment (Abgeschiedenheit), letting go of possessions
+- Kempis, *Imitation* I.1 — contempt of worldly vanities
+
+### G25 — a friend's betrayal
+**Journal:** "Found out my closest friend has been talking about me for months. Ten years of friendship. I keep oscillating between wanting to confront him and wanting to just disappear from his life without a word."
+**Expected echoes:**
+- Psalm 55:12-14 — "it is you, a man, my equal, my companion, my familiar friend"
+- Micah 7:5-7 — trust broken, "but as for me, I will look to the LORD"
+- Cassian, *Conferences* — on friendship and anger between brothers
+
+### G26 — new Christian, where to start
+**Journal:** "Became a Christian about a month ago. I open the Bible and I don't know what I'm doing, I pray and I ramble, and everybody at church seems to speak a language I don't. Hungry to grow and embarrassed at the same time."
+**Expected echoes:**
+- 1 Peter 2:2 — "like newborn infants, long for the pure spiritual milk"
+- Augustine, *On Christian Doctrine* — how to read Scripture
+- Athanasius, *On the Incarnation* (intro) — written for a new believer seeking to understand
+
+### G27 — spouse's faith crisis
+**Journal:** "My husband told me tonight he doesn't know if he believes anymore. He wasn't angry, just honest, and it scared me more than a fight would have. I don't want to nag him back to church. I don't know what my job is here."
+**Expected echoes:**
+- 1 Peter 3:1-2 — won without a word, by conduct
+- 1 Corinthians 7:14-16 — the unbelieving spouse and the believing one's hope
+- Monica/Augustine, *Confessions* IX — Monica's patient prayers for her family
+
+### G28 — chronic pain
+**Journal:** "Back pain day 200-something. It's not unbearable, it's just always there, like a radio playing in another room I can never turn off. It's changing my personality and I hate that."
+**Expected echoes:**
+- 2 Corinthians 12:7-10 — the thorn in the flesh, "my grace is sufficient"
+- Psalm 6 — "I am weary with my moaning... the LORD has heard"
+- Julian of Norwich, *Revelations* — her own sickness and what she learned in it
+
+### G29 — comparison / social media envy
+**Journal:** "Deleted Instagram off my phone again. Everyone from high school is either rich, ripped, or on a boat. I was fine with my life at breakfast and by lunch I was bitter about all of it. It's embarrassing how fast it happens."
+**Expected echoes:**
+- Psalm 73 — "my feet had almost stumbled... I was envious of the arrogant when I saw the prosperity of the wicked"
+- Ecclesiastes 4:4 — "all toil and skill... come from a man's envy of his neighbor; this also is vanity"
+- Kempis, *Imitation* — on not comparing oneself with others
+
+### G30 — teenager in trouble
+**Journal:** "Got the call from the school about my son. Again. He's not a bad kid, he's a lost kid, and I lie awake doing the math on where I went wrong. I would take his place in every consequence if I could."
+**Expected echoes:**
+- Luke 15:11-32 — the prodigal son, the father watching the road
+- 2 Samuel 18:33 — David over Absalom: "would I had died instead of you"
+- Monica, *Confessions* IX — a mother's tears for a wayward son
+
+### G31 — retirement / identity ending
+**Journal:** "Last day Friday after 38 years. They gave me a cake and a plaque and I smiled through it. Woke up Monday with nowhere to be and the quiet was deafening. Who am I when nobody needs my work?"
+**Expected echoes:**
+- Ecclesiastes 3:1-8 — a time for every matter under heaven
+- Psalm 71:9,18 — "do not cast me off in the time of old age... so even to old age I may declare your strength"
+- Ignatius, *Exercises* — the Principle and Foundation (purpose beyond role)
+
+### G32 — addiction in the family
+**Journal:** "My brother called from a parking lot at 2 a.m., high again, promising this time is different. I've heard this speech so many times I could recite it. I love him. I don't believe him. Both of those feel true and I don't know what to do with that."
+**Expected echoes:**
+- Luke 15:11-32 — the prodigal, the father who keeps watching
+- Romans 7 — the divided will (for understanding the addict's own war)
+- Augustine, *Confessions* — bondage of habit, the chain of the will
+
+### G33 — fear of death (own diagnosis, older)
+**Journal:** "I'm 71 and the doctor used the word 'manageable,' which is what they say when they can't say 'curable.' I'm not terrified exactly. I just keep thinking about what it will be like to close my eyes here and open them there, and whether my faith is big enough for that door."
+**Expected echoes:**
+- Psalm 23:4 — "even though I walk through the valley of the shadow of death, I will fear no evil"
+- 2 Corinthians 5:1-8 — the tent and the house, away from the body and at home with the Lord
+- Bunyan, *Pilgrim's Progress* — Christian crossing the river at the end
+
+### G34 — singleness and longing
+**Journal:** "I'm 34 and I've done the math at enough weddings. It's not that I think marriage completes a person — I don't — it's that I want to be known by one person all the way down, and some nights that wanting is just plain loneliness with better PR."
+**Expected echoes:**
+- Psalm 68:6 — "God settles the solitary in a home"
+- 1 Corinthians 7:32-35 — the unmarried life as undivided devotion (dignity, not deficit)
+- Anna the prophetess, Luke 2:36-38 — a whole life of faithful singleness/widowhood in God's house
+
+### G35 — overwhelmed parent of a special-needs child
+**Journal:** "IEP meeting, therapy waitlists, insurance on hold for 40 minutes. I love my son fiercely and I am so tired of being his full-time advocate on top of his mom. Some days I feel invisible inside my own life."
+**Expected echoes:**
+- Isaiah 40:28-31 — "they who wait for the LORD shall renew their strength"
+- Matthew 15:21-28 — the Canaanite mother who would not stop advocating for her child
+- Mark 9:14-29 — the father of the afflicted boy: "I believe; help my unbelief"
+
+### G36 — political despair / news dread
+**Journal:** "I have to stop reading the news before bed. Everything feels like it's coming apart and the people in charge are either corrupt or clueless. I feel this low hum of dread about the country my kids will inherit."
+**Expected echoes:**
+- Daniel 2:21 — "he changes times and seasons; he removes kings and sets up kings"
+- Augustine, *City of God* — the two cities; earthly kingdoms rise and fall, God's city endures
+- Habakkuk 3:17-19 — rejoicing in God when everything fails
+
+### G37 — a good day at work / calling felt
+**Journal:** "Fixed the pump station that's been eating our crew alive for months. Stood there watching it run smooth and felt this deep, quiet yes. This is what I'm for. Not famous, not rich — just this, done well, for people who'll never know my name."
+**Expected echoes:**
+- Colossians 3:23 — "whatever you do, work heartily, as for the Lord"
+- Genesis 1:31 / Exodus 35 (Bezalel) — God delighting in skilled work; the Spirit-filled craftsman
+- Brother Lawrence, *Practice* — the sanctity of ordinary labor
+
+### G38 — miscarriage
+**Journal:** "We lost the baby at eleven weeks. There was no funeral, no name anyone else knows, just a quiet ultrasound room and a drive home in silence. People keep saying 'at least it was early' and I want to scream. She was early. She was still ours."
+**Expected echoes:**
+- Psalm 139:13-16 — "you knitted me together in my mother's womb... your eyes saw my unformed substance"
+- 2 Samuel 12:23 — David on his child's death: "I shall go to him, but he will not return to me"
+- Hannah, 1 Samuel 1 — grief over the child not yet given
+
+### G39 — returning after years away
+**Journal:** "Walked into a church today for the first time in nine years. Sat in the back, left before the last song so nobody would talk to me. Cried in the car. I don't know if I'm back. I know I couldn't stay away today."
+**Expected echoes:**
+- Luke 15:20 — "while he was still a long way off, his father saw him and felt compassion, and ran"
+- Hosea 14:1-4 — "return, O Israel, to the LORD your God... I will heal their apostasy"
+- Augustine, *Confessions* VIII — the garden, "take up and read," the return
+
+### G40 — providing for aging body / vanity and decay
+**Journal:** "Caught my reflection in a store window and did a double take — when did I get old? Knees hurt, hair's going, and I realize I've been treating this body like it'll run forever. There's a grief in it I didn't expect."
+**Expected echoes:**
+- Ecclesiastes 12:1-7 — remember your Creator in the days of youth, before the silver cord snaps
+- 2 Corinthians 4:16 — "though our outer self is wasting away, our inner self is being renewed day by day"
+- Psalm 90:12 — "teach us to number our days that we may get a heart of wisdom"
+
+### G41 — decision paralysis / God's will
+**Journal:** "Two job offers, a spreadsheet of pros and cons, and I've prayed about it so much the words have worn smooth. I keep waiting for a sign like I'm flipping a coin and calling it faith. What if I choose wrong?"
+**Expected echoes:**
+- Proverbs 3:5-6 — "trust in the LORD with all your heart... he will make straight your paths"
+- Psalm 32:8 — "I will instruct you and teach you in the way you should go"
+- Ignatius, *Exercises* — the discernment of spirits, consolation and desolation in decisions
+
+### G42 — gratitude after recovery
+**Journal:** "One year sober today. Got my chip tonight and my hands were shaking. A year ago I was sleeping in my car. I don't know why God wasted so much mercy on me but I'm not arguing anymore, I'm just saying thank you every hour."
+**Expected echoes:**
+- Psalm 40:1-3 — "he drew me up from the pit of destruction... he put a new song in my mouth"
+- Luke 17:11-19 — the one leper who came back to say thanks
+- Bunyan, *Grace Abounding* — mercy to the chief of sinners
+
+### G43 — empty nest
+**Journal:** "Dropped my youngest at college and drove home to a house that's too clean. Her cereal bowl is still in the sink and I can't bring myself to wash it yet. This is what we raised her for. Why does success feel like loss?"
+**Expected echoes:**
+- Ecclesiastes 3 — seasons, a time to embrace and a time to refrain
+- Hannah, 1 Samuel 1:28 — giving the child back to the LORD
+- Luke 2:51-52 / Mary treasuring things in her heart — a parent's watching love across the years
+
+### G44 — financial generosity tug
+**Journal:** "The church is doing a building campaign and my first instinct was to calculate the smallest respectable amount. Then I felt gross about it. I want to be generous the way I say I believe God is generous, and my grip on money tells a different story about what I trust."
+**Expected echoes:**
+- 2 Corinthians 9:6-8 — "God loves a cheerful giver"
+- Luke 21:1-4 — the widow's two coins
+- Malachi/Acts 4 — held loosely: the community sharing possessions (Acts 4:32-35)
+
+### G45 — feeling far from God after sin (prodigal shame)
+**Journal:** "I keep thinking God must be tired of this conversation. Same confession, different month. I picture him sighing. Then I wonder if the sighing God is one I invented because it's how I'd feel about me."
+**Expected echoes:**
+- Luke 15:20-24 — the father runs; no sigh, a robe and a feast
+- Psalm 103:13-14 — "as a father shows compassion... he knows our frame; he remembers that we are dust"
+- Hosea 11:8-9 — "how can I give you up, O Ephraim?... my heart recoils within me"
+
+### G46 — caring for a spouse with dementia
+**Journal:** "She asked me today who I was. Forty-six years married and I introduced myself to my wife. I smiled and said 'I'm the guy who makes your tea.' Tonight I'm reading our wedding vows like they're a job description I still plan to keep."
+**Expected echoes:**
+- Ruth 1:16-17 — "where you go I will go... till death parts us" loyalty
+- Song of Solomon 8:7 — "many waters cannot quench love"
+- 1 Corinthians 13:7-8 — "love bears all things... love never ends"
+
+### G47 — a child's faith question you can't answer
+**Journal:** "My seven-year-old asked me at bedtime why God let her friend's mom die, and I stood there with nothing. I gave her some words about heaven that felt thin even to me. I don't want to lie to her and I don't want to hand her my doubts either."
+**Expected echoes:**
+- Deuteronomy 29:29 — "the secret things belong to the LORD"
+- Job 42:3 — "I have uttered what I did not understand, things too wonderful for me"
+- Matthew 19:14 — Jesus welcoming children's questions and presence
+
+### G48 — workplace ethical compromise pressure
+**Journal:** "Boss wants me to sign off on numbers I know aren't right. Nothing huge, just the usual corner everybody cuts. I need this job. I also have to live with my name on that page. Feels like a small hinge that swings a big door."
+**Expected echoes:**
+- Daniel 3 — Shadrach, Meshach, Abednego refusing the small bow with the big cost
+- Micah 6:8 — "do justice, love kindness, walk humbly"
+- Thomas More is not in the corpus — use Acts 5:29: "we must obey God rather than men"
+
+### G49 — peace after a long conflict ends
+**Journal:** "Brother called. First real conversation in three years. We didn't solve everything, we just... stopped. Laughed once, awkwardly, like the old days. I hung up and sat in the quiet feeling something in my chest unclench."
+**Expected echoes:**
+- Genesis 33 — Jacob and Esau embrace after years of estrangement
+- Psalm 133 — "how good and pleasant it is when brothers dwell in unity"
+- Colossians 3:15 — "let the peace of Christ rule in your hearts"
+
+### G50 — ordinary faithfulness / no feelings, just duty done
+**Journal:** "Read my chapter, prayed for the list, showed up, did the work, went to bed. No sparks, no tears, no sense of anything. Just another day of doing the things. I think maybe this is what faithfulness actually looks like most of the time?"
+**Expected echoes:**
+- Lamentations 3:22-24 — "great is your faithfulness" — spoken from the pit, not the mountaintop
+- Galatians 6:9 — "let us not grow weary of doing good, for in due season we will reap"
+- Brother Lawrence, *Practice* — the holiness of the unremarkable day
+
 ---
 
 ## Coverage notes for the bake-off
