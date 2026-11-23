@@ -1,0 +1,75 @@
+name: Android preview APK
+
+# Phase 1 (issue #53): build a sideloadable Android APK on GitHub
+# Actions. Michael ruled 2026-11-23 to use Actions instead of EAS
+# Build — no Expo account, same runner pattern as his other apps.
+#
+# The APK is release-mode (JS bundle embedded) and signed with a
+# throwaway preview key generated in the job, so it installs cleanly
+# for the Pixel device pass. It is NOT store-signed; release signing
+# with a banked keystore is a follow-up before any distribution.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Typecheck (all workspaces)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # --ignore-scripts: hnswlib-node (web-server-only) builds a
+      # native addon via node-gyp; nothing in the checks or the
+      # Android bundle executes it.
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+
+  android-apk:
+    name: Build preview APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Expo prebuild (generates android/)
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --no-install
+      - name: Gradle assembleRelease (unsigned)
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Sign with ephemeral preview key
+        working-directory: apps/mobile/android
+        run: |
+          keytool -genkeypair -v -keystore preview.keystore -alias preview \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Resonance Preview, O=Sportfolio Holdings"
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          UNSIGNED=$(ls app/build/outputs/apk/release/*-unsigned.apk | head -1)
+          "$BUILD_TOOLS/zipalign" -p -f 4 "$UNSIGNED" aligned.apk
+          "$BUILD_TOOLS/apksigner" sign \
+            --ks preview.keystore --ks-pass pass:android --key-pass pass:android \
+            --out resonance-preview.apk aligned.apk
+          "$BUILD_TOOLS/apksigner" verify --print-certs resonance-preview.apk
+          ls -la resonance-preview.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: resonance-preview-apk
+          path: apps/mobile/android/resonance-preview.apk
+          retention-days: 30
