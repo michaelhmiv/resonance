@@ -11,6 +11,17 @@ name: Android preview APK
 
 on:
   workflow_dispatch:
+  push:
+    # workflow_dispatch requires the workflow on the default branch,
+    # so pushes also build. The phase1 branch entry can be dropped
+    # once this lands on main.
+    branches: [main, phase1-bootable-apk]
+    paths:
+      - "apps/mobile/**"
+      - "packages/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/android-preview.yml"
 
 permissions:
   contents: read
