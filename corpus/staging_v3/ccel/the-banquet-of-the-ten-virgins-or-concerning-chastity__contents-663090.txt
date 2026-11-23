@@ -1,0 +1,171 @@
+---
+source_kind: ccel_extract
+source_file: corpus/church_fathers_complete.txt
+section: contents@663090
+title: The Banquet of the Ten Virgins; Or, Concerning Chastity
+---
+ANF06 CONTENTS 
+GREGORY THAUMATURGUS 
+
+
+
+
+
+DIONYSIUS 
+
+
+The Works of Dionysius 
+Extant Fragments 
+
+
+
+
+
+
+
+
+Exegetical Fragments 
+
+
+
+
+
+JULIUS AFRICANUS 
+
+
+
+
+
+The Extant Writings of Julius Africanus 
+
+
+
+
+
+ANATOLIUS AND MINOR WRITERS 
+
+
+
+
+
+ARCHELAUS 
+
+
+The Acts of the Disputation with the Heresiarch Manes 
+
+
+
+
+
+A Fragment of the Same Disputation 
+
+
+
+
+
+ALEXANDER OF LYCOPOLIS 
+
+
+
+
+
+Of the Manichaeans 
+
+
+
+
+
+PETER OF ALEXANDRIA 
+
+
+
+
+
+
+
+
+Fragments from the Writings of Peter 
+
+
+
+
+
+ALEXANDER OF ALEXANDRIA 
+
+
+
+
+
+Epistles on the Arian Heresy And the Deposition of Arius 
+
+
+
+
+
+METHODIUS 
+
+
+
+
+
+The Banquet of the Ten Virgins; Or, Concerning Chastity 
+
+
+
+
+
+Concerning Free-Will 
+
+
+
+
+
+From the Discourse on the Resurrection 
+Fragments 
+Oration Concerning Simeon and Anna On the Day that They Met in the Temple 
+
+
+
+
+
+Oration on the Palms 
+
+
+
+
+
+Three Fragments from the Homily on the Cross and Passion of Christ 
+
+
+
+
+
+Some Other Fragments of the Same Methodius 
+
+
+
+
+
+Two Fragments, Uncertain 
+
+
+
+
+
+ARNOBIUS 
+
+
+The Seven Books of Arnobius Against the Heathen 
+
+
+
+
+
+(Adversus Gentes. 
+
+
+
+
+
+ANFO06 
+FATHERS OF THE THIRD CENTURY: GREGORY THAUMATURGUS, DIONYSIUS THE GREAT, JULIUS AFRICANUS,

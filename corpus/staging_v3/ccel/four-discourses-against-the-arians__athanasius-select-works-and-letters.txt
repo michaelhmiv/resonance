@@ -1,0 +1,126 @@
+---
+source_kind: ccel_extract
+source_file: corpus/church_fathers_complete.txt
+section: ATHANASIUS: SELECT WORKS AND LETTERS
+title: Four Discourses Against the Arians
+---
+NPNF2-04 CONTENTS 
+
+
+
+
+
+Select Writings and Letters of Athanasius, Bishop of Alexandria 
+
+
+
+
+
+Against the Heathen 
+
+
+
+
+
+On the Incarnation of the Word 
+
+
+Depositio Arii 
+
+
+
+
+
+Council of Nicaea 
+
+
+Letter of Eusebius of Caesarea to the people of his Diocese 
+
+
+
+
+
+Expositio Fidei 
+In Illud Omnia,’ Etc 
+
+
+
+
+
+Encyclical Epistle to the Bishops Throughout the World 
+
+
+
+
+
+Apologia Contra Arianos 
+
+
+
+
+
+Defence Against the Arians 
+
+
+
+
+
+De Decretis or Defence of the Nicene Definition 
+
+
+The De Sententia Dionysii 
+
+
+
+
+
+Vita S. Antoni 
+Life of Antony 
+Ad Episcopos Aegypti Et Libyae Epistola Encyclica 
+
+
+
+
+
+Apologia Ad Constantium 
+
+
+
+
+
+Apologia de Fuga 
+Historia Arianorum 
+
+
+Four Discourses Against the Arians 
+
+
+
+
+
+Councils of Ariminum and Seleucia 
+
+
+
+
+
+Tomus Ad Antiochenos 
+
+
+
+
+
+Ad Afros Epistola Synodica 
+
+
+
+
+
+Letters of Athanasius, with Two Ancient Chronicles of His Life 
+
+
+
+
+
+NPNF2-04 
+ATHANASIUS: SELECT WORKS AND LETTERS

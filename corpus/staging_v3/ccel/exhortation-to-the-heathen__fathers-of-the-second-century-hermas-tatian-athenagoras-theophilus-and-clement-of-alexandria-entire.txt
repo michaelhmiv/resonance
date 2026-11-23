@@ -1,0 +1,75 @@
+---
+source_kind: ccel_extract
+source_file: corpus/church_fathers_complete.txt
+section: FATHERS OF THE SECOND CENTURY: HERMAS, TATIAN, ATHENAGORAS, THEOPHILUS, AND CLEMENT OF / ALEXANDRIA (ENTIRE)
+title: Exhortation to the Heathen
+---
+ANF02 CONTENTS 
+
+
+
+
+
+THE PASTOR OF HERMAS 
+
+
+
+
+
+TATIAN 
+
+
+Tatian’s Address to the Greeks 
+
+
+
+
+
+Fragments 
+THEOPHILUS 
+Theophilus of Antioch 
+ATHENAGORAS 
+
+
+A Plea For the Christians 
+
+
+
+
+
+The Treatise of Athenagoras 
+
+
+
+
+
+CLEMENT OF ALEXANDRIA 
+
+
+
+
+
+Exhortation to the Heathen 
+The Instructor 
+
+
+The Stromata, or Miscellanies 
+
+
+
+
+
+Clemens Alexandrinus on the Salvation of the Rich Man 
+
+
+
+
+
+ANFO2 
+FATHERS OF THE SECOND CENTURY: HERMAS, TATIAN 
+
+
+
+
+
+ALEXANDRIA (ENTIRE)
