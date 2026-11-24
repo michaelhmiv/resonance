@@ -24,8 +24,12 @@ def load():
     prompts = cfg.get("prompts", {})
     print("model prompts:", prompts, flush=True)
     tok = AutoTokenizer.from_pretrained(REPO)
-    path = hf_hub_download(REPO, "onnx/model_quantized.onnx")
-    sess = ort.InferenceSession(path, providers=["CPUExecutionProvider"])
+    import shutil
+    d = Path("/tmp/eg2_model"); d.mkdir(exist_ok=True)
+    for fn in ["onnx/model_quantized.onnx", "onnx/model_quantized.onnx_data"]:
+        shutil.copy(hf_hub_download(REPO, fn), d / Path(fn).name)
+    sess = ort.InferenceSession(str(d / "model_quantized.onnx"),
+                                providers=["CPUExecutionProvider"])
     return tok, sess, prompts
 
 def embed(tok, sess, texts, prefix, batch=32):
