@@ -1,0 +1,2383 @@
+---
+source_kind: ia
+identifier: thedidache00alleuoft
+title: The Didache / The Two Ways (when treated as a separate book in the omnibus)
+source_url: https://archive.org/download/thedidache00alleuoft/thedidache00alleuoft_djvu.txt
+---
+Th.  R.K. 
+
+
+Ay,    * 
+
+
+THE  DIDACHE 
+
+
+THE  DIDACHE 
+
+OR 
+
+THE  TEACHING  OF  THE 
+
+TWELVE  APOSTLES 
+TRANSLATED  WITH  NOTES 
+
+BY 
+
+G.  C.  ALLEN,  M.A. 
+
+
+THE  ASTOLAT  PRESS 
+
+34  GREAT  CASTLE  ST. 
+
+LONDON   W. 
+
+MDCCCCIII 
+
+
+ut 
+
+
+SEP  2  9 
+
+
+SOCIIS     •     ALVMNIS     •     CRANLEIENSIBVS 
+
+DOCTRINAE     •     CULTU 
+
+MECVM     -     LABORANTIBUS 
+
+PASTOR   •   SERVVS   •   MAGISTER 
+
+MVLTVS   •   IN   •   AMORE 
+
+DEDICAT 
+
+MCMIII 
+
+
+y  TI§     er]  TO          ry/za     vrou  TTOICIV  y^oerat  ?repi  TIS 
+." — John  vii.  17. 
+
+
+PREFACE. 
+
+A  MONO  the  many  editions  of  the  Didache  and  com- 
+•*•**  mentaries  thereon  which  have  been  issued  since  it 
+was  first  brought  to  light  some  twenty  years  ago  by 
+Archbishop  Bryennios,  there  yet  seems  room  for  one 
+which,  without  competing  either  in  learning  or  research 
+with  its  great  predecessors,  may  possibly  fill  a  gap  which 
+they  have  left  open.  The  present  edition  is  simply  an 
+attempt  to  bring  to  the  notice  of  those  who  have  little 
+opportunity  for  the  study  of  Patristic  literature,  one  of 
+the  most  interesting  and  illuminating  discoveries  ever 
+made  in  Patristic  history.  The  "  Teaching  of  the 
+Twelve  Apostles  "  is  a  brief  work,  not  longer  than  the 
+Epistle  to  the  Galatians  ;  but  its  suggestiveness  is  great 
+and  varied.  I  have  added  only  such  notes  and  illustra 
+tions  as  seemed  best  fitted  to  show  its  relation  to  the 
+Teaching  of  the  New  Testament  and  the  beliefs  and 
+practices  of  the  Early  Christian  Church.  Yet  even  these 
+have  extended  themselves  more  than  I  had  contemplated, 
+though  I  have  had  to  leave  unsaid  much  that  one  was 
+tempted  to  insert.  The  comments  and  dissertations  of 
+Bryennios,  Harnack,  SchafF,  Taylor,  Heron,  and  Bishop 
+Lightfoot's  articles  in  the  Expositor  and  elsewhere,  form  a 
+mass  of  reading  from  which  selection  is  not  an  easy  task. 
+By  limiting  the  range  of  its  purpose,  however,  it  has  been 
+possible  to  keep  the  book  within  bounds,  and  I  have  to 
+acknowledge  with  gratitude  the  charm  and  interest  that 
+I  have  found  in  the  study  of  these  authorities.  It  will  be 
+seen,  I  think,  that  I  have  not  adopted  their  conclusions 
+hastily  or  wholesale.  But  where  I  have  ventured  to 
+differ  from  them  it  has  been  with  diffidence,  and  with 
+a  full  sense  of  the  responsibility  of  so  doing. 
+
+It  remains  to  be  said  that  the  translation  of  the  text 
+was  completed  before  I  had  seen  Dr.  Taylor's  admirable 
+version.  It  was  taken  up  as  an  amusement  for  the  leisure 
+
+
+xii  PREFACE 
+
+hours  of  vacation,  and  it  is  a  satisfaction  to  find,  on  com 
+paring  the  two,  that  I  have  differed  from  him  in  no  im 
+portant  particular.  One  may  confess,  however,  to  being 
+haunted  by  the  refrain  of  such  "  Sortes  Vergilianas  "  as 
+"  sequitur  patrem  non  passibus  tequis"  and  "  infelix  puer 
+atque  irnpar  congressus  Achilli" 
+
+G.  C.  A. 
+MASTER'S  LODGE, 
+
+CRANLEIGH  SCHOOL. 
+
+
+INTRODUCTION. 
+I. 
+
+THE  DISCOVERY  OF  THE  DIDACHE. 
+
+TN  the  year  1873,  Philotheos  Bryennios,  Archbishop  of 
+•*•  Nicpmedia,  found  among  the  MSS.  in  the  Jerusalem 
+monastery  of  the  Holy  Sepulchre  at  Constantinople,  a 
+small,  thick  volume,  covered  with  black  leather,  contain 
+ing  1 2O  leaves  of  vellum  closely  covered  with  Greek 
+manuscript.  The  contents  appeared  to  be  all  written  by 
+the  same  hand,  and  he  was  delighted  to  find,  at  the  first 
+glance,  that  they  included  copies  of  the  first  and  second 
+Epistles  of  Clement  of  Rome  and  the  Epistle  of  Barnabas. 
+He  was  so  engrossed  with  these  that  he  took  no  notice  of 
+the  remaining  portion  of  the  book  until  1880,  when  he 
+began  to  read  the  treatise  which  came  next  to  the 
+Clementine  Epistles.  This  was  no  other  than  the 
+"  Teaching  of  the  Twelve  Apostles,"  and  realizing  at 
+once  its  immense  value  and  importance,  he  devoted  all 
+his  spare  time  during  the  next  three  years  to  the  study  of 
+it.  In  1883  he  published  it  with  Prolegomena  and 
+notes  written  in  modern  Greek. 
+
+II. 
+THE  IMPORTANCE  OF  THE  DIDACHE. 
+
+We  find  in  the  New  Testament  several  references  to 
+a  certain  form  of  teaching  imparted  by  the  Apostles  to 
+their  converts.  This  would,  of  course,  at  first  have  been 
+oral,  and  would  probably  continue  to  exist  even  after  the 
+Gospels  and  Epistles  were  written.  For  example,  in 
+Acts  ii.  42,  we  read  that  the  converts  "  continued  sted- 
+fastly  in  the  Apostles'  teaching  and  fellowship"  (fjvav 
+Se  TrpovKaprcpovvrvs  TY)8iSa\rj  TWV  aTroa-ToXwv  KCU  ry  KOivtovip). 
+And  in  xvii.  19  of  the  same  book  we  find  the  Athenians 
+
+
+xiv  INTRODUCTION 
+
+questioning  St.  Paul  as  to  what  this  new  teaching  may  be. 
+(SwajJieOa  yywvcu  TIS  r)  Katvrj  avrr]  •>)  VTTO  <rov  XaXovnevr) 
+StSaXTJ  >)•  St.  Paul  exhorts  Titus  (i.  9)  to  "  hold  fast 
+to  the  faithful  word  according  to  the  teaching " 
+(dvrtxoiju-vov  rov  Kara  rrjv  StSaxrjv  TTIO-TOU  Aoyov)  ;  and 
+he  is  thankful  that  the  Christians  at  Rome  had  become 
+"  obedient  to  that  form  of  teaching  whereunto  they  were 
+delivered"  (ei's  ov  TrapeSo^rc  TVTTOV  ciSa^s)  Rom.  vi.  17. 
+We  find  in  the  writings  of  the  Fathers  during  the 
+first  five  or  six  centuries  of  the  Church's  history, 
+frequent  reference  to  some  work,  called  either  the 
+"  Teaching  "  or  "  Teachings  "  of  the  Apostles  ;  and 
+there  seems  no  doubt  that  such  a  treatise  was  widely 
+known  and  held  in  much  esteem.  No  copy  was,  how 
+ever,  extant,  though  it  had  been  possible  to  divine  from 
+the  various  quotations  and  references  in  Patristic  writings 
+some  idea  of  its  character  and  extent.  Amongst  the 
+shrewdest  guesses  was  that  of  Archbishop  Usher  in  1644, 
+who  predicted  that  if  it  were  recovered  it  would  be  found 
+to  be  a  brief  document,  simple  and  practical,  and  free 
+from  the  mystical  and  allegorizing  ejejrnent  which  enters 
+so  largely  into  the  later  sub-apostolic  writings.  We 
+cannot  claim  with  certainty  that  the  recovered  MS. 
+represents  the  original  form  of  the  Teaching  ;  but  the 
+best  authorities  are  at  least  agreed  that  it  is  the  source 
+and  inspiration  of  three  of  the  most  important  of  non- 
+canonical  works  :  the  Epistle  of  Barnabas,  the  Ecclesi 
+astical  Canons  and  the  Apostolical  Constitutions. 
+
+Indeed,  two  years  before  its  discovery  a  certain  Roman 
+Catholic  scholar,  Dr.  Krawntzcky,  had  attempted  to 
+reconstruct  from  these  three  documents  the  older  work 
+from  which  they  were  supposed  to  be  derived,  and  with 
+such  success  that  his  reconstruction  is  almost  identical  in 
+substance  with  the  first  part  of  the  Didache. 
+
+The  importance  of  the  treatise  lies  in  the  fact  that 
+short  as  it  is  (not  more  than  nine  octavo  pages)  there  is 
+scarcely  a  question  of  any  note  in  connection  with  the 
+early  Church,  to  which  it  does  not  contribute  some  light. 
+
+
+INTRODUCTION  xv 
+
+The  discovery  has  been  called  an  epoch-making  event. 
+To  quote  Bishop  Lightfoot  (Expositor,  January,  1885), 
+"  Its  interest  and  importance  have  far  exceeded  our  high 
+est  expectations Of  the  genuineness  of 
+
+this  document  there  can  be  no  shadow  of  doubt." 
+
+The  MS.  discovered  by  Bryennios  (says  Dr.  Taylor) 
+is  dated  6564  Anno  Mundi,  according  to  Greek  reckon 
+ing.  This  is  equivalent  to  1056  A.D.,  "two  years  after 
+the  division  of  Christendom  into  the  rival  Churches  of 
+East  and  West." 
+
+III. 
+THE  AGE  OF  THE  DIDACHE. 
+
+The  date  of  its  composition  may  be  inferred  not  less 
+from  its  omissions  than  from  its  statements.  It  is  silent 
+as  to  usages  in  the  Early  Church  which  prevailed  from 
+the  middle  of  the  second  century,  as,  for  instance,  the 
+Baptismal  observances,  which  it  could  scarcely  have  failed 
+to  notice  had  they  been  practised  at  the  time  of  its 
+compilation.  There  is  no  trace  in  it  of  the  heresies — 
+Gnostic  or  Montanist — of  the  second  century.  The 
+chapters  on  Church  Organization  do  not  recognize  the 
+distinction  of  the  three  Orders,  which  dates  from  about 
+the  middle  of  the  second  century  ;  they  speak,  like  St. 
+Paul  in  his  Epistles,  only  of  "  bishops  "  and  "  deacons." 
+"  Presbyters  "  are  not  named,  because  in  the  early  days 
+"  bishops  "  and  "  presbyters  "  were  synonymous.  The 
+Gospels  are  quoted,  not  as  written  documents  ;  in  fact, 
+"  the  Gospel "  is  referred  to  as  a  whole,  and,  therefore, 
+almost  certainly  in  its  oral  form,  no  mention  being  made 
+of  Evangelists  ;  and  no  New  Testament  books  are  quoted 
+or  referred  to  as  Canonical  Scripture,  though  several 
+statements  are  taken  from  various  Epistles. 
+
+Finally,  the  style  and  substance  bear  the  mark  of 
+archaic  simplicity.  There  is  more  affinity  to  the  style 
+and  vocabulary  of  the  New  Testament  than  is  found,  so 
+far  as  I  am  aware,  in  any  other  sub-apostolic  document  j 
+
+
+xvi  INTRODUCTION 
+
+and  the  practical,  almost  childlike,  directness  of  the 
+subject  matter  is  in  strong  contrast  with  the  grotesque 
+and  fanciful  manner  of  other  writings  of  similar  date. 
+One  need  only  compare  the  Didache  for  a  few  moments 
+with  Barnabas,  Hermas,  and  even  Justin  Martyr,  to 
+recognize  the  distance  that  separates  them  in  language 
+and  thought.  The  first  simple,  direct,  practical  ;  the 
+others  mystical,  visionary,  full  of  far-fetched  allegory  and 
+speculative  interpretation.  It  is  impossible  to  resist  the 
+conclusion  that  if  the  present  form  of  the  Didache  is  not 
+actually  that  of  the  original  Apostolic  Teaching,  it  must 
+at  all  events  be  referred  to  a  period  not  later  than  the 
+beginning  of  the  second  century,  and,  perhaps,  as  Dr. 
+Taylor  shows  with  good  reason,  even  to  the  first. 
+
+
+IV. 
+
+ANALYSIS  OF  THE  DIDACHE. 
+
+PART  I. 
+Chapters  I-V. 
+
+The  Two  Ways  :  one  of  Life  and  one  of  Death. 
+I-IV.  "  The  Way  of  Life." 
+
+I.  A  summary  of  duties  taken  chiefly  from  the  Sermon 
+on  the  Mount. 
+
+II.  Negative  commands,  "  the  Second  Commandment 
+of  the  Teaching,"  forming  with  chapters  iii.  and  iv.  an 
+expansion  of  the  Second  Table  of  the  Law,  the  spirit,  as 
+well  as  the  letter  of  obedience,  being  strongly  insisted  on. 
+
+V.  «  The  Way  of  Death." 
+
+A  list  of  sins  similar  to  those  mentioned  by  our  Lord 
+in  Mark  vii.  21-23,  and  by  St.  Paul,  Rom.  i.  29-31, 
+v/ith  special  reference  to  the  heathen  immoralities  to 
+which  the  converts  might  be  exposed. 
+
+VI.  An  exhortation  to  the  right  choice  of  life  as  ex 
+emplified  in  the  previous  chapters, 
+
+
+INTRODUCTION  xvii 
+
+PART  II. 
+Chapters  VII-XVI. 
+
+Instructions  on  the  Sacraments,  Fasting,  Prayer,  Church 
+Organization,  Preparation  for  the  Second  Advent. 
+
+VII.  On  Baptism. 
+
+VIII.  On  Fasting  and  Prayer.    (Example  :  the  Lord's 
+Prayer.) 
+
+IX.,  X.   On  the  Agape  and  Eucharist. 
+XL,  XIL,   XIII.    Directions   as   to   the   discernment 
+and  reception  of  the  itinerant  ministers  of  the  Church. 
+
+XIV.  Observance   of  the   Lord's   Day,   with   special 
+reference  to  the  Eucharistic  sacrifice. 
+
+XV.  Appointment  of  local  ministers  of  the  Church. 
+Exhortation  to  brotherly  love. 
+
+XVI.  The  duty  of  watchfulness.     Signs  of  the  end. 
+Antichrist.    The  fire  of  trial.    Three  signs  preceding  the 
+Lord's  Return.     The  Second  Advent. 
+
+[The  division  of  the  Didache  into  chapters  was  made 
+by  Bryennios  ;  the  sub-division  into  verses  by  Harnack. 
+The  latter,  though  not  wholly  satisfactory,  I  have 
+retained  for  the  sake  of  convenience.] 
+
+
+THE  TEACHING  OF  THE  LORD 
+
+THROUGH  THE  TWELVE 
+APOSTLES  TO  THE  GENTILES 
+
+CHAPTER  I 
+
+
+are  Two  Ways:  one  of  Life,  and  one  of  Comp.  Deut.  xxx.  15. 
+•*•  Death:  and   there   is   much  difference   between   the  J"-  vii\.I3- 
+
+»T-»  TTT  FT-»1  TTT  f       T      •  f  1  •  1      •  C"  Matt.     Vll.      IT. 
+
+Two  Ways.     2  The  Way  of  Life  then  is   this:  first,  2  pet.  jj.  I5. 
+Thou  shalt  love  God  who   hath   made  thee  ;  secondly,  Matt  xxii 
+thy  neighbour    as    thyself;   and    all    things    whatsoever  Mark,  xii  23,  31 
+thou  wouldest  not   should    be   done  unto   thee,   do   not  Luke  Xt  25»  27* 
+thou  unto  another.     ?  And  of  these  words  the  teaching  is  Comp.  Matt-  vn-  I2- 
+
+,  j  Luke  vi.  31. 
+
+this  :    Bless  them    that   curse   you,   and    pray   for    your  Matt  v         g 
+
+enemies,  and  fast  for  those  that  persecute  you  ;  for  what  Luke  vi'.  27',  35' 
+
+thank  have  ye  if  ye  love  them  that  love   you  ?  do  not 
+
+even    the   Gentiles  the   same  ?     But  do    ye    love  them 
+
+which   hate    you,  and    ye    shall    not    have    an    enemy. 
+
+4  Abstain  from  fleshly  and  bodily  lusts  ;  if  any  man  give  i  peter  ii.  n. 
+
+thee  a  blow  on  thy  right  cheek,  turn  to  him  the  other  Matt-  v-  39>  4*- 
+
+also,  and  thou  shalt  be  perfect.     If  any  man  shall  compel 
+
+thee  to  go  one  mile,  go  with  him  twain.     If  any  man 
+
+shall  take  thy  cloke,  give  him    thy   coat  also.     If  any  ComP-  '  Cor-  vi-  7- 
+
+man  take  from  thee  that  which  is  thine  own,  ask  it  not 
+
+again,  for  neither  canst  thou.      5  Give  to  every  one  that  Matt.  v.  42. 
+
+asketh  of  thee  and  ask  not  again   ;  for  the  Father  wills  comp^M^t  x  8 
+
+that  men  give  to  all  men  out  of  what  they  have  them 
+
+selves  received.     Blessed  is  he  who  gives  according  to  the 
+
+commandment  ;  for  he  is  free  of  blame  [but]  woe  to  him 
+
+that  receiveth  ;  for  if  being  in  need  he  receiveth  he  shall 
+
+be  free   of  blame  ;  but   he  that  receiveth,  not  being  in 
+
+need  shall  be  punished.     For  wherefore  received  he  it, 
+
+and    to  what  end?     But  coming   under   constraint*    he  *  Or  'discipline*  or 
+
+shall  be  examined  concerning  the  things  which  he  did  ;        confinement. 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+
+Matt.  v.  26. 
+Luke  xii.  59. 
+
+
+Matt,  xix  18,  19 
+Mark  x.  19. 
+Luke  xviii.  20. 
+
+
+Matt.  v.  33. 
+
+I  Cor.  xiii.  5. 
+Jas.  i.  8. 
+
+
+John  xvi.  8. 
+
+
+Lev.  xix.  26. 
+
+
+and  he  shall  not  come  out  thence  till  he  have  paid  the 
+uttermost  farthing.  6  But  about  this  also  it  hath  been 
+said,  Let  thine  alms  sweat  into  thy  hands  until  thou 
+discernest  unto  whom  thou  givest. 
+
+CHAPTER  II 
+
+W  the  second  commandment  of  the  teaching  is 
+2  Thou  shalt  not  kill,  thou  shalt  not  commit 
+adultery,  thou  shalt  not  corrupt  children,  thou  shalt  not 
+commit  fornication,  thou  shalt  not  steal,  thou  shalt  not 
+use  magic  arts,  thou  shalt  not  use  sorcery,  thou  shalt  not 
+destroy  a  child  by  abortion,  neither  shalt  thou  slay  *  him 
+that  is  born.  Thou  shalt  not  covet  thy  neighbour's 
+goods,  3  thou  shalt  not  forswear  thyself,  thou  shalt  not 
+bear  false  witness,  thou  shalt  not  speak  evil,  thou  shalt 
+not  be  mindful  of  evil,  4  thou  shalt  not  be  double-minded, 
+neither  double-tongued  ;  for  to  be  double-tongued  is  a 
+snare  of  death.  5  Thy  speech  shall  not  be  false  ;  it  shall 
+not  be  empty,  or  vain,  or  void,  but  fulfilled  in  action. 
+6  Thou  shalt  not  be  avaricious,  neither  rapacious,  nor  a 
+hypocrite,  nor  malicious,  nor  over-weening.  Thou  shalt 
+not  take  evil  counsel  against  thy  neighbour.  7  Thou  shalt 
+not  hate  any  man  ;  but  some  thou  shalt  reprove  ;  and 
+for  some  thou  shalt  pray  ;  and  some  thou  shalt  love 
+more  than  thy  own  soul. 
+
+CHAPTER  III 
+
+TV/T  Y  son,  flee  from  all  evil  and  from  all  that  is  like  unto 
+-*•*-*•  it ;  2  be  not  inclined  to  anger,  for  anger  leadeth 
+to  murder  ;  neither  be  a  zealot,  nor  quarrelsome,  nor 
+passionate  ;  for  of  all  these  things  come  murders.  3  My 
+son,  be  not  lustful,  for  lust  leadeth  unto  fornication  ; 
+neither  be  of  foul  speech,  nor  of  lofty  eye  ;  for  of  all 
+these  things  come  adulteries.  4  My  son  practise  not 
+augury,  inasmuch  as  it  leadeth  unto  idolatry  ;  nor  be  an 
+user  of  charms,  nor  an  astrologer,  nor  an  user  of  purifi 
+cations,  neither  desire  to  look  upon  them  ;  for  jjfLaU 
+these  things  cometh  idolatry.  5  My  son,  be  not  a  liar  ; 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  3 
+
+inasmuch  as  lying  leadeth  unto  theft  ;  neither  a  money- 
+lover,  nor  vain-glorious  ;  for  of  all  these  things  come 
+thefts.  6  My  son,  be  not  a  murmurer,  inasmuch  as  it  !  cor.  x.  10. 
+leadeth'unto  blasphemy  ;  nor  stubborn,  nor  evil-minded  ; 
+for  of  all  these  things  come  blasphemies.  7  But  be  meek, 
+for  the  meek  shall  inherit  the  earth  ;  8  be  long-suffering,  ps.  37  n.  Matt.  v.  5. 
+and  merciful  and  guileless  and  peaceable,  and  good,  and 
+always  in  fear  of  the  words  which  thou  hast  heard. 
+9  Thou  shalt  not  exalt  thyself,  neither  shalt  thou  give 
+arrogance  to  thy  soul  ;  thy  soul  shall  not  be  joined  with 
+the  lofty,  but  with  the  just  and  lowly  shalt  thou  converse. 
+
+
+CORRIGENDA 
+
+PAGE 
+
+2  Margin  yevvrjOevra 
+
+1 6  Alexandria 
+
+1 8  Hosanna  &c.  should  be  printed  with  next  par, 
+
+»J 
+
+38  Margin  Aeyo/xei/r? 
+
+41  Margin  rravra 
+
+
+receive  6  but  withholdeth  them  for  giving.^    If  thou  hast  t  OI/'jhen  asked  to 
+it  in  thy  hands  thou  shalt  give  a  ransom  for  thy  sins.§  §or 'if  thou  hast,  thou 
+7  Thou  shalt  not  hesitate  to  give,   neither   when   thou     shalt  give  with  thy 
+givest  shalt  thou  murmur  ||  ;  for  thou  shalt  know  who  is  Dan!Vt'27> 
+the  fair  recompenser  of  the  reward.     8  Thou  shalt  not  ||  or 'grudge.' 
+turn  away  from  him  that  is  in  need,  but  thou  shalt  share  Comp.  ii  Cor.  ix.  7. 
+all  things  with  thy  brother  and  shalt  not  call  anything 
+thine  own  ;  for  if  ye  are  sharers  in  that  which  is  incor 
+ruptible,  how  much  more  in  the  things  which  are  cor 
+ruptible  ?    9  Thou  shalt  not  take  away  thy  hand  from  thy 
+son  or  from  thy  daughter,  but  from  their  youth  up  thou 
+
+
+Matt.  v.  26. 
+Luke  xii.  59. 
+
+
+Matt,  xix  18,  19 
+Mark  x.  19. 
+Luke  xviii.  20. 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+and  he  shall  not  come  out  thence  till  he  have  paid  the 
+uttermost  farthing.  6  But  about  this  also  it  hath  been 
+said,  Let  thine  alms  sweat  into  thy  hands  until  thou 
+discernest  unto  whom  thou  givest. 
+
+CHAPTER  II 
+
+W  the  second  commandment  of  the  teaching  is 
+2  Thou    shalt   not   kill,    thou   shalt   not    commit 
+adultery,  thou  shalt  not  corrupt  children,  thou  shalt  not 
+commit  fornication,  thou  shalt  not  steal,  thou  shalt  not 
+use  magic  arts,  thou  shalt  not  use  sorcery,  thou  shalt  not 
+
+
+Lev.  xix.  26. 
+
+
+TV/T  Y  son,  flee  from  all  evil  and  from  all  that  is  like  unto 
+it ;  2  be  not  inclined  to  anger,  for  anger  leadeth 
+to  murder  ;  neither  be  a  zealot,  nor  quarrelsome,  nor 
+passionate  ;  for  of  all  these  things  come  murders.  3  My 
+son,  be  not  lustful,  for  lust  leadeth  unto  fornication  ; 
+neither  be  of  foul  speech,  nor  of  lofty  eye  ;  for  of  all 
+these  things  come  adulteries.  4  My  son  practise  not 
+augury,  inasmuch  as  it  leadeth  unto  idolatry  ;  nor  be  an 
+user  of  charms,  nor  an  astrologer,  nor  an  user  of  purifi 
+cations,  neither  desire  to  look  upon  them  ;  for  joJLall 
+these  things  cometh  idolatry.  5  My  son,  be  not  a  liar  ; 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  3 
+
+inasmuch  as  lying  leadeth  unto  theft  ;  neither  a  money- 
+lover,  nor  vain-glorious  ;  for  of  all  these  things  come 
+thefts.  6  My  son,  be  not  a  murmurer,  inasmuch  as  it  r  cor.  x.  10. 
+leadeth'unto  blasphemy  ;  nor  stubborn,  nor  evil-minded  ; 
+for  of  all  these  things  come  blasphemies.  7  But  be  meek, 
+for  the  meek  shall  inherit  the  earth  ;  8  be  long-suffering,  PS.  37  n.  Matt.  v.  5. 
+and  merciful  and  guileless  and  peaceable,  and  good,  and 
+always  in  fear  of  the  words  which  thou  hast  heard. 
+9  Thou  shalt  not  exalt  thyself,  neither  shalt  thou  give 
+arrogance  to  thy  soul ;  thy  soul  shall  not  be  joined  with 
+the  lofty,  but  with  the  just  and  lowly  shalt  thou  converse. 
+loThe  operations  [of  God]  that  befall  thee  shalt  thou 
+accept  as  good,  knowing  that  without  God  nothing 
+cometh  to  pass. 
+
+CHAPTER  IV 
+
+Y  son,  night  and  day  shalt  thou  remember  him  that 
+speaketh  unto  thee  the  word  of  God  ;  and  thou 
+shalt  honour  him  as  God,  for  where  *  the  power  of  the  *  lit. '  whence.' 
+Lord  t  is  proclaimed  there  is  the  Lord.     2  And  thou  shalt  for  'the  Lordship/ 
+seek  out  day  by  day  the  faces  of  the  saints  that  thou 
+mayest  rest  upon  their  words.     3  Thou  shalt  not  desire 
+division,  but  thou  shalt  make   peace  between  them  that  ComP-  Matt-  v-  9- 
+are   at   strife  :   thou   shalt  judge   righteously,  thou  shalt 
+not    respect    persons    in     reproving    for    transgressions. 
+4  Thou  shalt  not  waver  in  spirit  whether  it  shall  be  yea 
+or  no.     5  Be  not  one  that  stretcheth  forth  his  hands  to  Comp.  Prov.  xvi.  6. 
+receive  6  but  withholdeth  them  for  giving.!    If  thou  hast  I  oriv'jhen  asked  to 
+it  in  thy  hands  thou  shalt  give  a  ransom  for  thy  sins.§  §  Or  « if  thou  hast,  thou 
+7  Thou  shalt  not  hesitate  to  give,   neither   when   thou     shalt  give  with  thy 
+givest  shalt  thou  murmur  ||  ;  for  thou  shalt  know  who  is  DamV.'z;. 
+the  fair  recompenser  of  the  reward.     8  Thou  shalt  not  ||  or « grudge/ 
+turn  away  from  him  that  is  in  need,  but  thou  shalt  share  Comp.  ii  Cor.  ix.  7. 
+all  things  with  thy  brother  and  shalt  not  call  anything 
+thine  own  ;  for  if  ye  are  sharers  in  that  which  is  incor 
+ruptible,  how  much  more  in  the  things  which  are  cor 
+ruptible  ?    9  Thou  shalt  not  take  away  thy  hand  from  thy 
+son  or  from  thy  daughter,  but  from  their  youth  up  thou 
+
+
+4  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+shalt  teach  them  the  fear  of  God.  10  Thou  shalt  not  in 
+thy  bitterness  lay  commands  upon  thy  bondman  or  thy 
+maidservant  who  hope  in  the  same  God  ;  lest  at  any 
+time  they  may  cease  to  fear  Him  who  is  the  God  over 
+both.  For  He  cometh  not  to  call  men  according  to  out 
+ward  appearance,  but  to  those  whom  the  Spirit  hath  made 
+EPh.  vi.  5.  ready  for  Him-  1 1  And  ye  servants  be  subject  unto 
+
+Col  ...  22  y°ur  masters,  as  unto  an  image  of  God  in  shamefastness 
+
+and  fear.  1 2  Thou  shalt  hate  all  hypocrisy  and  all  that 
+is  not  pleasing  unto  the  Lord.  13  Thou  shalt  not  forsake 
+the  commandments  of  the  Lord,  but  thou  shalt  keep 
+what  thereto  thou  hast  received,  neither  adding  nor  taking 
+
+Comp.  Deut.  iv.  2,  and  /T-,  ,     ,  ,,  . 
+
+Rev.xxii.  1 8,  19.        away-      H  Thou  shalt  confess  thy  sins  in  the  congrega- 
+*or  'to  the  place  of  ti°n>  and  thou  shalt  not  come  to  thy  prayer  *  with  an  evil 
+prayer'  as  in  Acts  conscience.     This  is  the  Way  of  life. 
+
+XVI.    17.  J 
+
+
+CHAPTER  V 
+
+
+B 
+
+
+UT  the  Way  of  Death  is  this  :  first  of  all  it  is  evil  and 
+full  of  cursing,  murders,  adulteries,  covetous  desires, 
+fornications,  thefts,  idolatries,  witchcrafts,  sorceries,  plun- 
+derings,  false  witnessings,  hypocrisies,  duplicity,  guile, 
+arrogance,  malice,  stubbornness,  greed,  foulness  of  speech, 
+envy,  insolence,  pride,  boasting  ;  2  persecutors  of  the  good, 
+hating  truth,  loving  falsehood  ;  not  acknowledging  the 
+reward  of  righteousness,  not  cleaving  to  that  which  is 
+intent  u  on'  g°°d  neither  to  righteous  judgment;  watchful  t  not 
+toward  good  but  toward  evil ;  from  whom  meekness 
+and  patience  are  far  removed  ;  loving  vain  things, 
+seeking  after  recompense,  not  pitying  the  poor,  not  sor 
+rowing  with  the  sorrow-laden,  not  acknowledging  their 
+Maker  ;  murderers  of  children,  destroyers  of  the  image  of 
+God,  turning  away  from  the  needy,  grieving  the  afflicted  ; 
+advocates  of  the  rich,  lawless  judges  of  the  poor  ;  wholly 
+given  to  sin.  May  ye  be  delivered,  my  children  from  all 
+these. 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+CHAPTER  VI 
+
+SEE  that  no  man  lead  thee  astray  from  this  Way  of  the  Lam.  iii.  27. 
+Teaching  ;  since  he  teacheth  thee  apart  from  God.  Matt.  xi.  29, 30. 
+2  For  if  thou  canst  bear  all  the  yoke  of  the  Lord  thou 
+shalt  be  perfect ;  but  if  thou  canst  not,  do  that  which  thou 
+canst.     3  Now  concerning  food,  bear  what  thou  canst  ;  Act8  xv  20> 
+but  refrain  utterly  from  meat  offered  to  idols,  for  it  is  a 
+
+r    1        J  J  *  *-or«  x>  2"' 
+
+service  or  dead  gods. 
+
+CHAPTER  VII 
+
+AND  concerning  baptism,  baptize  after  this  manner  : 
+Having  first  recited  all  these  precepts  baptize  into  the 
+name  of  the  Father  and  of  the  Son  and  of  the  Holy 
+Ghost  in  living  water  ;  2  but  if  thou  hast  not  living  water, 
+baptize  into  other  water  ;  and  if  thou  canst  not  in  cold 
+water  then  baptize  in  warm.  3  But  if  thou  hast  neither, 
+pour  out  water  upon  the  head  thrice,  into  the  name  of  the 
+Father  and  of  the  Son  and  of  the  Holy  Ghost.  4  And  Matt,  xxviii.  19. 
+before  the  baptism  let  the  baptizer  and  the  baptized  fast, 
+and  any  others  that  are  able  ;  but  thou  shalt  order  the 
+baptized  to  fast  one  or  two  days  beforehand. 
+
+
+CHAPTER  VIII 
+
+AND  your  fastings,  let  them  not  be  with  the  Matt.  vi.  16. 
+hypocrites  ;  for  they  fast  on  the  second  and  fifth 
+days  of  the  week  ;  but  do  ye  fast  on  the  fourth  day  and 
+on  the  preparation.  2  Neither  pray  ye  as  the  hypocrites, 
+but  as  the  Lord  commanded  in  His  Gospel,  even  so  pray 
+ye: 
+
+OUR  FATHER  WHICH  ART  IN  HEAVEN,  Matt.v.  9-13. 
+
+HALLOWED  BE  THY  NAME, 
+THY  KINGDOM  COME, 
+
+THY    WILL    BE    DONE, 
+As    IN    HEAVEN    SO    ALSO    UPON    EARTH  J 
+
+
+6  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+GlVE    US    THIS    DAY    OUR    DAILY    BREAD, 
+
+AND    FORGIVE    US    OUR    DEBT 
+
+As    WE    ALSO    FORGIVE    OUR    DEBTORS  ; 
+
+AND    BRING    US    NOT    INTO    TEMPTATION 
+
+BUT    DELIVER    US    FROM    EVIL  ; 
+
+FOR  THINE  is  THE  POWER  AND  THE  GLORY  FOR  EVER. 
+Thrice  a  day  thus  pray  ye. 
+
+CHAPTER  IX 
+
+/V  ND  concerning  the  Service  of  Thanksgiving  give  ye 
+thanks  after  this  manner  :    2  First   concerning  the 
+
+*or  Son-  Cup  :  We  thank  Thee,  our  Father,  for  the  holy  Vine  of 
+
+Acts  iv.  25.  David  Thy  Servant,*  which  Thou  didst  make  known  to 
+
+t°rSon;  us  through  Jesus  Thy  Servant  t;  to  Thee  be  the  glory 
+
+Acts  iv.  27.  for  ever.  3  And  concerning  the   bread  that    is   broken  : 
+
+We  thank  Thee,  our  Father,  for  the  life  and  knowledge 
+
+which  Thou  didst  make  known  to  us  through  Jesus  Thy 
+
+I or  Son-  Servant  J  ;    to    Thee    be    the    glory   for    ever.     4  Even 
+
+as    this    bread    that    is   broken   was   scattered   upon    the 
+
+mountains  and  being  gathered  together  was  made  one, 
+
+Comp.  Mark  xin.  27.  i    „_  TM       ^i 
+
+so  let  1  ny  Church  be  gathered  together  from  the  ends  of 
+the  earth  into  Thy  kingdom,  for  Thine  is  the  glory  and 
+the  power  through  Jesus  Christ  for  ever.  5  And  let 
+none  eat  or  drink  of  your  Thanksgiving  but  those  that 
+have  been  baptized  into  the  Name  of  the  Lord  ;  for 
+Matt.  vii.  6.  indeed  the  Lord  hath  said  concerning  this,  give  not  that 
+
+which  is  holy  unto  the  dogs. 
+
+CHAPTER  X 
+
+John  vi.  12.  A  ND  after  that  ye  have  been  filled,  give  ye  thanks 
+
+•**•  after  this  manner  :    2  We  thank  Thee  Holy  Father 
+
+for  Thy  Holy  Name  which  Thou  has  made  to  dwell  in 
+
+John  i.  14.  our  hearts,  and  for  the  knowledge  and  for  faith  and  im- 
+
+Rev.  vii.  15  ;  xxi.  3.     mortality  which  Thou  didst  make  known  to  us  through 
+
+!!°rSon-  Jesus   Thy   Servant  ||  ;  to  Thee   be  the  glory  for   evry. 
+
+3  Thou  Almighty  Ruler  didst  create  all  things  for  The 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  7 
+
+Names  sake  ;  Thou  didst  give  both  food  and  drink  unto  Rev.  iv.  n. 
+
+men  for  enjoyment,  that  they  may  give  thanks  unto  Thee. 
+
+But  to  us  Thou  didst  freely  grant  spiritual  food  and  drink 
+
+and    life  eternal    through   Thy    Servant.*     4  We    give  *  or  Son. 
+
+thanks  to  Thee  before  all  things  that  Thou  art  mighty. 
+
+5  Thine    is  the    glory    for    ever.     Remember    O    Lord 
+Thy  Church  to   deliver   it  from  all  evil,  and  perfect  it 
+
+in  Thy  Love  ;  and  gather  it  from  the  four  winds>  even  Matt.  xxiv.  31. 
+Thy  Church  which  hath  been  sanctified,  into  Thy  King 
+dom  which  Thou  hast  prepared  for  it ;  for  Thine  is  the  Matt.  xxv.  34. 
+power  and  the  glory  for  ever. 
+
+6  Let  Thy  grace  come  and  let  this  world  pass  away  ; 
+Hosanna  to  the  God  of  David.     Whosoever  is  holy,  let  l  Cor.  xvi.  22. 
+him    come,    and    whosoever    is    not,    let    him     repent.  Phil.  iv.  v. 
+Maranatha.t     Amen.  tu°de  ^ Lord  cometh<* 
+
+7  But  suffer  the  prophets  to  give  thanks  as  they  desire.  J  Jor  'as'much  a»  they 
+
+will.' 
+
+CHAPTER  XI 
+
+VX^KOSOEVER  then  shall  come  and  teach  you  all 
+these  things  that  have  been  aforesaid,  receive  him  ; 
+2   but    if  the   teacher   himself  be   prevented   and   teach  2  J°nn  10. 
+another    §  doctrine  so  as  to  overthrow  it,  hearken  not  to  §  or  teaching. 
+him  ;  ||   but  if  he  so  teach  as  to  increase  righteousness  and  II  ComPare   Luke  »*• 
+knowledge  of  the  Lord  receive  him  as  the  Lord.     3  And  Matt.  x.  4.0. 
+concerning  the   apostles  and   prophets   according  to  the  John  xiii- 2°- 
+decree  of  the  Gospel  so  do  ye  ;  4  but  let  any  apostle  that 
+cometh  unto  you  be  received  as  the  Lord,  5  howbeit  he 
+shall  abide  but  one  day  ;  but  if  there  be  need,  the  next 
+day  also  ;  but  if  he  abide  three  days  he  is  a  false  prophet. 
+
+6  And  let  not  the  apostle  when  he  goeth  forth  take  any 
+thing  save  bread  to  last  until  the  place  where  he  next 
+sojourneth.     But  if  he  ask  for  money  he  is  a  false  prophet. 
+
+7  And   ye  shall   not    try    nor   judge    any    prophet    that  Matt- xii-  3r»  32« 
+speaketh  in  the  spirit  ;  for  every  sin  shall  be  forgiven,  but  Mark  Hi.  28,  29. 
+this  sin  shall  not  be  forgiven.      8  Howbeit  not  everyone  Luke   - 
+
+that  speaketh  in  the  spirit  is  a  prophet,  except  he  have 
+
+the  ways  of  the  Lord.     Therefore  by  their  ways  shall  '  John  v* l6' 
+
+
+8  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+Matt.  vii.  16-20,  and    the  false  prophet  and  the  prophet    be   known.      9  And 
+xii-  34,  35-  every  prophet  that  appointed!  a  table  in  the  spirit  shall 
+
+not  eat  thereof,  otherwise  he  is  a  false  prophet.  10  And 
+if  any  prophet  that  teacheth  the  truth  doeth  not  the 
+things  that  he  teacheth  he  is  a  false  prophet.  1 1  And 
+any  prophet  approved  and  true,  that  doeth  things  for 
+a  worldly  mystery  of  the  church  but  teacheth  not  men 
+to  do  as  he  himself  doeth,  he  shall  not  be  judged  among 
+you  :  for  he  hath  his  judgment  with  God.  For  in 
+like  manner  did  also  the  prophets  of  old  time.  i2But 
+whosoever  shall  say  in  the  spirit,  give  me  moneys  or  any 
+other  things,  ye  shall  not  hearken  unto  him  ;  but  if  he 
+bid  you  give  concerning  others  that  are  in  need  let  no 
+man  judge  him. 
+
+CHAPTER  XII 
+
+Comp.  Matt.  x.  40-42.  T  ET  everyone  that  cometh  in  the  name  of  the  Lord 
+•*— '  be  received  ;  and  then  after  ye  have  tested  him  ye 
+
+Jonah  iv.  n.  shall  know  him  ;  for  ye  shall  have  understanding  of  right 
+
+and  left.  2  If  he  that  cometh  is  a  wayfarer,  give  him  aid 
+as  much  as  ye  are  able  ;  but  he  shall  not  abide  with  you 
+save  for  two  or  three  days  if  need  be.  3  But  if  he  be 
+
+Acts  xvui.  3  ;  xx.  34.  winmg  to  settle  among  you  as  being  a  craftsman  let  him 
+labour  and  eat ;  4  but  if  he  have  no  craft,  provide  accord 
+ing  to  your  discretion  that  he  shall  not  live  idle  amongst 
+you  as  a  Christian.  5  But  if  he  will  not  do  thus  he  is  a 
+trafficker  in  Christ  :  of  such  men  beware. 
+
+
+CHAPTER  XIII 
+
+
+B 
+
+
+kUT  every  prophet  that  is  willing  to  settle  among  you 
+is  worthy  of  his  food.  2  In  like  manner  a  true  teacher 
+Matt.  x.  10.  is  himself  also  worthy  even  as  the  labourer,  of  his  food. 
+
+Comp.  Exod.  xxii.        3  All  the  first-fruits  then  of  the  produce  of  wine  fat  and 
+,.  threshing  floor,  oxen  and  sheep,  shalt  thou  take  and  give, 
+
+Lev.  xxm.  Num.  xvni.  !/•/•••  i  i  /-          i 
+
+even  the  first-fruits,  unto  the  prophets,  for  they  are  your 
+
+Deut.  xvui.  hjgh  priests  ;  4  But  if  ye  have  no  prophet,  give   them 
+
+unto   the  poor.     5  If  thou  makest  a    baking  of  loaves, 
+
+take  the  first-fruits  and  give  according  to  the  command- 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  9 
+
+ment ;  and  in  like  manner  when  thou  openest  a  jar  of 
+wine  or  oil,  take  the  first-fruits  and  give  unto  the 
+prophets.  7  And  of  money  and  raiment  and  every 
+possession  take  the  first-fruits  and  give  as  seemeth  good 
+unto  thee  according  to  the  commandment. 
+
+CHAPTER  XIV 
+
+A  ND  on  the  Lord's  day  of  the  Lord  assemble  your-  Rev.  i.  10. 
+•*•*•  selves  together  and  break  bread  ;  and  give  thanks  after 
+having    confessed    also   your    transgressions,  that*  your  *  °,r '  °ur '  ^v  or 
+sacrifice  may  be  pure.     2  And  let  not  any  man  that  is  at 
+variance  with  his  fellow  corne  together  with   you  until 
+they  be  reconciled,  that  your  sacrifice  be  not    polluted. 
+3  For  thist  is  that  which   was  spoken  of  by  the  Lord  :  fSc.  *  this  sacrifice.' 
+In  every  place  and  time  offer  unto  me  a  pure  sacrifice,  Mai.  i.  n. 
+for  I  am  a  great  King,  saith  the  Lord  ;  and  My  Name 
+is  wonderful  among  the  Gentiles. 
+
+CHAPTER  XV 
+
+LECT  therefore  for  yourselves  J  bishops  and  deacons  t^meers  Cf.  Acts 
+
+worthy  of  the  Lord  men  that  are  meek,  and  not 
+lovers  of  money,  and  true  and  approved.  For  they 
+themselves  also  minister  unto  you  the  ministry  of 
+prophets  and  teachers,  2  therefore  disregard  them  not  ; 
+for  it  is  they  that  are  the  honoured  ones  among  you 
+with  the  prophets  and  teachers.  3  And  reprove  one 
+another,  not  in  wrath  but  in  peace,  as  ye  have  it  in 
+the  Gospel  ;  and  to  any  man  that  wrongs  his  neigh 
+bour,  let  no  one  speak,  neither  let  him  hear  aught 
+from  you  until  he  repent.  4  And  your  prayers,  and 
+your  alms,  and  all  your  actions,  so  perform  ye  them  as 
+ye  have  it  in  the  Gospel  of  our  Lord. 
+
+CHAPTER  XVI 
+
+\X7ATCH  for  your  life.      Let  not   your    lamps    be  Luke xii 
+
+quenched,  and  let  not  your  loins  be  ungirded  ;  but 
+be  ye  ready,  for  ye  know  not  the  hour  in  which  our  Lord 
+
+
+10 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+
+Mark  xiii.  35. 
+
+
+Matt.  xxiv.  10-12. 
+
+
+2  Thess.  ii.  3. 
+Mark  xiii.  22. 
+i  Cor.  iii.*  13. 
+
+I  Pet.  iv.  12. 
+
+Matt.  xxiv.  27,  30,  31, 
+*  *  Caused  to  stumble  ' 
+
+as  in  R.V. 
+I  Thess.  iv.  16 
+
+Deut.  xxxiii.  2. 
+Zech.  xiv.  5. 
+Matt.  xxv.  31. 
+Rev.  i.  7. 
+
+
+cometh.  2  And  be  frequently  gathered  together  seeking 
+the  things  which  concern  your  souls ;  for  the  whole 
+time  of  your  faith  shall  not  profit  you  except  ye  be 
+made  perfect  in  the  last  season.  3  For  in  the  last  days 
+the  false  prophets  and  the  corrupters  shall  be  multiplied  ; 
+and  the  sheep  shall  be  turned  into  wolves  and  love 
+shall  be  turned  into  hatred  ;  4  for  when  lawlessness 
+waxeth  great,  they  shall  hate  and  persecute  and  betray 
+one  another  ;  and  then  shall  appear  the  deceiver  of 
+the  world  as  the  Son  of  God  ;  and  he  shall  work  signs 
+and  wonders,  and  the  earth  shall  be  delivered  into  his 
+hands,  and  he  shall  work  iniquities  such  as  have  never 
+been  from  everlasting.  5  Then  shall  the  work  of  men 
+come  into  the  fire  of  trial,  and  many  shall  be  offended,* 
+and  shall  perish  ;  but  they  that  endure  in  their  faith 
+shall  be  saved  by  the  curse  itself.  6  And  then  shall 
+appear  the  signs  of  the  truth  ;  first  the  sign  of  a  spread 
+ing  out  in  heaven  ;  next  the  sign  of  the  sound  of  a 
+trumpet  ;  7  and  the  third  a  resurrection  of  the  dead  ; 
+howbeit  not  of  all,  but  as  it  was  said,  the  Lord  shall 
+come  and  all  His  Saints  with  him  ;  8  then  shall'  the 
+world  see  the  Lord  coming  upon  the  clouds  of  heaven. 
+
+
+NOTES 
+
+Ch.  i,  v.  i. — The  parable  of  the  Two  Ways  is 
+familiar  in  early  literature,  classical  as  well  as  sacred. 
+Prodicus  in  Xnophon's  Memorabilia  gives  the  well  known 
+story,  of  the  choice  of  Hercules.  Plato's  allegory  of  the 
+"  Chariot  of  the  Soul  "  in  the  Phaedrus,  contains  the 
+same  idea.  For  the  version  of  the  Two  Ways  in  the 
+so-called  Epistle  of  Barnabas,  see  Appendix  A. 
+
+Ver.  ii.  For  the  negative  form  of  the  Golden  Rule 
+compare  Tobit  iv.  15,  "What  thou  hatest  do  not  to 
+another."  Taylor  points  out  that  this  form  is  typically 
+Jewish.  We  are  reminded  of  the  often  quoted  sentence 
+in  "  Ecce  Homo,"  "  The  old  law  began  with  Thou  shalt 
+not  ;•  the  new  law  with  Thou  shalt."  Compare  also 
+Didache,  chapter  xvi,  v.  i. 
+
+Ver.  4.  "  Abstain,"  &c.  Apparently  an  inter 
+polation.  One  would  rather  expect  to  find  it  in  Chapter 
+II,  as  a  summary  of  the  "  second  commandment  "  of  the 
+teaching. 
+
+Ver.  5.  "  Coming  under  constraint "  iv  a-vvoxy  is 
+variously  rendered  "  in  distress  "  "  under  discipline  "  "  in 
+prison."  Evidently  some  kind  of  punishment  is  meant. 
+But  there  seems  no  authority  for  Prof.  Rendel  Harris's 
+suggestion  of  ,a  church  prison  or  house  of  correction. 
+The  word  for  "prison  "  in  Matthew  v.  25,  is  <£vAaK?j. 
+
+Ver.  6.  "  Let  thine  alms  sweat "  &c.  Many  passages 
+have  been  cited  by  Dr.  Taylor  and  others  in  illustration 
+of  this  passage.  They  appear  to  me  rather  to  illustrate 
+the  Scriptural  view  of  the  dignity  of  labour  than  to 
+throw  light  on  the  phrase  taken  with  its  context.  To 
+the  general  reader  the  intention  would  seem  to  be  simply 
+a  correction  of  the  large  injunction,  "  Give  to  every  one 
+that  asketh  of  thee  "  (ver.  5),  by  prescribing  judicious 
+precaution  against  giving  alms  to  the  undeserving. 
+
+
+12  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+"  Keep  thine  alms  warm  in  thine  own  hand  until  thou 
+art  sure  of  the  right  recipient.'*  It  -may  be  taken  as 
+anticipating  the  directions  given  in  chapters  xi.  and  xii., 
+on  the  bestowal  of  alms  on  prophets  and  teachers. 
+There  is  no  doubt  also  a  reference  to  the  value  of  alms 
+being  given  out  of  that  which  is  acquired  by  sweat  or 
+labour. 
+
+Chap.  iii.  I. — Dr.  Taylor  illustrates  this  by  the  Rab 
+binical  saying,  "  Make  a  fence  about  the  Law,"  i.e.,  to 
+avoid  breaking  the  law  itself,  avoid  any  action  which 
+might  lead  to  such  breaking.  The  Pharisaic  precepts  as 
+to  the  observance  of  the  Sabbath  were  a  reductio  ad 
+absurdum  of  this  principle.  The  tenth  Commandment  is 
+itself  of  the  nature  of  a  "  fence  "  against  breaches  of  the 
+sixth,  seventh,  eighth  and  ninth. 
+
+Ver.   5.  "Be  not   a  liar;  for   lying  leads   to   theft." 
+
+The  inversion  of  the   common  view   in  this  precept  is 
+
+remarkable.     The  form  of  lying  specially  denounced  in 
+
+the  ninth  commandment  is  in  itself  a  form  of  theft  :  to 
+
+bear  false    witness    is    to   rob  a  man  of  his  character  : 
+
+*  Othello,  Act  iii.,      perhaps  the  worst  kind  of  robbery.*     "Who  steals  my 
+
+Sc-  3  purse  steals  trash  ;   but  whoso  filches  from  me  my  good 
+
+name   robs  me   of  that  which  not   enriches    him,   and 
+
+makes  me  poor  indeed." 
+
+The  passage  is  interesting  as  being  quoted  by  Clement 
+of  Alexandria  (about  200  A.D.),  as  Scripture.  He  writes, 
+"...  such  an  one  is  called  a  thief  by  Scripture  ;  at  least 
+it  saith  :  Son,  be  not  a  liar,  for  lying  leadeth  unto  theft," 
+Strom,  i.  20. 
+
+Chap.  iv.  i . — "  For  where  the  Lordship  is  proclaimed 
+there  is  the  Lord."  An  apparent  reference  to  our  Lord's 
+words  :  "  He  that  receiveth  you  receiveth  Me  ;  and  he 
+that  receiveth  Me  receiveth  Him  that  sent  Me" 
+(Matt.  x.  40),  and  "  Where  two  or  three  are  gathered 
+together  in  My  name,  there  am  I  in  the  midst  of  them  " 
+(Matt,  xviii.  20).  But  the  expression  $  Kvpior^  is 
+unique  ;  and  can  here  only  mean  "  the  Power  or  Name 
+or  Presence  of  the  Lord."  The  sentence  is  paraphrased 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  13 
+
+in  the  Apostolical  Constitutions,  "  Where  the  teaching 
+concerning  God  is,  there  God  is  present."  Dr.  Taylor 
+also  sees  in  it  a  reference  to  the  favourite  doctrine  of  the 
+Rabbis,  that  those  who  are  occupied  with  the  "  Thorah  " 
+or  Law  of  the  Lord  have  the  Shekinah  (the  glory  of  the 
+Divine  Presence)  amongst  them.  They  used  to  quote 
+in  support  of  it  Exodus  xx.  24,  and  xxxiv.  5. 
+
+Ver.  6.  Compare  Testaments  of  the  twelve  Patriarchs 
+(Zebulon  viii).  "  As  a  man  is  pitiful  towards  his  neigh 
+bour,  so  will  the  Lord  be  pitiful  towards  him." 
+
+Ver.  14.  For  *v  eKK'Ai/crip  in  the  sense  of  "congre 
+gation  "  (although  without  the  article),  compare  I  Cor. 
+xi.  1 8,  and  xiv.  19,  28,  35.  Some  commentators  would 
+translate  "  in  church  "  regarding  the  omission  ry  as  evi 
+dence  of  "late  workmanship."  There  is,  however,  no 
+question  as  to  its  meaning  in  Corinthians. 
+
+Chap.  v.  2. — The  abrupt  transition  from  abstract  to 
+concrete  is  noticeable.  Dr.  Taylor  notes  it  as  evidence 
+of  the  early  and  Jewish  origin  of  the  Didache,  and 
+points  out  that  the  Apostolical  Constitutions  (a  work  of 
+admittedly  later  date)  soften  the  construction  when 
+quoting  this  passage,  by  inserting  "  for  the  doers  of  these 
+things  are,"  &c.  See  also  Barnabas,  chap.  xx.  (Ap 
+pendix  A.) 
+
+Chap,  vi.,  v.  2. — "  The  yoke  of  the  Lord"  clearly  = 
+the  precepts  of  Christ  which  have  been  summarized  in 
+"  the  Way  of  Life,"  and  are  expressly  styled  "  My  yoke  " 
+by  our  Lord  Himself  (Matt.  xi.  29,  30). 
+
+Chap.  vii. — Baptism.  The  directions  are  of  peculiar 
+interest  as  being  the  earliest  post-apostolic  rules  which  we 
+possess.  The  following  points  are  noticeable  : 
+
+I.  The  necessity  of  a  preliminary  course  of  instruction 
+(raura  TTOLVTO.  TrpociTroi/Tcs)  as  embodied  in  the  first 
+part  of  the  Didache.  In  the  Acts  of  the  Apostles 
+baptism  appears  to  take  place  immediately  on  profession 
+of  faith  in  Christ  (Acts  ii.  41  ;  viii.  36-38  ;  where  note 
+the  omission  and  marginal  reference  in  Revised  Version  j 
+ix.  1 8  j  x.  47  ;  and  xvi.  30-33), 
+
+
+i4  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+This  preliminary  instruction  indicates,  of  course,  that 
+the  great  majority  of  the  baptized  were  converts  from 
+heathenism  ;  either  adults  or  children  who  had  attained 
+"  years  of  discretion." 
+
+2.  The    mode    of   baptizing.        The    rite    is    to    be 
+administered  in  "  living,"  i.e.,  running  water — i.e.,  either 
+a  stream  or  fountain.     Cf.  Lev.  xiv.  50,  the  directions 
+for  purification  of  leprosy.       This  is  to  be  the  general 
+practice.      But  it   may   be  modified   in   special  circum 
+stances  :  (a)  if  "  living "  water  is  not  accessible,    other 
+water,  such  as  pools  or  cisterns,  may  be  employed  ;  and 
+(b)  if  cold  water  is  impossible  («   ov   Svvaa-at  tv  \l/o\p<$} 
+presumably  on  account  of  tender  age  or  infirmity,  warm 
+water  is  permissible.     Although  in  these  directions  there 
+is  no  mention  of  infant  baptism,  this  reference  to  warm 
+water  may  reasonably  be  taken  as  a  recognition  of  it  ; 
+especially  when  it  is  remembered  that  baptism  of  infant 
+proselytes   to  Judaism  was  an  established  practice.   (Cf. 
+Taylor  ad  loc.  Lecture  II.)     (c)  If  neither  "  living  "  nor 
+other    water  is  available — and  immersion  unadvisable — 
+then,  almost  in  the  words  of  our  own  Baptismal  Office, 
+it  shall  suffice  to  "pour  water  thrice  upon  the  head  in  the 
+name  of  the  Father,  Son  and  Holy  Ghost." 
+
+The  validity  of  the  rite  is  not  bound  by  the  mode  ; 
+the  essential  element  of  the  sacrament  being  the  use  of 
+water,  not  immersion  in  it.  The  symbolic  character  of 
+the  rite  is  recognized,  and  its  spiritual  significance  ;  a 
+marked  contrast  to  the  literal  formalism  of  Jewish  ritual, 
+especially  noticeable  when  we  consider  the  early  date  of 
+the  document. 
+
+3.  The  absence    of  any   restriction   of  the   right   to 
+\\  administer    baptism.     Nothing    is    said   of  any   class  of 
+
+officials  to  which  the  prerogative  is  to  be  confined.  In 
+;  the  Apostolical  Constitutions  the  right  of  baptizing  is 
+
+restricted  to  bishops  and  presbyters.  Hilary  (Comm.  ad. 
+!  Eph.  iv.  II,  12,)  says  that  in  early  times  "  omnes  docebant 
+
+et  omnes  baptizabant"  and  there  is  no  hint  in  the  Acts  of 
+<  the  Apostles  of  any  restriction.  St.  Paul  himself,  for 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  15 
+
+example,  was  baptized  by  Ananias,  who  does  not  appear 
+to  have  been  more  than  an  ordinary  disciple. 
+
+4.  Fasting.  With  the  directions  for  fasting  as  a 
+preparation  to  be  observed  both  by  baptizer  and  baptized, 
+we  may  compare  the  words  of  Justin  Martyr  (Apol.  i.  61. 
+See  Appendix  II.). 
+
+It  will  be  noticed  that  there  is  no 
+
+
+or  indeed  of  any  doctrinal  significance  in  the  Didache. 
+This  may  be  taken  as  another  mark  of  its  early  date. 
+
+5.  The  omission  of  all  ceremonial  detail.  The  sign 
+ing  of  the  cross  on  the  forehead,  the  anointing  with 
+oil,  the  white  robe,  exorcism,  the  "  Apage  Satana," 
+though  introduced  early  into  the  ritual  are  not  mentioned. 
+It  does  not  necessarily  follow  that  none  of  them  was 
+used  ;  we  shall  notice  in  discussing  the  Eucharist  that 
+there  is  no  reference  to  points  of  ritual  which  must  have 
+been  in  use  from  its  institution.  Doubtless,  however, 
+the  tendency  in  both  sacraments  was  to  elaboration  of 
+detail  as  time  went  on. 
+
+-  Chap.  viii.  I.  —  We  read  that  the  Jews  fasted  on 
+Mondays  and  Thursdays,  as  being  the  days  on  which 
+Moses  ascended  and  descended  from  Mount  Sinai. 
+Christians  are  directed  to  fast  on  Wednesdays  and  *  *  "Preparation,"  /.<•., 
+
+T-,  .j  ..  c  TJ»L  i  J  •         the    "a7   before   the 
+
+Fridays,    the    days    of  our    Lord  s    betrayal    and    cruci-     sabbath,   Cf.  John 
+
+fixion.     As   Taylor   points   out,  the  distinction  of  days     *»*•  31. 
+
+would  be  a  conspicuous  and  efficient  mark  of  separation 
+
+between  the  Jews  and   Christian  communities,     I  find 
+
+no  explanation  of  the  expression  "  hypocrites  "  here  as 
+
+applied  to  the  Jews.     Hypocrisy  was  of  course  especially 
+
+a  Jewish  sin.     The  use  of  the  term  is  obviously  borrowed 
+
+from  Matt.  vi.  2,  5,   16;  we  may  also  compare  Matt. 
+
+xxiv.  51,  and  Luke  xii.  46. 
+
+Ver.  2.  The  Lord's  Prayer.  It  is  worth  while  to 
+compare  the  version  in  the  Didache  with  those  in  St. 
+Matthew  and  St.  Luke.  The  variations  are  noted  by 
+different  type. 
+
+
+i6 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+
+Matt.  vi. 
+
+
+Harep  rmdv  6  Iv  Tott  otipavois, 
+TO  6vof*.a.  <rov, 
+ftaffi\eLa  <rov. 
+7U  TO  0£\i/ifjid,  <rov,  ws 
+tv  o$pa.vtf  Kal  tirl  TTJS  yrjs. 
+TOP  Apror  rjfJL&v  roy 
+5ot  -tjfjuv  ff^iufpov.  Kai 
+?j/uy  ra  6<j><iXT]j 
+tot  Jcai  Tj/ietr  a.(f)lef.t.FV  rots 
+T^tDp.  Kai  /*fj 
+i)(j.as  etj  vetpacrfwv 
+ciXXa  pvffai  r//naj  UTTO  rou 
+
+
+Didach<5  viii. 
+
+j.uv  6  iv  T&  Ovpavw, 
+ayia<T0rjTti}  TO  6vo/jui  ffov. 
+tE\d^Ttt)  77  jSaertXefa  trou.  ywi}- 
+0j)Tb)  TO  O^X-rjfJid  <rov,  wj  ei* 
+oupavy  *cai  firl  ^fjs.  To^ 
+&pTov  rmCjv  TOV  iiriofxnov  80$ 
+rjfuv  arjfJLepov.  Kai  <3t0ej  ?;/*?»' 
+Ti]V  i<j>€i\t]V  T/^twi',  ws  *cai 
+atplefiev  TOIS 
+Kai  ^77 
+
+e?s  ireipa.viJ.QV  dXXa  pv<rai 
+i]fji.S.s  airo  TOV  irovypov. 
+
+
+Luke  xi. 
+
+•fjfjt.wi'  6  tv  TOIS  o<upavots 
+ayta.(rdr)T<ji)  TO  ovoyd  <rou. 
+'EX^^Tw  r?  /SatrtXefa  <row. 
+^T^TW  TO  6£\rjfji,d  0ovt 
+ovpavy  Kal  tiri  TTJS  77)$.  TJv 
+apTov  TIP.UV  TOV  tit iota I.QV 
+
+TO    K0.6'     T][JL£paV. 
+
+/Liti'  ras  a|xapria« 
+Kal  vdp  avrol  d<f>tffi€v 
+iravrl  6<{>€CXovTi  TIJJLIV.  Kai 
+/UTJ  e/o-ei'^YKTjs  ^as  et $  Tretpacr- 
+/iov  dXXa  pvffai  T]/j,as  dwo  roi 
+
+
+It  will  be  seen  at  once  that  the  differences  between 
+St.  Matthew  and  the  Didache  are  very  slight.  Other 
+readings  in  St.  Matthew  are  tA^arw  for  €A,0eT<o  and 
+d^Ka/Aey  for  d</)ic/^cK.  I  have  not  printed  the  doxology, 
+as  it  is  now  fully  agreed  that  it  formed  no  part  of  St. 
+Matthew's  original  text.  A  noticeable  omission,  how 
+ever,  in  the  Didache  is  that  of  ^  /foo-iAci'a.  This  ex 
+pression  is  omitted  in  all  the  doxologies  which  occur  in 
+the  treatise  (ix.  2,  3,  4  ;  x.  2,  4,  5).  They  were  evi 
+dently  used  as  appropriate  conclusions  to  many  prayers. 
+.  v  "  Thrice  a  day  "  is  in  accordance  with  Jewish  practice. 
+Cf.  Psa,  Iv.  18  ;  Danish  vi.  10  ;  Acts  iii.  I  ;  x.  9. 
+This  custom  prevailed  to  later  times  ;  it  is  referred  to 
+and  defended  by  Tcrtullian  (de  Ovat.  and  de  Jejun. 
+10)  and  Clement  of  Alexandra  (Stromata  vii.  7),  who 
+adds  "  the  Gnostic,  however,  prays  throughout  his  whole 
+life,  endeavouring  by  prayer  to  have  communion  with 
+God." 
+
+Chap.  ix.  i. — The  Eucharist,  /.*.,  the  Service  of 
+Thanksgiving,  forms  the  subject  of  chapters  ix.,  x.  and 
+xiv.  This  technical  use  of  the  abstract  word  €vxap<-<rria 
+is  not  found  in  the  New  Testament  ;  but  it  was  un 
+doubtedly  adopted  at  an  early  period.  In  the  Didache 
+the  sacrament  is  regarded  almost  wholly  from  its  Eucha- 
+ristic  or  Thanksgiving  side  : — the  prayers  prescribed  for 
+use  invariably  opening  with  the  words,  u  We  thank  Thee 
+our  Father "  (or  Holy  Father),  and  one  concluding, 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+
+"  Before  all  things  we  thank  Thee  that  Thou  art  mighty  ; 
+Thine  is  the  glory  for  ever  "  (x.  4).  In  chapter  xiv.  we 
+find  the  direction  to  "  break  bread  and  give  thanks  "  on 
+the  Lord's  day.  This  aspect  of  the  sacrament  is  cer 
+tainly  a  continuation  of  the  chief  characteristic  of  the 
+Passover  which  contained  in  its  ritual  a  series  of  thanks 
+giving  prayers  or  blessings,  called  Eulogiae  ;  and  it  is 
+worthy  of  notice  that  the  expressions  in  Matt.  xxvi. 
+26,  27,  and  Mark  xiv,  22,  23,  describing  our  Lord's 
+actions  at  the  institution  of  the  supper  contain  the  words 
+fvAoyyJcras  —  "  having  blessed,"  and  €i'xa/>«mjcras  — 
+"having  given  thanks,"  St.  Luke  xxii.  17,  19,  and  St. 
+Paul,  I  Cor.  xi.  24,  use  ^a/nor^o-as  only.  Our 
+Lord's  prayers  naturally  included  both  a  blessing  and  a 
+thanksgiving  ;  we  in  our  commemoration  invoke  the 
+Divine  blessing,  and  offer  thanks  to  God  for  the  spiritual 
+gifts  which  the  ordinance  symbolizes.  The  words  of 
+Justin  Martyr's  Apology  have  often  been  quoted  (Apol. 
+i.  66),  and  will  be  found  given  in  full  in  Appendix  D. 
+"  This  food  (the  sacramental  bread  and  wine)  is  called 
+among  us  tvxapta-Tia  (Thanksgiving  or  Eucharist),  of 
+which  no  one  is  allowed  to  partake  but  the  man  who 
+believes  that  the  things  which  we  teach  are  true." 
+
+Ver.  2.  "  The  Holy  Vine  of  David  thy  servant "  [or 
+son].  Taylor  says,  "  The  phrase  is  not  found  in  any 
+earlier  writing."  It  is  evidently  a  combination  of  the 
+figure  used  by  Christ  of  Himself  as  the  True  Vine 
+(John  xv.  i),  and  the  expression  "  Root  and  oflspring  of 
+David,"  used  in  Rev.  xxii.  16.  In  the  latter  there  is  a 
+reference  to  Isa.  xi.  10,  the  "  Root  of  Jesse."  It  is  noted 
+that  Clement  of  Alexandria  uses  the  phrase  "  the  blood  of 
+the  vine  of  David,"  evidently  quoting  from  the  Didache. 
+
+Ver.  4.  The  bread  which  is  broken  is  regarded  as  an 
+"  acted  parable  "  of  the  jjimty_pf  the  Clvurch,  the  scattered 
+members  of  which,  dispersed  throughout  the  world,  are 
+to  be  gathered  into  one  kingdom,  as  the  corn  scattered 
+abroad  upon  the  hills  is  gathered  into  one  bread.  See 
+also  chap.  x.  5. 
+
+
+1 8  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+Chap.  x.  i. — "After  being  filled."  The  expression 
+shows  that  the  Eucharist  was  celebrated  together  with 
+the  Agape"  or  "  Love  feast."  The  practice  of  combining 
+;  the  two  ceremonies  is  another  instance  of  Jewish  ritual 
+influencing  the  Christian  Sacrament.  The  Passover  was 
+preceded  by  the  Chagigah,  with  the  intention,  as  Taylor 
+points  out  in  his  quotation  from  the  "  Talmud,"  that  the 
+Passover  might  be  eaten  "  after  being  filled."  The 
+abuses  of  this  practice  which  we  read  of  in  I  Cor.  x. 
+and  xi.  rendered  its  abolition  necessary.  Justin  Martyr's 
+description  of  the  celebration  of  the  Eucharist  in  his  time 
+shows  that  it  took  place  at  the  conclusion  of  Divine 
+service  on  "  the  day  which  is  called  Sunday."  "  When 
+our  prayer  is  concluded,  bread  is  brought  and  wine  and 
+water  .  .  .  and  there  is  a  distribution  to  each  of  the 
+congregation  and  a  sharing  of  the  Eucharistic  elements." 
+(Ap.1.  \.  67.) 
+
+Ver.  3.  This  prayer  of  thanksgiving,  and  in  fact  all 
+the  prayers  prescribed  in  the  Didache  for  use  in  the 
+Eucharist,  are  evidently  framed  after  the  model  of  the 
+Eulogiae  of  the  Passover  referred  to  in  the  previous  note. 
+In  the  Eulogiae  thanks  are  offered  for  the  fruits  of  the 
+earth,  and  for  the  "  good  land  given  as  an  inheritance  to 
+our  fathers."  So  in  the  Eucharistic  prayers  thanks  are 
+given  for  food  and  wine  and  for  all  the  blessings  of 
+Creation  ;  the  sacramental  elements  being  regarded  not 
+only  as  "  outward  and  visible  signs  "  of  spiritual  grace, 
+but  also  as  symbolizing  the  goodness  of  the  Creator  in 
+giving  to  man  the  "  kindly  fruits  of  the  earth." 
+
+Ver.  6.  "  Let  grace  come,  and  let  this  world  pass  away ; " 
+a  paraphrase  of  the  clause  of  the  Lord's  prayer,  "Thy 
+kingdom  come."  Hosanna  (ws  dwa)  Maranatha  or  Maran 
+Atha. 
+
+The  cry  Hosanna  ("  save  now,"  or  "  save  we  pray  ") 
+was  used  in  connection  with  the  Feast  of  Tabernacles. 
+It  occurs  in  Ps.  cxviii.  25,  "  Help  me  now  O  Lord." 
+Taylor  points  out  that  this  verse  is  followed  immediately 
+by  the  words  "  Blessed  be  He  that  cometh  in  the  Name 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  19 
+
+of  the  Lord,"  and  that  this  is  the  connecting  link  with 
+the  Syriac  Maran  atha,  of  which  the  meaning  seems  to 
+be,  "  The  Lord  is  at  hand,"  or  "  The  Lord  cometh  "  : 
+an  expression  of  frequent  occurrence  in  the  epistles 
+(l  Cor.  xvi.  22  ;  Phil.  iv.  5  ;  I  Thess.  iv.  15  ;  v.  23.), 
+and  evidently  referred  to  in  Rev.  xxii.  12,  2O. 
+
+Chap.  xi.  9. — "A  table,"  probably  referring  to  the 
+Agap£  or  Love-feast.  The  prophet  might  be  suspected 
+of  appointing  such  a  "  table  "  or  "  feast "  for  his  own 
+indulgence,  under  the  colour  of  a  feast  of  charity  to  the 
+poor. 
+
+Ver.       I  I  .        €15      fllHTTVlpLOV       KOfTfUK^V       €KK\1]CrM^.  "  No 
+
+prophet  approved  and  true,  doing  anything  for  an  earthly, 
+cosmic  or  worldly  sign  [or  mystery]  of  the  Church, '-but 
+not  teaching  others  to  do  as  he  docth,  shall  be  judged  by 
+you,  for  his  judgment  is  with  God  ;  for  in  such  manner 
+also  did  the  prophets  of  old  time." 
+
+This  passage  is  the  greatest  difficulty  in  the  Didache. 
+Many  explanations  have  been  suggested  :  the  most  satis 
+factory  is  perhaps  Dr.  Taylor's.  He  illustrates  the  use 
+of  Koo-fu/coi/  "  worldly "  or  "  earthly "  from  Hebrews 
+ix.  I  ;  €?X€  ^v  °^v  Ka^L  ^  irpMTi]  (r/o/n)  SiKcuw/xara  Aarpeias 
+TO  TC  ayiov  KOO-/UKOI/.  "  Now  even  the  first  covenant 
+had  ordinances  of  divine  service,  and  its  sanctuary  a 
+sanctuary  of  this  world  "  [R.V.].  "  As  the  cosmic 
+sanctuary  made  with  hands  was  a  pattern  of  the  heavenly, 
+so  a  cosmic  mystery  is  an  idea  depicted  in  the  world  of 
+sense  by  emblematic  actions  or  material  objects." 
+
+The  reference  is  to  the  method  often  used  by  the 
+prophets  of  teaching  by  symbolic  actions  or  objects. 
+[Cf.  I  Kings  xxii.  II  ;  Jer.  i.  13;  Ezek.  xxiv.  3; 
+Hos.  iii.  i  ;  Zech.  xi.  10,  14  ;  Acts  xxi,  n.]  But  the 
+Didache  enters  on  the  borderland  of  casuistry  by  laying 
+down  that  it  may  be  lawful  to  transgress  the  general  law 
+if  the  purpose  be  holy.  "  The  priests  in  the  temple 
+profane  the  sabbath  and  are  blameless  "  (Matt.  xii.  5). 
+
+Dr.  Taylor  further  illustrates  the  point  by  quoting 
+Barnabas  (Epistle  chap,  xii.)  and  Justin  Martyr  (Dial,  c, 
+
+
+20  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+Trypho),  both  of  whom  refer  to  the  serpent  of  brass 
+made  by  Moses  for  the  healing  of  the  people,  and  as  a 
+type  of  Christ,  although  he  had  himself  delivered  to 
+Israel  the  commandment,  "  Ye  shall  have  neither  molten 
+nor  graven  image,"  and  "  Cursed  be  the  man  that  maketh 
+a  molten  or  graven  image."  Both  Barnabas  and  Justin 
+seem  to  refer  to  an  oral  Didache  existing  previous  to  any 
+written  treatise. 
+
+It  will  be  observed  that  the  Didache  gives  no  example 
+of  the  kind  of  actions  in  which  a  prophet  might  be 
+allowed  to  infringe  the  law.  But  the  instances  quoted 
+by  Taylor  from  Barnabas  and  Justin  Martyr  may  be 
+regarded  as  bearing  on  the  question  of  the  use  of  art  as 
+an  aid  to  Christian  teaching. 
+
+Chap.  xii.  I. — (Tvi>€(riv  yap  e'Jere  Se£iW  KCU  a/H(rre/>ai/. 
+Compare  the  corresponding  passage  in  the  Apostolical 
+Constitutions  (vii.  28),  "  Ye  are  able  to  know  the  right 
+hand  from  the  left,  and  to  discern  false  teachers  from 
+true."  For  the  form  of  expression  see  also  Jonah  iv.  n, 
+of  the  people  of  Nineveh. 
+
+Chap.  xiii.  i,  2. — Apostles  (chap.  xi.  3),  prophets, 
+teachers.  These  terms  are  often  used  not  only  in  the 
+Didache  but  also  in  the  New  Testament  and  other  early 
+Christian  literature  without  any  definite  distinction. 
+They  are  used  indifferently  of  the  same  persons,  accord 
+ing  to  the  aspect  of  their  work  which  at  the  moment  is 
+being  considered.  In  the  Didache  the  apostle  is  called  a 
+prophet  (xi.  5,  6)  ;  but  in  xiii.  I,  2,  the  prophet  and 
+teacher  are  apparently  distinct.  But  in  Acts  xiii.  i  ; 
+xiv.  4,  14  ;  xv.  32  ;  Gal.  ii.  9  ;  i  Thess.  i.  I  ;  ii.  6  ; 
+we  read  of  Paul,  Barnabas,  Silas,  and  perhaps  Timothy 
+also,  as  "teachers,"  "apostles"  and  "iprophets."  We 
+seem,  however,  to  see  in  the  early  Church  the  rise  of 
+"  teachers "  who  were  a  class  by  themselves,  distinct 
+from  apostles  and  prophets.  See  I  Cor.  xii.  28,  where 
+the  three  classes  are  very  definitely  separated  :  "  first, 
+apostles  ;  secondly,  prophets  ;  thirdly,  teachers." 
+
+It  appears   from    Rom.  xii.  7,  that  "  teaching "  was 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  21 
+
+one  of  the  definite  spiritual  gifts  of  the  early  Church  ; 
+exercise  of  the  gift  being  not  confined  to  officials  of  the 
+Church  (Acts  viii.  4  ;  xi.  19  ;  xviii.  26,  28  ;  James  iii. 
+i),  but  open  (as  in  the  Jewish  synagogue)  to  any  whom 
+the  President  might  invite  [Luke  iv.  17  ;  Acts  xiii.  15  ; 
+xvii.  2.].  It  is  laid  down  in  the  Apostolical  Constitu 
+tions  that  "  though  a  man  be  a  layman,  yet  if  he  be 
+experienced  in  the  delivery  of  instruction  and  reverent  in 
+habit,  he  may  teach  ;  for  the  Scripture  saith  '  they  shall 
+all  be  taught  of  God '  "  (viii.  31). 
+
+"  Apostles."  The  term  which  at  first  was  restricted 
+to  the  twelve  was  afterwards  extended  to  others.  The 
+qualification  at  first  demanded — personal  knowledge  of 
+the  Lord  during  his  ministry  (Acts  i.  21) — was  not 
+rigidly  adhered  to,  for  we  find  Timothy  and  Silas 
+described  by  St.  Paul  as  apostles  together  with  himself 
+(i  Thess.  i.  I  ;  ii.  6).  That  the  extension  of  the  term 
+may  not  at  first  have  been  generally  approved  is  suggested 
+by  St.  Paul's  indignant  question  in  I  Cor.  ix.  i  ;  and 
+perhaps  we  should  recognize  that  when  the  title  had 
+become  generally  extended,  a  distinction  was  made 
+between  the  original  apostolate  and  those  who  were 
+simply  missionaries — men  in  fact  as  the  term  implies 
+"  sent  forth."  At  all  events  it  seems  clear  that  the  term 
+was  generally  used  at  the  period  of  the  Didache,  and 
+that  the  Church  needed  to  be  shown  how  to  discern  the 
+true  Evangelist  or  missionary  from  the  many  false  who 
+sought  to  impose  themselves  on  believers. 
+
+"  Prophets."  That  it  is  clear  from  ver.  4  of  chap, 
+xiii,  that  one  of  the  prophetic  functions  was  that  of 
+almoner.  If  no  prophet  was  present  the  alms  were  to  be 
+given  directly  to  the  poor.  The  essential  difference 
+between  the  "  prophet,"  properly  so  called  and  the 
+"  apostle  "  and  the  "  teacher  "  was  apparently  his  gift  of 
+speaking  "  in  the  Spirit "  (w  Trve^/m™),  in  fact  "  pro 
+phesying  "as  in  i  Samuel  x.  10,  and  elsewhere.  This 
+gift  did  not,  however,  as  in  the  case  of  Saul,  prove  him 
+to  be  a  true  prophet ;  "  Not  every  one,"  says  the 
+
+
+22  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+Didache  (xi.  8),  "  that  speaketh  in  the  Spirit  is  a 
+prophet ;  but  only  if  he  have  the  ways  of  the  Lord." 
+If  a  prophet  took  money  for  himself,  or  ordered  a  love- 
+feast  or  table  for  his  own  benefit,  he  would  not  have  the 
+ways  of  the  Lord,  and  would  be  thereby  proved  a  false 
+prophet.  Generally  speaking  the  prophets  were  held  in 
+considerable  honour  (even  in  their  own  country,  though 
+for  the  most  part  they  were  itinerant  missionaries).  We 
+see,  for  example,  in  chap.  x.  7,  that  they  were  allowed 
+to  give  thanks  in  public  after  their  own  manner,  and 
+were  not  restricted  to  prescribed  forms  of  prayer.  All 
+the  first-fruits  are  to  be  given  to  them  "  for  they  are 
+your  chief  priests  "  (xiii.  3).  In  this  respect  at  least  they 
+held  the  same  position  towards  the  Christian  Church  as 
+the  priesthood  in  the  Jewish  Church,  in  having  no 
+personal  means  of  livelihood,  but  depending  for  support 
+on  the  offerings  of  the  community. 
+
+Chap.  xiv.  I. — "The  Lord's  day  of  the  Lord." 
+KvpiaKr)  Kvpiov.  Dominica  Domini.  The  title  is  peculiar. 
+The  day  is  always — with  one  exception — spoken  of  in 
+the  New  Testament  as  the  "  first  day  of  the  week," 
+(John  xx.  I,  19  ;  Acts  xx.  7  ;  I  Cor.  xvi.  2.).  The 
+exception  is  Rev.  I.  10,  "I  was  in  the  Spirit  on  the  Lord's 
+Day  ";  which  indicates  a  later  date  than  would  ordinarily 
+be  assigned  to  the  Apocalypse.  But  the  double  expression 
+here  used  is  apparently  unique.  In  the  corresponding 
+passage  as  the  Apostolical  Constitutions  the  words  are 
+"  the  day  of  the  resurrection  of  the  Lord,  that  is,  the 
+Lord's  Day."  This  fuller  phrase  suggests  the  doubt 
+whether  the  tautology  of  the  Didache  may  not  be  due  to 
+some  mutilation  of  the  text,  by  which  some  words  have 
+dropped  out.  Dr.  Taylor  supposes  the  formula  in  the 
+Didache  to  have  been  constructed  with  the  definite 
+purpose  of  contrasting  the  new  holy  day,  with  the  old 
+Sabbath.  Instead  of  a  "  Sabbath  of  the  Lord  "  Christians 
+were  to  celebrate  a  "  Lord's  Day  of  the  Lord." 
+
+In  any  case  this  passage  in  the  Didache  is  valuable,  as 
+some  of  the  earliest  evidence  extant  of  the  observance  by 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  23 
+
+Christians  of  the  Lord's  Day.  The  testimony  of  Pliny 
+in  his  famous  letter  to  Trajan,  and  of  Ignatius  in  his 
+Epistles  would  come  very  near  it  in  point  of  time  :  and 
+next  to  him  Justin  Martyr  in  his  first  Apology.  Pliny 
+speaks  of  Christian  services  taking  place  "  stato  die " 
+and,  (if  we  may  accept  him)  Ignatius  (Ep.  ad  Magnes  9.) 
+describes  the  converts  from  Judaism  as  "  no  longer  Sabba- 
+tizing  "  fiLrjKCTi  (ra/3 ftar ifovrts,  aAA<x  Kara.  KvpiaKrjv  £<m)i> 
+£wi>Tes  "  but  living  a  life  according  to  the  Lord's  Day." 
+Justin  Martyr  contrasts  the  Sabbath  which  is  no  longer 
+to  be  observed  by  Christians  with  the  Lord's  Day  on 
+which  God  began  the  work  of  creation,  and  the  Saviour 
+rose  from  the  dead.  It  is  worth  while  to  notice  in  pass 
+ing,  that  the  earliest  reference  to  cessation  from  weekly 
+labours  on  the  Lord's  Day  is  in  Tertullian,  who  died 
+about  216  A.D.  "  Quo  die  "  he  says  "  omni  anxietatis  habitu 
+et  offlcio  carere  debemus,  dijferentes  etiam  negotta  ne  quern 
+diabolo  locum  demus  " — "on  which  day  it  is  our  duty  to 
+free  ourselves  from  all  worldly  care  and  trouble,  even 
+postponing  business,  lest  we  should  give  place  to  the  devil.'* 
+
+Ver.  i,  2.  "That  our  [or  your]  sacrifice  be  pure  not 
+defiled."  The  Eucharistic  Sacrifice  clearly  means  the 
+"  sacrifice  of  praise  and  thanksgiving  :"  also  the  "  reason 
+able  holy  and  lively  sacrifice  "  of  the  worshippers,  in  soul 
+and  in  body.  It  is  not  possible  to  read  into  the  text  any 
+reference  to  the  "sacrifice  of  the  mass,"  in  which  the 
+sacrament  is  regarded  as  a  repetition  of  Christ's  Sacrifice 
+of  Himself  on  Calvary. 
+
+Chap.  xv.  i. — "Bishops  and  deacons."  (eTrio-KOTrot 
+/cat  SiaKovot).  This  verse  contains  directions  for  the 
+appointment  of  the  local  officials  of  the  Church  as 
+distinct  from  the  itinerant  ministers  described  in  Chapters 
+xi,  xii  and  xiii.  From  the  absence  of  the  word  rrpco-- 
+fivrepos  (elder  or  presbyter)  from  our  treatise  it  is  reasonable 
+to  infer  with  Bishop  Lightfoot  that  at  the  date  of  the 
+Didache  "  Bishop "  and  "  Elder "  were  identical  in 
+meaning  ;  the  episcopal  office  not  having  yet  been 
+developed,  and  the  technical  sense  of  eTrio-KOTro?  being 
+
+
+24  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+therefore  unknown.  The  theories  of  Hatch  and  Harnack, 
+ingenious  though  they  are,  do  not  carry  conviction  and 
+indeed  are  to  some  extent  mutually  destructive. 
+
+What  we  may  take  as  definitely  established  (unless  like 
+these  critics  we  reject  the  Pastoral  Epistles  and  relegate 
+much  if  not  all  of  the  Acts  to  the  2nd  century)  is  that 
+the  existence  of  Presbyters  in  the  Church  at  Jerusalem  is 
+recognised  from  the  first  (Acts  xi,  30  ;  xv.  4,  6,  23.)  ; 
+that  the  ordination  of  Presbyters  in  Gentile  Churches 
+took  place  as  a  matter  of  course  (Acts  xiv.  23,  xx.  17,)  ; 
+while  the  Pastoral  Epistles  are  full  of  the  work  and  qualifi 
+cations  of  the  Order.  No  record  is  given  of  the  institution 
+of  the  order  but  it  is  generally  admitted  to  have  been 
+modelled  on  Jewish  precedent.  There  is  much  probability 
+that  it  began  in  the  Christian  Church  with  the  appoint 
+ment  of  the  Seventy  by  our  Lord  (Luke  x.  i). 
+
+As  to  the  Episcopate,  the  negative  evidence  of  the  Acts 
+and  the  Pastoral  Epistles  shows  that  the  Episcopal  Order 
+did  not  assume  definite  existence  so  long  as  the  Apostolate 
+remained. 
+
+The  germ  of  the  order  may  be  seen  in  the  presidency 
+of  S.  James  over  the  Council  at  Jerusalem  (Acts  xv)  ;  in 
+the  authority  entrusted  to  Timothy  and  Titus  as  delegates 
+of  S.  Paul ;  possibly  also  in  the  recognition  of  the  "Angels" 
+of  the  Seven  Churches  [Rev.  ii,  iii.]  Bishop  Barry  in  his 
+Annotated  Edition  of  the  Church  Service  says  "  There  is 
+ample  evidence  that  from  the  early  years  of  the  2nd 
+Century  onwards  the  Episcopate  as  the  highest  Order  in 
+the  Ministry  received  general  recognition  not  only  from 
+the  Church  but  also  from  the  heretical  sects  which  se 
+ceded  from  it."  This  is  however  open  to  question. 
+
+The  Ignatian  Epistles,  even  if  genuine,  describe  the 
+bishop  rather  as  the  minister  of  a  congregation  than  the 
+ruler  of  what  we  understand  by  a  diocese  ;  and  in  Irenaeus 
+(at  the  close  of  the  second  century)  the  bishop  though  over 
+the  presbyters  is  (as  Bishop  Lightfoot  says)  "  still  regarded 
+as  one  of  them  "  and  is  as  often  called  "  presbyter  "  as 
+"  bishop,"  He  is  in  fact  "primus  inter  pares" 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  25 
+
+But  we  may  take  it  that  with  the  growth  of  the  Church 
+and  of  her  need  of  organized  government,  the  order  of 
+the  Episcopate  gradually  acquired  definite  shape  and 
+authority,  proceeding  from  a  local,  and  quasi-parochial 
+position  to  the  higher  presidential  responsibilities  which 
+the  term  connotes  in  later  times. 
+
+The  office  of  Sta/covos  is  clearly  traceable  to  the 
+appointment  of  the  Seven  in  Acts  vi.  It  is  true  that 
+they  are  nowhere  expressly  called  deacons  ;  but  in  the 
+account  of  their  appointment  we  find  both  Sia/«wa  and 
+8iai<ov€iv  used  of  the  duties  which  they  were  to  dis 
+charge,  namely  the  "  daily  ministration  "  and  the 
+"serving"  or  "ministering  to  tables."  The  original 
+purpose  of  the  diaconate  was  the  care  and  distribution  of 
+the  funds  contributed  by  the  rich  members  for  the  relief 
+of  the  poor.  The  work  of  the  deacons,  therefore,  in 
+some  degree  coincided  with  what  as  we  have  seen  in 
+chapter  xiii.  of  the  Didache,  was  a  function  of  the 
+prophets.  They  were  public  almoners  ;  and  this  duty 
+is  no  doubt  included  in  the  expression  "  Aetrovpyovo-i 
+rr)v  Xfirovpyiav  " — "  they  minister  the  ministry  "  of  the 
+prophets  and  teachers.  The  deacons  mentioned  by  St. 
+Paul  (Phil.  i.  i  ;  I.  Tim.  iii.  8)  are  generally  regarded  as 
+holding  the  same  office  ;  and  this  view  is  strengthened 
+by  the  injunction  that  the  deacons  must  be  p)  aicrxpoKepStis 
+"  not  greedy  of  filthy  lucre."  Their  functions  naturally 
+became  extended  as  the  organization  of  the  Church  de 
+veloped.  Justin  Martyr  speaks  of  them  as  distributing 
+the  bread  and  wine  in  the  Eucharist.  In  the  Apostolical 
+Constitutions,  when  the  bishop's  authority  has  become 
+established,  the  deacons  appear  as  his  administrators, 
+charged  with  the  duty  of  visiting  the  poor,  enquiring 
+into  their  circumstances,  and  making  report  thereon  to 
+the  bishop.  With  the  "presbyter-bishops"  they  are 
+associated,  not  only  in  the  case  of  the  poor,  and  the 
+collection  and  disbursement  of  alms,  but  also  in  the 
+public  worship  of  the  Church. 
+
+The  expression  is  compared  by  Taylor 
+
+
+26  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+to  that  in  Acts  vi.  3.  The  community  make 
+the  selection  of  candidates  ;  the  apostles  ordain  and 
+consecrate  them  to  the  office.  The  verb  \cipoTovea>  is 
+clearly  used  here  in  the  New  Testament  sense  of  "  to 
+elect."  In  later  times  it  meant  "  to  ordain." 
+
+Chap.  xvi. — The  treatise  is  appropriately  concluded 
+by  an  exhortation  to  watchfulness  and  preparation  for  the 
+Second  Advent.  It  closely  resembles  our  Lord's  warn 
+ings  recorded  by  the  Synoptists  ;  and  there  is  a  striking 
+parallel  in  v.  4  to  St.  Paul's  teaching  in  II.  Thess.  ii. 
+3-12,  on  the  coming  of  Antichrist.  The  expressions  in 
+I.  John  iv.  3  and  II.  John  7  should  also  be  compared 
+with  it. 
+
+Ver.  5.  01  Se  i>7ro/xctVavT€?  &c.  Evidently  based  upon  our 
+Lord's  words  recorded  in  Matt.  xxiv.  13,  and  Mark  xiii. 
+13,  o  <5e  v>7ro//,etW«  «s  TtAos,  ovTO?  crw#rj<r£Tai.  But  why 
+and  how  VTT'  avrov  rov  KaraOZfJLaTos  ?  The  literal 
+meaning  is  "by  the  accursed  thing  itself"  rather 
+than  "  by  the  very  curse."  The  simplest  explanation  of 
+the  paradox,  though  not  apparently  noticed  by  the 
+commentators,  would  seem  to  be  afforded  by  the  context 
+—"the  furnace"  or  "fire  of  trial" — which,  though  a 
+destruction  to  the  ungodly,  will,  by  its  refining  and 
+purifying  power,  be  the  salvation  of  the  faithful.  There 
+may  be  also  a  reference  to  Gal.  iii.  13,  "Christ  being 
+made  a  curse  for  us,"  though  the  words  there  are  Kardpa 
+and  fTriKaTdpaTos.  It  will  have  been  noticed  that 
+there  is  no  mention  made  throughout  the  treatise  of  the 
+Cross  of  Christ.  May  not  this,  however,  be  a  meta 
+phorical  allusion  to  it  ? — "  Saved  by  the  accursed  thing," 
+i.e.,  by  the  Cross  or  the  Crucifixion  of  the  Lord.  (Were 
+it  not  for  avrov  one  would  be  tempted  to  read  <«ro 
+for  VTTO,  "  saved  from  the  curse "  or  "  accursed  thing," 
+f.*.,  the  doom  that  awaits  the  wicked. 
+
+Ver.  6.  The  three  signs  of  the  Second  Advent  : 
+First,  the  sign  of  an  outspreading  in  heaven  ;  next,  the 
+sign  of  the  voice  of  a  trumpet  ;  and  the  third,  a  resurrec 
+tion  of  the  dead."  The  second  and  third  signs  present 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  27 
+
+no  difficulty  ;  they  are  identical  with  the  teaching  of 
+I.  Cor.  xv.  and  I.  Thess.  iv.,  and  rest  on  the  authority 
+of  our  Lord's  words  (Matt.  xxiv.  31,  Luke  xx.  35)  ;  but 
+what  is  meant  by  a-rjutiov  eKTreracrctos  ev  ovpavui  ?  The 
+explanation  adopted  by  Dr.  Taylor  is  that  suggested  by 
+Archdeacon  Edwin  Palmer,  "  a  spreading  of  the  hands 
+transversely  to  the  body  so  as  to  form  a  cross." 
+Barnabas,  in  chap.  xii.  of  his  epistle,  quotes  several  pre- 
+figurements  of  the  cross  in  the  Old  Testament,  e.g., 
+Moses  stretching  out  his  hands  to  enable  Israel  to 
+conquer  Amalek  ;  the  brazen  serpent  set  upon  a  pole  ; 
+the  words  of  Isaiah,  "  All  day  long  have  I  spread  forth 
+my  hands,"  &c.  Justin  Martyr  also,  and  the  Sibylline 
+Oracles  (fully  dealt  with  by  Prof.  Rendel  Harris  in  his 
+Teaching  of  the  Twelve  Apostles  and  the  Sibylline 
+Books)  illustrate  the  same  idea,  and  regard  the  "  sign  of 
+the  Son  of  Man  in  Heaven  "  as  a  vision  of  Christ  cruci 
+fied.  These,  and  other  suggestions  and  illustrations,  are 
+remarkable  for  their  ingenuity,  and  for  the  labour  which 
+has  been  bestowed  upon  them  ;  but  it  is  questionable 
+whether  after  all  it  is  not  more  consonant  with  the  early 
+simplicity  of  our  treatise  to  avoid  all  explanations  that 
+are  mystical  and  fantastic,  and  to  regard  the  expression 
+as  simply  resting  on  the  words  of  our  Lord  in  Matt, 
+xxiv.  27,  "  As  the  lightning  cometh  forth  from  the  east, 
+and  is  seen  even  unto  the  west,  so  shall  be  the  coming 
+(ira/oowta)  of  the  Son  of  Man  :  "  or  as  in  Luke  xvii.  24, 
+"  As  the  lightning  when  it  lighteneth  out  of  the  one  part 
+under  the  heaven  shineth  unto  the  other  part  under 
+heaven,  so  shall  the  Son  of  Man  be  in  His  day."  The 
+"  sign  of  the  Son  of  Man "  (mentioned  only  in  St. 
+Matthew)  may  well  be  left  without  attempt  at  explana 
+tion.  The  best  comment  is  that  of  Mr.  Carr  in  the 
+Cambridge  Bible,  "  What  this  [sign]  shall  be  it  is  vain  to 
+conjecture  ;  but  when  it  appears  its  import  will  be 
+instantly  recognized  by  the  faithful." 
+
+The  omission  of  the  phrase  from  the  other  Synoptist 
+points  to  the  possibility  of  its  being  simply  a  periphrasis 
+
+
+28  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+
+for  the  "  Son  of  Man  "  ;  and  the  tKTrcrao-is  *v 
+may  be  a  literal  misunderstanding  of  Christ's  metaphorical 
+description  of  the  suddenness  and  all-pervading  nature  of 
+His  irapovcria. 
+
+
+APPENDIX  A. 
+THE  "  Two  WAYS  "  IN  THE  EPISTLE  OF  BARNABAS. 
+
+Chap,  xviii.  Now  let  us  pass  on  to  other  knowledge 
+and  teaching.  There  are  two  ways  of  teaching  and  of 
+authority,  the  way  of  Light  and  the  way  of  Darkness, 
+and  there  is  much  difference  between  the  two  ways. 
+For  over  the  one  there  are  appointed  light-bringing 
+angels  of  God,  but  over  the  other  angels  of  Satan.  And 
+the  former  [God]  is  the  Lord  from  everlasting  to  ever 
+lasting  ;  but  the  latter  [Satan]  is  the  prince  of  the  time 
+that  now  is  of  lawlessness. 
+
+Chap.  xix.  The  way  of  Light  then  is  this,  if  a  man, 
+being  desirous  to  take  his  way  to  the  place  appointed,  be 
+zealous  in  his  deeds.     The  knowledge  then  which  has 
+been  given  to  us  that  we  may  walk  therein  is  after  this 
+manner.     Thou  shalt  love  Him  that  created  thee,  thou 
+shalt   fear   Him  that   fashioned  thee,  thou  shalt   glorify 
+Him    that    redeemed   thee   from    death  :   thou   shalt    be 
+single  in  heart  and  rich  in  spirit.     Thou  shalt  not   be 
+joined  with  them  that  walk  in  the  way  of  death,  thou 
+shalt  hate  all  that  is  not  pleasing  to  God,  thou  shalt  hate 
+all  hypocrisy,  thou  shalt  in  no   wise   forsake   the   com 
+mandments  of  the  Lord.     Thou  shalt  not  uplift  thyself 
+but  shalt  be  humble-minded  in  all  things.     Thou  shalt 
+not  take  glory  to  thyself,  thou  shalt  not  take  evil  counsel 
+against  thy  neighbour  ;  thou  shalt  not  give  insolence  to 
+thy  soul.     Thou  shalt  not  commit  adultery,  thou  shalt 
+not  commit  fornication,  thou  shalt  not  corrupt  children. 
+The  word  of  God  shall  in  no  wise  go  forth  from  thee 
+where  any  are   unclean.     Thou  shalt   not   respect  any 
+person    in    rebuking   for    transgression.     Thou  shalt    be 
+meek,  thou  shalt  be  peaceable,  thou  shalt  be  in  fear  of 
+the  words  which  thou  hast  heard.     Thou  shalt  not  be 
+mindful    of    evil    against    thy    brother   or    bear    malice, 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+Thou  shalt  not  waver  in  spirit  whether  it  shall  be  yea  or 
+no.  Thou  shalt  not  take  the  name  of  the  Lord  in  vain. 
+Thou  shalt  love  thy  neighbour  more  than  thy  life. 
+Thou  shalt  not  destroy  a  child  by  abortion,  neither 
+again  shalt  thou  slay  it  when  born.*  Thou  shalt  not 
+take  away  thy  hand  from  thy  son  or  from  thy  daughter, 
+but  from  their  youth  up  thou  shalt  teach  them  the  fear 
+of  God.  Thou  shalt  not  be  covetous  of  thy  neigh 
+bour's  goods  ;  thou  shalt  not  be  avaricious.  Thou 
+shalt  not  be  joined  in  thy  soul  with  the  lofty,  but 
+with  the  lowly  and  just  shalt  thou  converse,  The 
+operations  [of  God]  that  befall  thee,  accept  as  good, 
+knowing  that  without  God  nothing  cometh  to  pass. 
+Thou  shalt  not  be  double-minded  nor  double-tongued  ; 
+for  to  be  double-tongued  is  a  snare  of  death.  Thou 
+shalt  be  subject  to  thy  masters  as  to  an  image  of  God  in 
+shamefastness  and  fear.  Thou  shalt  not  lay  commands 
+in  bitterness  upon  thy  bondman  or  maidservant  who 
+hope  in  the  same  God,  lest  at  any  time  thou  cease  to 
+fear  Him  who  is  God  over  both  :  since  He  came  not  to 
+call  men  according  to  outward  appearance  but  to  those 
+whom  the  Spirit  made  ready  for  Him.  Thou  shalt  share 
+in  all  things  with  thy  neighbour,  and  shalt  not  call  any 
+thing  thine  own  ;  for  if  ye  be  sharers  in  that  which  is 
+imperishable,  how  much  more  in  the  things  which  are 
+perishable  ?  Thou  shalt  not  be  of  forward  speech  ;  for 
+the  mouth  is  a  snare  of  death.  As  much  as  thou  art 
+able,  thou  shalt  be  pure  for  thy  soul's  sake.  Be  not  one 
+that  stretcheth  forth  his  hands  to  receive,  but  withholdeth 
+them  for  giving.  Thou  shalt  love  as  the  apple  of  thine 
+eye  every  one  that  speaketh  unto  thee  the  word  of  the 
+Lord.  Night  and  day  be  mindful  of  the  day  of  judg 
+ment,  and  every  day  shalt  thou  seek  out  the  faces  of  the 
+or  'by  the  Word,'  saints,  either  labouring  by  word  of  mouth  t  and  going 
+forth  to  exhortation  and  meditating  how  to  save  a  soul 
+by  the  word,  or  by  thy  hands  shalt  thou  work  for  the 
+redemption  or  atonement  of  thy  sins.  Thou  shalt  not 
+hesitate  to  give,  neither  when  thou  givest  shalt  thou 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  31 
+
+murmur  *  but  thou  shalt  know  who  is  the  fair  recom-  *  or  grudge. 
+
+penser  of  the  reward.     Thou  shalt  keep  what  thou  hast 
+
+received,  neither  adding  thereto  nor  taking  away.     Thou 
+
+shalt  utterly  hate  the  wicked  man.t     Thou  shalt  judge  for*  the  erii  one'  as 
+
+righteously.     Thou    shalt  not    make  division,   but  thou     fc^ Jcnr    *J 
+
+shalt  reconcile  and  bring  together  them  that  are  at  strife,     as  in  Ep.  Barnabas 
+
+Thou   shalt   make  confession  over  thy  sins  ;  thou  shalt     "•  I0' 
+
+not  come  to  prayer  J  with  an  evil  conscience.     This  is  J  or 'place  of  prayer.' 
+
+the  Way  of  Light. 
+
+Chap.  xx.  But  the  Way  of  Darkness  is  crooked  and 
+full  of  cursingA     For  it  is  the  way  of  eternal  death  with  §or  *ofthe  Black 
+
+.     ,  L  •  1     '  J  One-' 
+
+punishment,  wherein  are  the  things  that  destroy  the 
+soul  ;  idolatry,  insolence,  haughtiness  of  power,  hypocrisy, 
+duplicity,  adultery,  murder,  plundering,  arrogance,  trans 
+gression,  guile,  malice,  stubbornness,  sorcery,  witchcraft, 
+avarice,  defiance  of  God.  Persecutors  of  the  good,  hating 
+truth,  loving  falsehoods,  not  acknowledging  the  reward 
+of  righteousness,  not  cleaving  to  that  which  is  good,  nor 
+to  righteous  judgment  ;  not  regarding  the  widow  and 
+orphan,  watchful  not  toward  the  fear  of  God  but  toward 
+evil  ;  from  whom  meekness  and  patience  are  far  removed  ; 
+loving  vain  things,  seeking  after  recompense  ;  not  pitying 
+the  poor,  not  sorrowing  with  the  sorrow-laden,  ready  to 
+speak  evil,  not  acknowledging  their  Maker,  murderers  of 
+children,  destroyers  of  the  image  of  God,  turning  away 
+from  the  needy,  and  grieving  the  afflicted,  advocates  of 
+the  rich,  lawless  judges  of  the  poor,  wholly  given  to  sin. 
+
+APPENDIX  B. 
+LETTER  OF  PLINY  TO  THE  EMPEROR  TRAJAN,  103  A.D. 
+
+I  make  it  a  rule,  Sire,  to  refer  to  you  all  matters  on 
+which  I  am  in  uncertainty.  For  who  is  better  able  either 
+to  guide  my  perplexity  or  to  instruct  my  ignorance  ?  I 
+have  never  been  present  at  any  judicial  examination  of 
+Christians  ;  consequently  I  have  no  knowledge  of  the 
+direction  or  degree  of  punishment  or  inquiry  which 
+custom  permits.  It  has  also  greatly  embarrassed  me  to 
+
+
+32  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+decide  whether  there  should  be  any  distinction  made 
+between  different  ages,  or  the  same  treatment  for  children 
+and  adults  ;  whether  a  chance  of  repentance  should  be 
+given,  or  no  benefit  allowed  to  him  who  has  once  been 
+a  Christian  if  he  afterwards  recants  ;  whether  the  mere 
+profession  of  Christianity  without  its  crimes  is  to  be 
+punished,  or  only  the  crimes  which  are  associated  with 
+it.  Meanwhile  in  the  cases  of  those  who  have  from 
+time  to  time  been  reported  to  me  as  Christians  I  have 
+adopted  the  following  course.  I  have  demanded  of  them 
+whether  they  really  were  Christians ;  and  if  they 
+admitted  it  I  repeated  the  question  a  second  and  a  third 
+time,  with  the  threat  of  the  capital  penalty,  and  if  they 
+persisted  I  ordered  them  to  be  executed.  For  I  could 
+not  doubt  that  whatever  might  be  the  substance  of  their 
+confession,  at  least  their  obstinacy  and  unyielding  tenacity 
+merited  punishment.  There  have  been  other  victims  of 
+this  folly  whom,  as  they  were  Roman  citizens,  I  have 
+noted  to  be  sent  to  Rome. 
+
+After  this,  as  usually  happens,  accusations  came  in 
+more  plentifully  owing  to  the  mere  fact  of  the  matter 
+being  made  public,  and  various  phases  of  the  crime  were 
+revealed.  An  anonymous  list  was  posted  up  containing 
+many  names.  There  were  some  who  denied  that  they 
+were  or  ever  had  been  Christians  ;  who  recited  at  my 
+dictation  a  form  of  prayer  to  the  gods,  and  paid  adoration 
+with  incense  and  wine  to  your  image,  which  I  had 
+ordered  to  be  brought  for  that  purpose  together  with 
+figures  of  the  gods,  and  who,  moreover,  cursed  Christ. 
+None  of  these  things  it  is  said  the  real  Christian  can  be 
+made  to  do  :  and  I  accordingly  thought  it  right  to  set 
+these  persons  at  liberty. 
+
+Others  who  had  been  named  by  an  informer  first  said 
+they  were  Christians  and  then  denied  it ;  they  had  been 
+so,  they  said,  but  had  renounced  it — some  three  years 
+ago,  some  many  years,  a  few  of  them  even  twenty  years 
+ago.  They  all  worshipped  your  image  and  the  figures  ot 
+the  gods,  and  cursed  Christ.  They  declared,  however, 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  33 
+
+that  the  sum  of  their  crime  or  folly  was  no  more  than 
+this  :  that  they  had  been  accustomed  on  a  fixed  day  to 
+assemble  before  sunrise,  and  to  repeat  in  turn,  with  one 
+another,  a  form  of  words  addressed  to  Christ  as  to  a 
+god,  and  to  bind  themselves  by  a  solemn  oath,  not  to 
+any  criminal  purpose,  but  against  the  commission  of 
+theft,  robbery  or  adultery  ;  against  breaking  faith  or 
+repudiating  a  trust.  That  after  this  had  been  done  they 
+had  been  wont  to  separate,  and  afterwards  meet  again 
+for  the  purpose  of  taking  a  meal,  a  meal,  however,  quite 
+ordinary  and  harmless  ;  but  they  had  given  up  even  this 
+after  my  edict,  in  which  I  had,  according  to  your  in 
+structions,  forbidden  secret  societies  or  political  clubs. 
+I  thought  it,  however,  the  more  necessary,  to  try  further 
+to  elicit  the  truth  by  examining  with  torture  two  maid 
+servants,  who  were  called  "  deaconesses."  But  I  could 
+discover  nothing  else  than  an  absurd  and  extravagant 
+superstition  ;  and  so  I  adjourned  the  proceedings,  in 
+order  that  I  might  at  once  consult  you.  For  indeed  the 
+matter  seemed  to  me  to  deserve  such  consultation, 
+especially  on  account  of  the  large  numbers  involved. 
+Many  of  every  age  and  rank,  both  men  and  women  are 
+and  will  be  imperilled.  It  is  not  only  cities  but  villages 
+and  country  districts  as  well  that  have  become  infected 
+with  this  superstition  ;  however,  it  seems  that  it  can  be 
+arrested  and  cured.  At  any  rate  it  is  a  fact  that  temples 
+which  had 'been  almost  abandoned  are  beginning  to  be 
+frequented,  and  religious  festivals  which  had  long  been 
+unobserved  are  now  being  resumed ;  while  sacrificial 
+victims  now  find  a  ready  sale,  though  only  a  short  while 
+ago  it  was  a  rare  thing  to  find  a  purchaser.  From  all 
+this  one  may  easily  infer  how  great  a  number  may  be 
+reclaimed  from  error  if  only  the  opportunity  is  given  for 
+repentance. 
+
+TRAJAN'S  REPLY  TO  PLINY. 
+
+You   have   done   quite   right,  my   dear  Secundus,   in 
+discriminating  the  cases  of  the  persons  who  have  been 
+
+
+34  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+reported  to  you  as  Christians.  For  it  is  impossible  to  lay 
+down  any  general  rule  which  can  assume  a  definite  shape. 
+The  Christians  must  not  be  sought  out  ;  but  if  they  are 
+reported  and  convicted  they  must  be  punished  :  with  this 
+limitation,  however,  that  any  one  who  declares  that  he  is 
+not  a  Christian,  and  proves  his  declaration  by  fact — that 
+is  by  worshipping  our  gods — shall  obtain  pardon  on  the 
+ground  of  repentance,  even  though  he  may  have  been 
+suspected  in  past  time.  The  posting  of  anonymous 
+accusations  cannot  be  allowed  to  form  parts  of  the  case 
+against  any  one.  That  would  be  a  dangerous  precedent 
+and  unsuited  to  the  age  we  live  in. 
+
+APPENDIX    C. 
+
+GREEK    AND     LATIN     FATHERS    QUOTED    OR    REFERRED    TO 
+IN    THE    TEXT. 
+
+CLEMENT  OF  ROME. — Author  of  an  Epistle  to  the 
+Corinthians,  included  in  the  Codex  Alexandrinus,  and  in 
+the  volume  containing  the  Didache  discovered  by 
+Bryennios  ;  date  about  95  A.D.  He  may  possibly  be  the 
+Clement  mentioned  in  Phil.  iv.  3.  His  name  is  given  by 
+Iraenaeus  in  the  list  of  early  Bishops  of  Rome. 
+
+IGNATIUS. — Bishop  of  Antioch,  probably  95-116  A.D. 
+Seven  Epistles  attributed  to  him  have  been  the  subject  of 
+much  controversy.  He  suffered  martyrdom  at  Rome 
+under  Trajan. 
+
+JUSTIN  MARTYR. — A  Greek  philosopher,  born  about 
+100  A.D.  He  was  converted  to  Christianity  in  Palestine, 
+and  went  to  Ephesus  after  the  rebellion  under  Bar-cochba 
+in  132  A.D.  At  Ephesus  he  held  his  celebrated  "Dia 
+logue  with  Trypho,"  in  which  he  shows  that  Jesus  is  the 
+Messiah  of  the  Old  Testament.  At  Rome  he  wrote  his 
+two  "  Apologies  "  in  defence  of  Christianity  ;  the  first  to 
+Antoninus  Pius,  and  the  second  to  Marcus  Aurelius. 
+He  was  martyred  in  A.D.  164.  See  Appendix  D. 
+
+IREN^EUS. — A  disciple  of  Polycarp,  Bishop  of  Smyrna. 
+Born  in  Asia  Minor  in  the  second  century,  and  first 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  35 
+
+mentioned  as  a  presbyter  of  Lyons,  during  the  great 
+persecution,  A.D.  177,  under  Marcus  Aurelius.  Part  of 
+his  great  work,  the  "  Refutation  of  the  Gnostics,"  has 
+been  preserved  (a  Latin  version  of  five  books).  He 
+suffered  martyrdom  under  Septimius  Severus  in  202  A.D. 
+See  Appendix  D. 
+
+CLEMENT  OF  ALEXANDRIA. — A  disciple  of  Pantaenus, 
+the  Christian  Stoic.  He  succeeded  him  in  the  Cate 
+chetical  School  at  Alexandria,  A.D.  188.  He  remained 
+there  until  A.D.  202,  when  the  edict  of  Severus  against 
+the  Christians  drove  him  to  Cappadocia.  The  date  and 
+place  of  his  death  are  unknown.  His  "  Stromata "  or 
+Miscellanies  are  valuable  and  interesting,  containing  facts 
+and  quotations  not  found  elsewhere.  His  other  works 
+are  "  Paedagogus  "  and  "  Protrepticon."  In  all  he  aims 
+at  showing  the  influence  of  the  Divine  Logos  through  all 
+history  in  the  minds  of  men. 
+
+TERTULLIAN. — The  first  Latin  Father.  He  was  born 
+at  Carthage,  and  wrote  during  the  reigns  of  Severus  and 
+Caracalla.  He  was  eloquent,  impetuous,  fanatical  ;  an 
+opponent  of  the  Gnostics,  and,  in  later  life,  a  Montanist. 
+He  died  about  220  A.D. 
+
+
+EARLY  ROMAN    EMPERORS    AFTER 
+AUGUSTUS. 
+
+A.D.  A.D. 
+
+Tiberius  13  Nerva  96 
+
+Caligula  37  Trajan  98 
+
+Claudius  41  Hadrian  117 
+
+Nero  54  Antoninus  Pius  138 
+
+Galba  68  Marcus  Aurelius  161 
+
+Otho  69  Commodus  180 
+
+Vitellius  69  Pertinax  192 
+
+Vespasian  69  Julianus  193 
+
+Titus  79  Septimius  Severus  193 
+
+Domitian  8 1  Caracalla  211 
+
+
+36  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+APPENDIX   D. 
+
+JUSTIN  MARTYR  (Apology  i.  61). — BAPTISM    AND  THE 
+EUCHARIST. 
+
+Chap.  61.  "How  we  dedicated  ourselves  to  God, 
+being  created  anew  through  Christ,  I  will  explain,  lest  if 
+I  omit  this  I  shall  seem  to  be  deceiving  in  my  explana 
+tion.  All  who  are  persuaded  and  believe  that  the  things 
+which  are  taught  and  affirmed  by  us  are  true,  and  who 
+promise  to  be  able  to  live  accordingly,  are  taught  to  pray 
+and  entreat  God  with  fasting  to  grant  them  forgiveness 
+of  their  former  sins  ;  and  we  pray  and  fast  with  them. 
+Then  we  bring  them  to  where  there  is  water  ;  and  after 
+the  same  manner  as  we  were  ourselves  also  regenerated 
+they  are  regenerated  ;  for  in  the  name  of  God  the 
+Father  and  Lord  of  all  things,  and  of  our  Saviour  Jesus 
+Christ,  and  of  the  Holy  Ghost,  they  then  receive  the 
+washing  of  water  ;  for  indeed  Christ  also  said,  Except 
+ye  be  born  again  ye  shall  not  enter  into  the  kingdom  of 
+heaven.  .  .  . 
+
+"  And  we  have  received  from  the  Apostles  the  follow 
+ing  reason  for  so  doing  :  Since  we  were  ignorant  of  our 
+first  birth  .  .  .  and  were  brought  up  in  evil  customs  and 
+wicked  training,  in  order  that  we  might  not  remain  the 
+children  of  necessity  and  ignorance,  but  of  choice  and 
+knowledge  ;  and  that  we  might  obtain  in  the  water 
+remission  of  the  sins  that  we  had  formerly  committed, 
+there  is  spoken  over  him  who  chooses  the  new  birth  and 
+who  repents  of  his  sins  the  Name  of  God  the  Father  and 
+Lord  of  all  things  ;  and  calling  Him  by  this  name  alone 
+we  bring  this  person  to  be  washed  to  the  laver.  .  .  . 
+NQW  this  wasning  is  called  Illumination,*  because  they 
+who  learn  the  meaning  of  these  things  are  enlightened 
+in  their  mind.  And  in  the  name  of  Jesus  Christ  who 
+was  crucified  under  Pontius  Pilate,  and  in  the  name  of 
+the  Holy  Ghost  who  by  the  prophets  foretold  all  these 
+things  about  Jesus,  does  he  who  is  enlightened  receive 
+his  washing." 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  37 
+
+Chap.  65.  "  But  after  thus  washing  him  who  has 
+professed  and  given  his  assent,  we  bring  him  to  those 
+who  are  called  brethren,  where  they  are  gathered 
+together,  to  offer  prayers  in  common  both  for  ourselves 
+and  for  the  person  who  has  received  illumination,  and 
+for  all  others  in  all  places,  with  all  our  hearts,  that  we 
+might  be  vouchsafed  now  we  have  learnt  the  truth,  by 
+our  deeds  also  to  be  found  good  citizens  and  keepers  of 
+the  Commandments  that  we  may  obtain  eternal  salva 
+tion.  We  salute  one  another  with  a  kiss  when  we  have 
+concluded  the  prayers  ;  then  is  brought  to  the  president*  *T$ 
+of  the  brethren  bread  and  a  cup  of  mingled  water  and 
+wine,  which  he  receives,  and  offers  up  praise  and  glory 
+to  the  Father  of  all  things  through  the  name  of  His  Son 
+and  of  the  Holy  Ghost  ;  and  he  makes  a  thanksgiving  t  at 
+length  for  the  bestowal  of  these  gifts  by  Him.  When 
+he  has  concluded  the  prayers  and  thanksgiving,  all  the 
+people  present  give  assent,  saying  Amen.  [The  word 
+Amen  in  Hebrew  signifies  So  be  it.]  And  when  the 
+president  has  offered  his  thanksgiving  t  and  all  the  people 
+have  given  assent,  those  who  are  called  deacons  §  among  g™ 
+us  give  to  each  of  those  present  a  portion  of  the  bread  of 
+thanksgiving  and  of  the  wine  and  water  ;  and  they  carry 
+[some]  away  to  those  who  are  not  present. 
+
+Chap.  66.  And  this  food  is  called  among  us  a  Thanks 
+giving  or  Eucharist,  of  which  no  one  is  allowed  to  par 
+take  save  him  who  believes  the  truth  of  our  doctrines, 
+and  who  has  been  washed  in  baptism  for  the  remission  of 
+sins  and  for  regeneration,  and  who  lives  even  as  Christ 
+directed  us.  For  we  do  not  receive  these  [elements]  as 
+ordinary  food  or  ordinary  drink  ;  but  as  by  the  Word  of 
+God  Jesus  Christ  our  Saviour  was  made  flesh,  and  took 
+upon  Him  flesh  and  blood  for  our  salvation  ;  even  so 
+also  the  food  which  has  been  blessed  in  prayer  by  that 
+same  Word  of  His,  and  from  which  our  flesh  and  blood 
+by  assimilation  derive  nourishment,  we  are  taught  to 
+believe  to  be  both  the  flesh  and  blood  of  that  Jesus  who 
+was  made  flesh.  For  the  Apostles,  in  the  memoirs  they 
+
+
+3 8  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+composed  which  are  called  Gospels,  have  left  it  on  record 
+that  they  were  commanded  to  do  after  this  manner  : 
+Jesus,  they  say,  took  bread,  and  when  He  had  given 
+thanks  He  said,  <  Do  this  for  a  remembrance  of  Me  ; 
+this  is  My  Body.'  Likewise  also  he  took  the  cup,  and 
+when  He  had  given  thanks  He  said,  *  This  is  My  Blood,' 
+and  gave  it  to  them  alone."  .  .  . 
+
+Chap.  67.  "  But  we  after  these  things  do  continually 
+remind  one  another  of  them  ;  and  those  of  us  who  have 
+the  means,  assist  all  who  are  in  need  ;  and  we  are  always 
+together  ;  and  in  all  our  oblations  we  bless  the  Maker  of 
+all  things,  through  His  Son  Jesus  Christ  and  through  the 
+*Tri  TOV i]\iov \cyonevy  Holy  Ghost.*  And  on  the  day  which  is  called  Sunday 
+all  who  live  in  cities  or  in  the  country  gather  together 
+into  one  place,  where  the  memoirs  of  the  apostles  or  the 
+writings  of  the  prophets  are  read  as  long  as  we  have  time. 
+Then,  when  the  reader  has  ended,  the  president  instructs 
+verbally,  and  exhorts  us  to  the  imitation  of  these  excellent 
+things.  Then  we  all  rise  up  together  and  pray  ;  and,  as 
+I  said  before,  when  we  have  ended  our  prayer,  bread  is 
+brought  and  wine  and  water  ;  and  the  president  in  like 
+manner  offers  up  prayers  and  thanksgiving  to  the  best  of 
+his  power  ;  and  the  people  give  assent  by  saying,  Amen. 
+And  there  is  a  distribution  to  each,  and  every  one  par 
+takes  of  the  Eucharistic  elements  ;  and  to  those  who  are 
+not  present  they  are  sent  by  the  hands  of  the  deacons. 
+And  such  as  are  wealthy,  and  desire  so  to  do,  give  what 
+they  will,  each  man  as  he  is  disposed.  And  that  which 
+is  collected  is  given  into  the  president's  hands  ;  and  he 
+assists  the  orphans  and  widows,  and  all  who  through 
+sickness  or  any  other  cause  are  in  need  :  and  to  those 
+who  are  in  bonds,  and  to  strangers  sojourning  among  us, 
+and  in  a  word  to  all  that  are  in  need  he  is  a  protector. 
+But  Sunday  is  the  day  on  which  we  all  hold  our  common 
+assembly,  because  it  is  the  first  day  on  which  God,  when 
+He  transformed  darkness  and  matter,  created  the  world, 
+and  Jesus  Christ  our  Saviour  on  the  same  day  rose  from 
+the  dead  ;  for  on  the  day  before  Saturn's  day  He  was 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  39 
+
+crucified,  and  on  the  day  following  it,  which  is  Sunday, 
+He  showed  Himself  to  His  apostles  and  disciples,  and 
+taught  them  those  things  which  we  have  delivered  to  you 
+also  for  your  consideration." 
+
+DIALOGUE  WITH  TRYPHO. 
+
+Chap.  41.  "God  speaks  thus  by  Malachi  of  the  sacri 
+fices  then  offered  by  the  Jews,  of  whom  Trypho  is  one  : 
+4 1  have  no  pleasure  in  you  saith  the  Lord,  neither  will  I 
+accept  your  offerings  at  your  hands  ;  for  from  the  rising 
+of  the  sun  even  unto  the  going  down  of  the  same  My 
+name  hath  been  glorified  among  the  Gentiles  ;  and  in 
+every  place  incense  is  offered  unto  My  name,  and  a  pure 
+offering,  for  My  name  is  great  among  the  heathen  saith 
+the  Lord,  but  ye  profane  it.'  Now  with  regard  to  those 
+sacrifices  which  are  offered  to  Him  in  every  place  by  us 
+Gentiles,  that  is  of  the  Eucharistic  bread  and  likewise  of 
+the  Eucharistic  cup,  He  then  foretold  that  we,  the 
+Gentiles,  of  whom  Justin  is  one,  should  glorify  His 
+name,  but  that  you  should  profane  it." 
+
+IRENAEUS  also  comments  on  Malachi  i.  10-12,  as 
+being  fulfilled  in  the  Eucharist.  He  lays  the  same  stress 
+that, we  find  in  the  Didache,  on  the  fact  that  the  offering 
+in  the  Eucharist  is  of  the  fruits  of  the  earth.  In  his 
+fourth  book,  chap.  17,  he  says  :  "  When  Christ  was 
+giving  directions  to  His  disciples  and  bidding  them  offer 
+to  God  the  first-fruits  of  His  creatures,  not  as  though 
+God  needed  anything  but  to  show  that  they  were  them 
+selves  not  unfruitful  or  unthankful,  He  took  of  His 
+creature  Bread,  and  gave  thanks,  saying,  *  This  is  My 
+Body  ; '  and  in  like  manner  the  Cup,  which  also  belongs 
+to  the  creation  of  this  our  world,  declaring  it  to  be  His 
+Blood  :  and  thus  He  taught  us  the  new  oblation  of  the 
+New  Covenant  or  Testament,  which  oblation  the 
+Church  receiving  from  the  apostles,  offers  throughout  the 
+world  to  God,  who  gives  us  food,  the  first-fruits  of  His 
+gifts  in  the  New  Covenant,  concerning  which  covenant 
+
+
+40  THE  TEACHING  OF  THE  TWELVE  APOSTLES 
+
+Malachi  in  the  twelve  prophetic  books  thus  prophesied, 
+*  In  every  place  incense  shall  be  offered,'  &c.  Therefore 
+the  Church's  oblation  which  the  Lord  taught  us  should 
+be  offered  throughout  the  world,  is  accounted  a  pure 
+sacrifice  before  God,  and  is  accepted  by  Him  ;  not  that 
+He  needs  any  sacrifice  from  us,  but  because  he  who 
+offers  it  is  himself  honoured  in  his  offering  when  his  gift 
+is  accepted." 
+
+In  a  further  passage  the  view  of  the  Eucharist  as  a 
+thanksgiving  for  creation  is  even  more  clearly  expressed. 
+He  is  speaking  of  the  Gnostics  who  deny  that  God  is  the 
+Creator,  and  asks  "  How  can  these  men  consistently 
+declare  (quo  modo  constablt  eis)  that  this  Bread  over  which 
+thanksgiving  is  offered  is  their  Lord's  Body,  and  that  the 
+Cup  is  the  cup  of  His  Blood,  if  they  refuse  to  admit  that 
+He  is  Himself  the  Son  of  the  Creator  of  the  world — that 
+is  to  say  that  He  is  the  Word  [of  God]  whereby  the  tree 
+bears  fruit,  and  the  waters  flow,  and  '.the  earth  brings 
+forth  first  the  blade,  then  the  ear,  after  that  the  full  corn 
+in  the  ear  *  ?  " 
+
+The  only  '  sacrifice '  in  the  Eucharist  known  to  the 
+Church  of  the  Apostolic  and  sub-Apostolic  age  is  that 
+which  is  described  in  such  passages  as  these,  and  in  the 
+portion  of  the  Didache  which  they  illustrate.  "  It  may 
+be  said  generally  that  for  200  years  (/.*.,  until  Cyprian) 
+the  Church  never  spoke  of  a  sacrifice  in  the  Eucharist 
+except  as  an  offering  to  God  of  the  fruits  of  the  earth,  or 
+as  an  offering  of  prayer  and  praise.  In  these  senses  the 
+fathers  before  Cyprian  call  it  habitually  an  oblation  or 
+sacrifice,  but  in  no  other."  [Cf.  Norris,  "  Rudiments  of 
+Theology,"  and  Bishop  Harold  Browne  on  the  "  Thirty- 
+first  Article."] 
+
+IGNATIUS. — On  the  threefold  order  of  the  ministry. 
+The  following  extract  from  his  "  Letter  to  the  Trallians" 
+may  be  considered  genuine,  though  the  whole  question 
+of  the  authenticity  of  the  seven  epistles  is  still  sub  judice. 
+
+That  he  wrote  epistles — six  to  certain  churches  and 
+one  to  Polycarp — during  his  journey  from  Antioch  to 
+
+
+THE  TEACHING  OF  THE  TWELVE  APOSTLES  41 
+
+Rome  is  accepted  as  fact  ;  but  the  first  documents  have 
+been  subjected  to  such  vigorous  "  editing "  that  it  is 
+doubtful  how  much  of  the  original  text  survives.  There 
+is  a  Syriac  version,  and  two  Greek  recensions,  a  shorter 
+and  a  longer  :  the  longer  is  by  a  later  hand. 
+
+EP.    AD    TRALLIANOS,    Chap.    ii.   "For    when    you 
+submit  yourselves  to  your  Bishop  *  as  to  Jesus  Christ,  you  *  ******* 
+appear   to  me   to  be   living   not  according   to  man  but 
+according  to  Jesus  Christ  who  died  for  us,  in  order  that 
+by  believing  in  His  death  ye  might  escape  from  death. 
+It    is    necessary  therefore,  even    as   is    your  custom,  do 
+nothing  without   your   Bishop.      But   submit  yourselves 
+also  to  the  Presbytery  as  to  the  Apostles  of  Jesus  Christ  t  t^  •KP^VT^M 
+who  is  our  Hope,  in  whom  may  we  be  found  abiding  ! 
+The  Deacons  also,  being*  ministers  of  the  mysteries  of 
+Jesus  Christ  must  please  [Him]  in  all  things.     For  they  t  j£*» 
+are  not  ministers  only  of  meats  and  drinks,  but  servants 
+of  the  Church  of  God.     They  must  therefore  avoid  all 
+imputations  of  evil  as  they  would  avoid  fire." 
+
+Chap.  iii.  "In  like  manner  let  all  reverence  the  deacons 
+as  a  commandment  of  Jesus  Christ  ;  and  the  Bishop  as 
+Jesus  Christ  Himself  the  Son  of  the  Father  ;  and  the 
+Presbyters  as  a  Council  of  God  and  as  a  society  of 
+apostles.  Without  these  a  Church  has  no  right  to  be  so 
+called." 
+
+*  nvffrrjpluv.  The  text  of  the  shorter  recension  gives  CWas  |iv<rrr|piov 
+lyffov  Xpio-ToO — a  strange  reading,  but  supported  by  chap.  iii.  TOI)$  Sta^vous 
+ws  4vroX*|v  'iTJffou  XPKTTOU.  It  may  be  rendered  "  [the  deacons]  being 
+an  outward  visible  sign  of  Jesus  Christ,"  i.e.,  an  ordinance  of  the  Church  on 
+earth  typical  of  an  ordinance  in  heaven.  Compare  Didache  xi.  u,  and 
+note. 
+
+

@@ -1,0 +1,63 @@
+---
+source_kind: ccel_extract
+source_file: corpus/church_fathers_complete.txt
+section: contents@2074
+title: The Oration of The Emperor Constantine, Which He Addressed “To The Assembly of The Saints.”
+---
+NPNF2-01 CONTENTS 
+
+
+
+
+
+The Church History of Eusebius 
+
+
+
+
+
+
+
+
+-raise of ae 
+
+
+
+
+
+The Oration of usebius 
+
+
+
+
+
+The Life of The Blessed Emperor Constantine By Eusebius Pamphilus 
+
+
+
+
+
+The Oration of The Emperor Constantine, Which He Addressed “To The Assembly of The Saints.” 
+
+
+
+
+
+
+
+
+The Oration of Eusebius Pamphilus, In Praise of The Emperor Constantine 
+
+
+
+
+
+
+
+
+
+>NF2-02 
+S AND SOZOMENUS ECCLESIASTICAL HISTORIES 
+
+
+SOCRA

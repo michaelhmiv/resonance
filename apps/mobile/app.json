@@ -7,36 +7,45 @@
     "userInterfaceStyle": "light",
     "icon": "./assets/images/icon.png",
     "scheme": "resonance",
-    "splash": {
-      "backgroundColor": "#faf9f6"
-    },
     "ios": {
       "icon": "./assets/images/icon.png",
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#faf9f6",
-        "foregroundImage": "./assets/images/icon.png"
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png",
+        "backgroundColor": "#faf9f6"
       },
-      "package": "com.resonance.app"
+      "package": "com.resonance.app",
+      "versionCode": 1,
+      "softwareKeyboardLayoutMode": "resize"
     },
     "plugins": [
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "backgroundColor": "#faf9f6",
+          "imageWidth": 200
+        }
+      ],
       [
         "expo-font",
         {
           "fonts": [
-            "../../node_modules/@expo-google-fonts/cormorant-garamond/CormorantGaramond_400Regular.ttf",
-            "../../node_modules/@expo-google-fonts/cormorant-garamond/CormorantGaramond_500Medium.ttf",
-            "../../node_modules/@expo-google-fonts/cormorant-garamond/CormorantGaramond_400Regular_Italic.ttf",
-            "../../node_modules/@expo-google-fonts/cormorant-garamond/CormorantGaramond_600SemiBold.ttf",
-            "../../node_modules/@expo-google-fonts/inter/Inter_400Regular.ttf",
-            "../../node_modules/@expo-google-fonts/inter/Inter_500Medium.ttf",
-            "../../node_modules/@expo-google-fonts/inter/Inter_600SemiBold.ttf"
+            "./assets/fonts/CormorantGaramond_400Regular.ttf",
+            "./assets/fonts/CormorantGaramond_500Medium.ttf",
+            "./assets/fonts/CormorantGaramond_400Regular_Italic.ttf",
+            "./assets/fonts/CormorantGaramond_600SemiBold.ttf",
+            "./assets/fonts/Inter_400Regular.ttf",
+            "./assets/fonts/Inter_500Medium.ttf",
+            "./assets/fonts/Inter_600SemiBold.ttf"
           ]
         }
-      ]
+      ],
+      "expo-sqlite"
     ]
   }
 }

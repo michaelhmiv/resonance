@@ -1,0 +1,1867 @@
+[
+ {
+  "file": "ccel/a-treatise-concerning-man-s-perfection-in-righteousness__saint-augustin-s-anti-pelagian-works.txt",
+  "words": 433977,
+  "chunks": 3482,
+  "flags": []
+ },
+ {
+  "file": "ccel/a-treatise-on-faith-and-the-creed__st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 424233,
+  "chunks": 3052,
+  "flags": []
+ },
+ {
+  "file": "ccel/a-treatise-on-grace-and-free-will__saint-augustin-s-anti-pelagian-works.txt",
+  "words": 433977,
+  "chunks": 3482,
+  "flags": []
+ },
+ {
+  "file": "ccel/a-treatise-on-rebuke-and-grace__saint-augustin-s-anti-pelagian-works.txt",
+  "words": 433976,
+  "chunks": 3482,
+  "flags": []
+ },
+ {
+  "file": "ccel/a-treatise-on-the-gift-of-perseverance__saint-augustin-s-anti-pelagian-works.txt",
+  "words": 433977,
+  "chunks": 3482,
+  "flags": []
+ },
+ {
+  "file": "ccel/a-treatise-on-the-grace-of-christ-and-on-original-sin__saint-augustin-s-anti-pelagian-works.txt",
+  "words": 433981,
+  "chunks": 3482,
+  "flags": []
+ },
+ {
+  "file": "ccel/a-treatise-on-the-merits-and-forgiveness-of-sins-and-on-the-baptism-of-infants__saint-augustin-s-anti-pelagian-works.txt",
+  "words": 433985,
+  "chunks": 3482,
+  "flags": []
+ },
+ {
+  "file": "ccel/a-treatise-on-the-predestination-of-the-saints__saint-augustin-s-anti-pelagian-works.txt",
+  "words": 433978,
+  "chunks": 3482,
+  "flags": []
+ },
+ {
+  "file": "ccel/a-treatise-to-prove-that-no-one-can-harm-the-man-who-does-not-injure-himself__contents-1087830.txt",
+  "words": 145,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/a-work-on-the-proceedings-of-pelagius__saint-augustin-s-anti-pelagian-works.txt",
+  "words": 433977,
+  "chunks": 3482,
+  "flags": []
+ },
+ {
+  "file": "ccel/acts-of-paul-and-thecla__contents-1057.txt",
+  "words": 442,
+  "chunks": 3,
+  "flags": []
+ },
+ {
+  "file": "ccel/acts-of-the-holy-apostles-peter-and-paul__the-t-twelve-patriarchs-excerpts-and-epistles-the-clementia-apocrypha-decretals-memoirs-of-edessa-and-syriac-documents-remains-of-the-first-age.txt",
+  "words": 594587,
+  "chunks": 4283,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ccel/acts-or-disputation-against-fortunatus-the-manichaean__npnf-1-04-st-augustine-the-writings-against-the-manichaeans-and-against-the-donatists.txt",
+  "words": 115,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/against-lying__npnf1-03-st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 272,
+  "chunks": 2,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/against-the-epistle-of-manichaeus-called-fundamental__npnf-1-04-st-augustine-the-writings-against-the-manichaeans-and-against-the-donatists.txt",
+  "words": 115,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/an-exhortation-to-theodore-after-his-fall__st-chrysostom-on-the-priesthood-ascetic-treatises-select-homilies-and-letters-homilies-on-the-statutes.txt",
+  "words": 326930,
+  "chunks": 2274,
+  "flags": []
+ },
+ {
+  "file": "ccel/answer-to-the-letters-of-petilian-the-donatist__npnf-1-04-st-augustine-the-writings-against-the-manichaeans-and-against-the-donatists.txt",
+  "words": 116,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/clemens-alexandrinus-on-the-salvation-of-the-rich-man__fathers-of-the-second-century-hermas-tatian-athenagoras-theophilus-and-clement-of-alexandria-entire.txt",
+  "words": 91,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/concerning-faith-of-things-not-seen__st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 424232,
+  "chunks": 3052,
+  "flags": []
+ },
+ {
+  "file": "ccel/concerning-free-will__contents-663090.txt",
+  "words": 163,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/concerning-repentance__npnf2-10-ambrose-selected-works-and-letters.txt",
+  "words": 411685,
+  "chunks": 2935,
+  "flags": []
+ },
+ {
+  "file": "ccel/concerning-the-nature-of-good-against-the-manichaeans__npnf-1-04-st-augustine-the-writings-against-the-manichaeans-and-against-the-donatists.txt",
+  "words": 116,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/concerning-virgins__npnf2-10-ambrose-selected-works-and-letters.txt",
+  "words": 411685,
+  "chunks": 2935,
+  "flags": []
+ },
+ {
+  "file": "ccel/concerning-widows__npnf2-10-ambrose-selected-works-and-letters.txt",
+  "words": 411685,
+  "chunks": 2935,
+  "flags": []
+ },
+ {
+  "file": "ccel/correspondence-of-st-chrysostom-with-the-bishop-of-rome__sostom-on-the-priesthood-ascetic-treatises-select-homilies-and-letters-homilies-on.txt",
+  "words": 130,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/council-of-nicaea-letter-of-eusebius-of-caesarea-to-the-people-of-his-diocese__npnf2-04.txt",
+  "words": 177,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/councils-of-ariminum-and-seleucia__athanasius-select-works-and-letters.txt",
+  "words": 141,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/de-decretis-or-defence-of-the-nicene-definition__athanasius-select-works-and-letters.txt",
+  "words": 144,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/de-trinitate__npnf2-09-hilary-of-poitiers-john-of-damascus.txt",
+  "words": 324837,
+  "chunks": 2308,
+  "flags": []
+ },
+ {
+  "file": "ccel/dialogues-of-sulpitius-severus__npnef2-11-sulpitius-severus-vincent-of-lerins-john-cassian.txt",
+  "words": 110,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/encyclical-epistle-to-the-bishops-throughout-the-world__athanasius-select-works-and-letters.txt",
+  "words": 144,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/epistles-on-the-arian-heresy-and-the-deposition-of-arius__contents-663090.txt",
+  "words": 171,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/exhortation-to-the-heathen__fathers-of-the-second-century-hermas-tatian-athenagoras-theophilus-and-clement-of-alexandria-entire.txt",
+  "words": 86,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/expositio-fidei__athanasius-select-works-and-letters.txt",
+  "words": 138,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/exposition-of-the-christian-faith__npnf2-10-ambrose-selected-works-and-letters.txt",
+  "words": 411688,
+  "chunks": 2935,
+  "flags": []
+ },
+ {
+  "file": "ccel/exposition-of-the-orthodox-faith-by-john-of-damascus__npnf2-09-hilary-of-poitiers-john-of-damascus.txt",
+  "words": 324844,
+  "chunks": 2308,
+  "flags": []
+ },
+ {
+  "file": "ccel/expositions-on-the-book-of-psalms__npnf1-08-st-augustine-exposition-on-the-book-of-psalms.txt",
+  "words": 42,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/fifteen-hymns-for-the-feast-of-the-epiphany__contents-2688.txt",
+  "words": 121,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/four-discourses-against-the-arians__athanasius-select-works-and-letters.txt",
+  "words": 141,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/fragments-from-the-writings-of-peter__contents-663090.txt",
+  "words": 167,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/historia-arianorum__athanasius-select-works-and-letters.txt",
+  "words": 138,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/homilies-on-s-ignatius-and-s-babylas__st-chrysostom-on-the-priesthood-ascetic-treatises-select-homilies-and-letters-homilies-on-the-statutes.txt",
+  "words": 326930,
+  "chunks": 2274,
+  "flags": []
+ },
+ {
+  "file": "ccel/homily-concerning-lowliness-of-mind-and-commentary-on-philippians-i-18__sostom-on-the-priesthood-ascetic-treatises-select-homilies-and-letters-homilies-on.txt",
+  "words": 132,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/in-ilud-omnia-etc__npnf2-04.txt",
+  "words": 167,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/in-trullo__npnf2-14-the-seven-ecumenical-councils.txt",
+  "words": 94395,
+  "chunks": 630,
+  "flags": []
+ },
+ {
+  "file": "ccel/instructions-to-catechumens__contents-1087830.txt",
+  "words": 132,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/jerome-and-gennadius-lives-of-illustrious-men__theodoret-jerome-gennadius-rufinus-historical-writings.txt",
+  "words": 472420,
+  "chunks": 3285,
+  "flags": []
+ },
+ {
+  "file": "ccel/letter-to-a-young-widow__contents-1087830.txt",
+  "words": 134,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/letters-of-st-chrysostom-to-olympias__sostom-on-the-priesthood-ascetic-treatises-select-homilies-and-letters-homilies-on.txt",
+  "words": 127,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/letters-of-the-blessed-theodoret-bishop-of-cyrus__contents-2174.txt",
+  "words": 45,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/life-and-works-of-rufinus-with-jerome-s-apology-against-rufinus__theodoret-jerome-gennadius-rufinus-historical-writings.txt",
+  "words": 472423,
+  "chunks": 3285,
+  "flags": []
+ },
+ {
+  "file": "ccel/life-and-writings-of-sulpitius-severus__npnef2-11-sulpitius-severus-vincent-of-lerins-john-cassian.txt",
+  "words": 112,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/nineteen-hymns-on-the-nativity-of-christ-in-the-flesh__npnf2-13-gregory-the-great-ii-ephraim-syrus-aphrahat.txt",
+  "words": 271763,
+  "chunks": 1858,
+  "flags": []
+ },
+ {
+  "file": "ccel/of-holy-virginity__npnf1-03-st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 273,
+  "chunks": 2,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/of-the-manichaeans__contents-663090.txt",
+  "words": 164,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/of-the-work-of-monks__st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 424231,
+  "chunks": 3052,
+  "flags": []
+ },
+ {
+  "file": "ccel/on-baptism-against-the-donatists__npnf-1-04-st-augustine-the-writings-against-the-manichaeans-and-against-the-donatists.txt",
+  "words": 113,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/on-care-to-be-had-for-the-dead__st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 424234,
+  "chunks": 3052,
+  "flags": []
+ },
+ {
+  "file": "ccel/on-christian-doctrine__st-augustine-city-of-god-and-christian-doctrine.txt",
+  "words": 39,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/on-continence__st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 424228,
+  "chunks": 3052,
+  "flags": []
+ },
+ {
+  "file": "ccel/on-lying__npnf1-03-st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 272,
+  "chunks": 2,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/on-marriage-and-concupiscence__saint-augustin-s-anti-pelagian-works.txt",
+  "words": 433974,
+  "chunks": 3482,
+  "flags": []
+ },
+ {
+  "file": "ccel/on-patience__st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 424228,
+  "chunks": 3052,
+  "flags": []
+ },
+ {
+  "file": "ccel/on-the-catechising-of-the-uninstructed__npnf1-03-st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 276,
+  "chunks": 2,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/on-the-creed__npnf1-03-st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 273,
+  "chunks": 2,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/on-the-decease-of-his-brother-satyrus__npnf2-10-ambrose-selected-works-and-letters.txt",
+  "words": 411690,
+  "chunks": 2935,
+  "flags": []
+ },
+ {
+  "file": "ccel/on-the-duties-of-the-clergy__npnf2-10-ambrose-selected-works-and-letters.txt",
+  "words": 411689,
+  "chunks": 2935,
+  "flags": []
+ },
+ {
+  "file": "ccel/on-the-good-of-marriage__npnf1-03-st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 275,
+  "chunks": 2,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/on-the-good-of-widowhood__npnf1-03-st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 275,
+  "chunks": 2,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/on-the-holy-spirit__npnf2-10-ambrose-selected-works-and-letters.txt",
+  "words": 411687,
+  "chunks": 2935,
+  "flags": []
+ },
+ {
+  "file": "ccel/on-the-life-of-st-martin__npnef2-11-sulpitius-severus-vincent-of-lerins-john-cassian.txt",
+  "words": 112,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/on-the-morals-of-the-catholic-church__npnf-1-04-st-augustine-the-writings-against-the-manichaeans-and-against-the-donatists.txt",
+  "words": 115,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/on-the-morals-of-the-manichaeans__npnf-1-04-st-augustine-the-writings-against-the-manichaeans-and-against-the-donatists.txt",
+  "words": 114,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/on-the-mysteries__npnf2-10-ambrose-selected-works-and-letters.txt",
+  "words": 411686,
+  "chunks": 2935,
+  "flags": []
+ },
+ {
+  "file": "ccel/on-the-profit-of-believing__st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 424231,
+  "chunks": 3052,
+  "flags": []
+ },
+ {
+  "file": "ccel/on-the-trinity__st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 424229,
+  "chunks": 3052,
+  "flags": []
+ },
+ {
+  "file": "ccel/on-two-souls-against-the-manichaeans__npnf-1-04-st-augustine-the-writings-against-the-manichaeans-and-against-the-donatists.txt",
+  "words": 114,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/oration-on-the-palms__contents-855.txt",
+  "words": 169,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/our-lord-s-sermon-on-the-mount__npnf-1-06-st-augustine-sermon-on-the-mount-harmony-of-the-gospels-homilies-on-the-gospels.txt",
+  "words": 495320,
+  "chunks": 3562,
+  "flags": []
+ },
+ {
+  "file": "ccel/register-of-the-epistles-of-saint-gregory-the-great__npnf2-12-leo-the-great-gregory-the-great.txt",
+  "words": 408763,
+  "chunks": 3156,
+  "flags": []
+ },
+ {
+  "file": "ccel/reply-to-faustus-the-manichaean__npnf-1-04-st-augustine-the-writings-against-the-manichaeans-and-against-the-donatists.txt",
+  "words": 113,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/see-of-all-heresies__npnef2-11-sulpitius-severus-vincent-of-lerins-john-cassian.txt",
+  "words": 110,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/select-orations-of-saint-gregory-nazianzen-sometime-archbishop-of-constantinople__cyril-of-jerusalem-gregory-nazianzen.txt",
+  "words": 199,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/select-writings-and-letters-of-athanasius-bishop-of-alexandria__npnf2-04-athanasius-select-works-and-letters.txt",
+  "words": 496367,
+  "chunks": 3629,
+  "flags": []
+ },
+ {
+  "file": "ccel/selected-epistles-of-gregory-the-great-bishop-of-rome-books-ix-xiv__contents-2688.txt",
+  "words": 124,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/some-of-the-principal-works-of-st-ambrose__npnf2-10-ambrose-selected-works-and-letters.txt",
+  "words": 411691,
+  "chunks": 2935,
+  "flags": []
+ },
+ {
+  "file": "ccel/st-hilary-of-poitiers-select-works__npnf2-09-hilary-of-poitiers-john-of-damascus.txt",
+  "words": 324841,
+  "chunks": 2308,
+  "flags": []
+ },
+ {
+  "file": "ccel/ten-homilies-on-the-first-epistle-of-john-to-the-parthians__contents-1823.txt",
+  "words": 88,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/the-avenging-of-the-saviour__the-t-twelve-patriarchs-excerpts-and-epistles-the-clementia-apocrypha-decretals-memoirs-of-edessa-and-syriac-documents-remains-of-the-first-age.txt",
+  "words": 594584,
+  "chunks": 4283,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ccel/the-banquet-of-the-ten-virgins-or-concerning-chastity__contents-663090.txt",
+  "words": 170,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-book-of-pastoral-rule-and-selected-epistles-of-gregory-the-great-bishop-of-rome__contents-2688.txt",
+  "words": 128,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-book-of-pastoral-rule__npnf2-12-leo-the-great-gregory-the-great.txt",
+  "words": 408759,
+  "chunks": 3155,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-canonical-epistle-with-the-commentaries-of-theodore-balsamon-and-john-zonaras__contents-855.txt",
+  "words": 177,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-catechetical-lectures-of-s-cyril-archbishop-of-jerusalem__cyril-of-jerusalem-gregory-nazianzen.txt",
+  "words": 198,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-church-history-of-eusebius__npnf2-01-eusebius-pamphilius-church-history-life-of-constantine-oration-in-praise-of-constantine.txt",
+  "words": 270695,
+  "chunks": 1770,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-city-of-god__npnf1-02-st-augustine-city-of-god-and-christian-doctrine.txt",
+  "words": 515191,
+  "chunks": 3928,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-clementine-homilies__the-t-twelve-patriarchs-excerpts-and-epistles-the-clementia-apocrypha-decretals-memoirs-of-edessa-and-syriac-documents-remains-of-the-first-age.txt",
+  "words": 594582,
+  "chunks": 4283,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ccel/the-conferences-of-john-cassian__npnf2-11-sulpitius-severus-vincent-of-lerins-john-cassian.txt",
+  "words": 525136,
+  "chunks": 3886,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-confessions-of-st-augustin__st-augustine-the-confessions-and-letters-of-st-augustine-with-a-sketch-of-his-life-and-work.txt",
+  "words": 476000,
+  "chunks": 3525,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-correction-of-the-donatists__npnf-1-04-st-augustine-the-writings-against-the-manichaeans-and-against-the-donatists.txt",
+  "words": 113,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-council-of-chalcedon__npnf2-14-the-seven-ecumenical-councils.txt",
+  "words": 94397,
+  "chunks": 630,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-de-sententia-dionysii__athanasius-select-works-and-letters.txt",
+  "words": 140,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-death-of-pilate-who-condemned-jesus__contents-1057.txt",
+  "words": 444,
+  "chunks": 3,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-ecclesiastical-history-of-socrates-scholasticus__contents-2146.txt",
+  "words": 35,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/the-ecclesiastical-history-of-sozomen__contents-2146.txt",
+  "words": 34,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/the-enchiridion__st-augustine-on-the-holy-trinity-doctrinal-treatises-moral-treatises.txt",
+  "words": 424228,
+  "chunks": 3052,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-epistle-concerning-the-martyrdom-of-polycarp__anfo1-the-apostolic-fathers-with-justin-martyr-and-irenaeus.txt",
+  "words": 436589,
+  "chunks": 3236,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-epistle-of-ignatius-to-polycarp__anfo1-the-apostolic-fathers-with-justin-martyr-and-irenaeus.txt",
+  "words": 436588,
+  "chunks": 3236,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-epistle-of-ignatius-to-the-magnesians__anfo1-the-apostolic-fathers-with-justin-martyr-and-irenaeus.txt",
+  "words": 282,
+  "chunks": 2,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-epistle-of-ignatius-to-the-smyrnaeans__anfo1-the-apostolic-fathers-with-justin-martyr-and-irenaeus.txt",
+  "words": 282,
+  "chunks": 2,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-epistle-of-ignatius-to-the-trallians__anfo1-the-apostolic-fathers-with-justin-martyr-and-irenaeus.txt",
+  "words": 282,
+  "chunks": 2,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-epistle-of-mathetes-to-diognetus__anfo1-the-apostolic-fathers-with-justin-martyr-and-irenaeus.txt",
+  "words": 281,
+  "chunks": 2,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-epistle-of-polycarp-to-the-philippians__anfo1-the-apostolic-fathers-with-justin-martyr-and-irenaeus.txt",
+  "words": 436589,
+  "chunks": 3236,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-epistles-of-ignatius__anfo1-the-apostolic-fathers-with-justin-martyr-and-irenaeus.txt",
+  "words": 436586,
+  "chunks": 3236,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-extant-writings-of-julius-africanus__contents-663090.txt",
+  "words": 167,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-first-council-of-constantinople__npnf2-14-the-seven-ecumenical-councils.txt",
+  "words": 94398,
+  "chunks": 630,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-first-council-of-nice-a-d-325__npnf2-14-the-seven-ecumenical-councils.txt",
+  "words": 94400,
+  "chunks": 630,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-first-ecumenical-council__npnf2-14-the-seven-ecumenical-councils.txt",
+  "words": 94397,
+  "chunks": 630,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-first-epistle-of-clement-to-the-corinthians__anfo1-the-apostolic-fathers-with-justin-martyr-and-irenaeus.txt",
+  "words": 283,
+  "chunks": 2,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-genuine-acts-of-peter__contents-855.txt",
+  "words": 170,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-giving-up-of-pontius-pilate__the-t-twelve-patriarchs-excerpts-and-epistles-the-clementia-apocrypha-decretals-memoirs-of-edessa-and-syriac-documents-remains-of-the-first-age.txt",
+  "words": 594585,
+  "chunks": 4283,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ccel/the-gospel-of-the-nativity-of-mary__the-t-twelve-patriarchs-excerpts-and-epistles-the-clementia-apocrypha-decretals-memoirs-of-edessa-and-syriac-documents-remains-of-the-first-age.txt",
+  "words": 594586,
+  "chunks": 4283,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ccel/the-gospel-of-thomas__contents-1057.txt",
+  "words": 441,
+  "chunks": 3,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-history-of-joseph-the-carpenter__contents-1057.txt",
+  "words": 443,
+  "chunks": 3,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-homilies-of-st-john-chrysostom-on-the-epistle-to-the-hebrews__contents-2031.txt",
+  "words": 60,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/the-homilies-of-st-john-chrysostom-on-the-gospel-of-st-john__contents-2031.txt",
+  "words": 60,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/the-homilies-on-psalms-l-liii-cxxx__npnf2-09-hilary-of-poitiers-john-of-damascus.txt",
+  "words": 324842,
+  "chunks": 2308,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-homilies-on-the-second-epistle-of-st-paul-the-apostle-to-the-corinthians__contents-1985.txt",
+  "words": 60,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/the-hymns-and-homilies-of-ephraim-the-syrian-and-from-the-demonstrations-of-aphrahat-the-persian-sage__npnf2-13-gregory-the-great-ii-ephraim-syrus-aphrahat.txt",
+  "words": 271770,
+  "chunks": 1858,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-letters-and-sermons-of-leo-the-great-bishop-of-rome__contents-2688.txt",
+  "words": 124,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-letters-of-sulpitius-severus__npnef2-11-sulpitius-severus-vincent-of-lerins-john-cassian.txt",
+  "words": 111,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-life-of-the-blessed-emperor-constantine-by-eusebius-pamphilus__contents-2074.txt",
+  "words": 76,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/the-oration-of-eusebius-pamphilus-in-praise-of-the-emperor-constantine__contents-2074.txt",
+  "words": 77,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/the-oration-of-eusebius__contents-2074.txt",
+  "words": 70,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/the-oration-of-the-emperor-constantine-which-he-addressed-to-the-assembly-of-the-saints__contents-2074.txt",
+  "words": 81,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/the-pearl-seven-hymns-on-the-faith__contents-2688.txt",
+  "words": 120,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-recognitions-of-clement__the-t-twelve-patriarchs-excerpts-and-epistles-the-clementia-apocrypha-decretals-memoirs-of-edessa-and-syriac-documents-remains-of-the-first-age.txt",
+  "words": 594583,
+  "chunks": 4283,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ccel/the-report-of-pontius-pilate-procurator-of-judaea-sent-to-rome-to-tiberius-caesar__the-t-twelve-patriarchs-excerpts-and-epistles-the-clementia-apocrypha-decretals-memoirs-of-edessa-and-syriac-documents-remains-of-the-first-age.txt",
+  "words": 594593,
+  "chunks": 4283,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ccel/the-sacred-history-of-sulpitius-severus__npnef2-11-sulpitius-severus-vincent-of-lerins-john-cassian.txt",
+  "words": 112,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-second-ecumenical-council__npnf2-14-the-seven-ecumenical-councils.txt",
+  "words": 94397,
+  "chunks": 630,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-seven-books-of-john-cassian-on-the-incarnation-of-the-lord-against-nestorius__npnef2-11-sulpitius-severus-vincent-of-lerins-john-cassian.txt",
+  "words": 120,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-seven-ecumenical-councils-of-the-undivided-church__contents-2774.txt",
+  "words": 129,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-stromata-or-miscellanies__fathers-of-the-second-century-hermas-tatian-athenagoras-theophilus-and-clement-of-alexandria-entire.txt",
+  "words": 86,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/the-syriac-version-of-the-ignatian-epistles__anfo1-the-apostolic-fathers-with-justin-martyr-and-irenaeus.txt",
+  "words": 282,
+  "chunks": 2,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/the-treatise-de-spiritu-sancto__npnf2-08-basil-letters-and-select-works.txt",
+  "words": 282763,
+  "chunks": 1989,
+  "flags": []
+ },
+ {
+  "file": "ccel/the-twelve-books-of-john-cassian-on-the-institutes-of-the-coenobia-and-the-remedies-for-the-eight-principal-faults__npnf2-11-sulpitius-severus-vincent-of-lerins-john-cassian.txt",
+  "words": 525151,
+  "chunks": 3886,
+  "flags": []
+ },
+ {
+  "file": "ccel/theophilus-of-antioch__fathers-of-the-second-century-hermas-tatian-athenagoras-theophilus-and-clement-of-alexandria-entire.txt",
+  "words": 85,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/three-fragments-from-the-homily-on-the-cross-and-passion-of-christ__contents-855.txt",
+  "words": 177,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/three-homilies__npnf2-13-gregory-the-great-ii-ephraim-syrus-aphrahat.txt",
+  "words": 271755,
+  "chunks": 1858,
+  "flags": []
+ },
+ {
+  "file": "ccel/tomus-ad-antiochenos__athanasius-select-works-and-letters.txt",
+  "words": 139,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ccel/treatise-concerning-the-christian-priesthood__st-chrysostom-on-the-priesthood-ascetic-treatises-select-homilies-and-letters-homilies-on-the-statutes.txt",
+  "words": 326928,
+  "chunks": 2274,
+  "flags": []
+ },
+ {
+  "file": "ccel/treatise-de-synodis__npnf2-09-hilary-of-poitiers-john-of-damascus.txt",
+  "words": 324838,
+  "chunks": 2308,
+  "flags": []
+ },
+ {
+  "file": "ccel/two-books-of-soliloquies__contents-1823.txt",
+  "words": 81,
+  "chunks": 1,
+  "flags": [
+   "STUB",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ccel/two-homilies-on-eutropius__sostom-on-the-priesthood-ascetic-treatises-select-homilies-and-letters-homilies-on.txt",
+  "words": 125,
+  "chunks": 1,
+  "flags": [
+   "STUB"
+  ]
+ },
+ {
+  "file": "ia/a-call-to-the-unconverted-to-turn-and-live__acalltounconver01baxtgoog.txt",
+  "words": 47401,
+  "chunks": 332,
+  "flags": []
+ },
+ {
+  "file": "ia/a-practical-treatise-upon-christian-perfection__apracticaltreat01lawgoog.txt",
+  "words": 37619,
+  "chunks": 220,
+  "flags": []
+ },
+ {
+  "file": "ia/a-serious-call-to-a-devout-and-holy-life__aseriouscalltoa01lawgoog.txt",
+  "words": 131708,
+  "chunks": 816,
+  "flags": []
+ },
+ {
+  "file": "ia/a-spiritual-canticle-of-the-soul-and-the-bridegroom-christ__spiritualcanticl0000john.txt",
+  "words": 81592,
+  "chunks": 528,
+  "flags": []
+ },
+ {
+  "file": "ia/a-treatise-concerning-religious-affections-in-three-parts__atreatiseconcer00edwagoog.txt",
+  "words": 194961,
+  "chunks": 1407,
+  "flags": []
+ },
+ {
+  "file": "ia/an-explanation-of-luther-s-small-catechism-a-handbook-for-the-catechetical-class__anexplanationlu00stumgoog.txt",
+  "words": 54534,
+  "chunks": 315,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ia/apologeticus-adversus-gentes-pro-christianis__apologeticusadve00tert.txt",
+  "words": 74006,
+  "chunks": 440,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ia/ausgew-hlte-predigten-mit-einer-einleitenden-monographie-von-wilh-von-langsdorff__ausgewhltepredi00langgoog.txt",
+  "words": 2395,
+  "chunks": 13,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ia/catena-aurea-commentary-on-the-four-gospels-collected-out-of-the-works-of-the-fathers__p1catenaaureacom01thomuoft.txt",
+  "words": 184197,
+  "chunks": 1274,
+  "flags": []
+ },
+ {
+  "file": "ia/centuries-of-meditations__centuriesmedita00trahgoog.txt",
+  "words": 93831,
+  "chunks": 691,
+  "flags": [
+   "PAGE_NUMBERS"
+  ]
+ },
+ {
+  "file": "ia/clement-of-alexandria-quis-dives-salvetur__clementofalexand00clem-0.txt",
+  "words": 35938,
+  "chunks": 226,
+  "flags": [
+   "SYMBOL_SOUP",
+   "PAGE_NUMBERS"
+  ]
+ },
+ {
+  "file": "ia/dat-boec-vanden-twaelf-dogheden-die-spieghel-der-ewigher-salicheit-van-den__datboecvandentw00ruusgoog.txt",
+  "words": 102198,
+  "chunks": 641,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ia/de-s-isaaci-ninivitae-vita-scriptis-et-doctrina__desisaacininivit00chab.txt",
+  "words": 44064,
+  "chunks": 260,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ia/devotions-by-j-donne-with-two-sermons__devotionsbyjdon00donngoog.txt",
+  "words": 80513,
+  "chunks": 565,
+  "flags": []
+ },
+ {
+  "file": "ia/dionysius-the-areopagite-on-the-divine-names-and-the-mystical-theology__dionysiusareopag00pseu.txt",
+  "words": 77649,
+  "chunks": 556,
+  "flags": []
+ },
+ {
+  "file": "ia/english-poems-together-with-his-collection-of-proverbs-entitled-jacula-prudentum__englishpoemstog00herbgoog.txt",
+  "words": 52610,
+  "chunks": 286,
+  "flags": []
+ },
+ {
+  "file": "ia/freedom-of-the-will__freedomofwill0000revj.txt",
+  "words": 135144,
+  "chunks": 985,
+  "flags": []
+ },
+ {
+  "file": "ia/goblin-market__goblin-market-christina-rossetti.txt",
+  "words": 19284,
+  "chunks": 97,
+  "flags": [
+   "PAGE_NUMBERS"
+  ]
+ },
+ {
+  "file": "ia/grace-abounding-to-the-chief-of-sinners__bwb-t3-cbt-732.txt",
+  "words": 66413,
+  "chunks": 444,
+  "flags": []
+ },
+ {
+  "file": "ia/homilies-on-the-gospel-of-st-john-and-the-epistle-to-the-hebrews__homiliesongospel0014john.txt",
+  "words": 546783,
+  "chunks": 3799,
+  "flags": [
+   "SYMBOL_SOUP",
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ia/hymns-for-the-use-of-families-and-on-various-occasions__hymnsforusefami00weslgoog.txt",
+  "words": 35426,
+  "chunks": 182,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ia/institutes-of-the-christian-religion__institutesofchri0000john-q1s5.txt",
+  "words": 333463,
+  "chunks": 2505,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ia/introduction-to-the-devout-life__introductiontode00fran-1.txt",
+  "words": 175711,
+  "chunks": 1177,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ia/journal-of-george-fox-being-an-historical-account-of-the-life-travels__journalgeorgefo00armigoog.txt",
+  "words": 259090,
+  "chunks": 1831,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ia/letters-to-severall-persons-of-honour__letterstosevera00donngoog.txt",
+  "words": 69032,
+  "chunks": 476,
+  "flags": []
+ },
+ {
+  "file": "ia/letters__letters0001augu.txt",
+  "words": 189598,
+  "chunks": 1430,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ia/luther-s-large-catechism-god-s-call-to-repentence-faith-and-prayer-the-bible-plan-of__lutherslargecat00luthgoog.txt",
+  "words": 67199,
+  "chunks": 470,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ia/luther-s-table-talk-or-some-choice-fragments-from-the-familiar-discourse-of-that-godly-man__lutherstabletal00luthgoog.txt",
+  "words": 100514,
+  "chunks": 681,
+  "flags": [
+   "SYMBOL_SOUP",
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ia/notes-on-the-new-testament__notesonnewtestam0000john.txt",
+  "words": 432187,
+  "chunks": 3161,
+  "flags": []
+ },
+ {
+  "file": "ia/on-consideration__onconsideration00bern.txt",
+  "words": 54624,
+  "chunks": 415,
+  "flags": []
+ },
+ {
+  "file": "ia/on-loving-god-by-st-bernard-of-clairvaux__on-loving-god-by-saint-bernard-of-clairvaux.txt",
+  "words": 13741,
+  "chunks": 103,
+  "flags": []
+ },
+ {
+  "file": "ia/on-the-priesthood-in-six-books__onpriesthood00unkngoog.txt",
+  "words": 48774,
+  "chunks": 289,
+  "flags": []
+ },
+ {
+  "file": "ia/phantastes-a-faerie-romance__phantastesfaerie0000geor-j1t6.txt",
+  "words": 72454,
+  "chunks": 509,
+  "flags": []
+ },
+ {
+  "file": "ia/pneumatologia-or-a-discourse-concerning-the-holy-spirit.txt",
+  "words": 190584,
+  "chunks": 1380,
+  "flags": []
+ },
+ {
+  "file": "ia/rusbrock-l-admirable-uvres-choisies__rusbrockladmira00hellgoog.txt",
+  "words": 48273,
+  "chunks": 291,
+  "flags": []
+ },
+ {
+  "file": "ia/sacred-poems__sacredpoemsbyhen0000henr.txt",
+  "words": 55903,
+  "chunks": 327,
+  "flags": []
+ },
+ {
+  "file": "ia/selections-from-the-epistles-of-george-fox__selectionsfrome00tukegoog.txt",
+  "words": 31193,
+  "chunks": 221,
+  "flags": []
+ },
+ {
+  "file": "ia/sermons-on-several-occasions__sermonsonseveral0001john-g6i0.txt",
+  "words": 162412,
+  "chunks": 1125,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ia/silex-scintillans-sacred-poems-and-private-ejaculations__silexscintillan00lytegoog.txt",
+  "words": 55563,
+  "chunks": 311,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ia/st-bernard-of-clairvaux-s-life-of-st-malachy-of-armagh__stbernardofclair00bernuoft.txt",
+  "words": 94583,
+  "chunks": 657,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ia/st-john-damascene-on-holy-images-followed-by-three-sermons-on-the-assumption__stjohndamasceneo00john.txt",
+  "words": 49362,
+  "chunks": 354,
+  "flags": [
+   "PAGE_NUMBERS",
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ia/summa-contra-gentiles-seu-de-veritate-catholicae-fidei.txt",
+  "words": 373146,
+  "chunks": 2372,
+  "flags": []
+ },
+ {
+  "file": "ia/the-ascent-of-mount-carmel__ascentofmountcar00johnuoft.txt",
+  "words": 123863,
+  "chunks": 898,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ia/the-book-of-the-foundations-of-s-teresa-of-jesus-of-the-order-of-our-lady-of-carmel__bookoffoundation00tereuoft.txt",
+  "words": 202497,
+  "chunks": 1419,
+  "flags": []
+ },
+ {
+  "file": "ia/the-catechetical-oration-of-gregory-of-nyssa__thecatecheticalo00greguoft.txt",
+  "words": 109054,
+  "chunks": 695,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ia/the-city-of-god-de-civitate-dei__cityofgoddecivit0000augu.txt",
+  "words": 178434,
+  "chunks": 1326,
+  "flags": []
+ },
+ {
+  "file": "ia/the-didache-the-two-ways-when-treated-as-a-separate-book-in-the-omnibus__thedidache00alleuoft.txt",
+  "words": 17162,
+  "chunks": 115,
+  "flags": []
+ },
+ {
+  "file": "ia/the-fire-of-love-and-the-mending-of-life-or-the-rule-of-living__fireloveandmend00rollgoog.txt",
+  "words": 77246,
+  "chunks": 487,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ia/the-first-apology-of-justin-martyr-addressed-to-the-emperor-antoninus-pius__firstapologyofju00just.txt",
+  "words": 105167,
+  "chunks": 751,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ia/the-five-theological-orations-of-gregory-of-nazionzus__thefivetheologic00greguoft.txt",
+  "words": 115997,
+  "chunks": 715,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ia/the-history-and-life-of-the-reverend-doctor-john-tauler-of-strasbourg-with-twenty-five-of-his-sermons__historyandlifer01kinggoog.txt",
+  "words": 136516,
+  "chunks": 943,
+  "flags": []
+ },
+ {
+  "file": "ia/the-holy-war__holywar0000unse-e0t4.txt",
+  "words": 101556,
+  "chunks": 683,
+  "flags": []
+ },
+ {
+  "file": "ia/the-homilies-of-st-john-chrysostom-on-the-epistles-of-st-paul-to-the-philippians-colossians-and-ephesians__homiliesongalatiansephesiansphilippianscolossiansthessalonians.txt",
+  "words": 486845,
+  "chunks": 3524,
+  "flags": [
+   "PAGE_NUMBERS"
+  ]
+ },
+ {
+  "file": "ia/the-hope-of-the-gospel__hopeofgospel00macd.txt",
+  "words": 60161,
+  "chunks": 462,
+  "flags": []
+ },
+ {
+  "file": "ia/the-journal-of-john-wesley__johnwesleysjour00hendgoog.txt",
+  "words": 14657,
+  "chunks": 92,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ia/the-letters-of-saint-basil-the-great__letterswithengli01basiuoft.txt",
+  "words": 112287,
+  "chunks": 796,
+  "flags": [
+   "PAGE_NUMBERS",
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ia/the-life-of-antony__the-life-of-antony-by-saint-athanasius-of-alexandria.txt",
+  "words": 29719,
+  "chunks": 225,
+  "flags": []
+ },
+ {
+  "file": "ia/the-life-of-blessed-henry-suso-by-himself__the-life-of-blessed-henry-suso-by-himself.txt",
+  "words": 70055,
+  "chunks": 507,
+  "flags": []
+ },
+ {
+  "file": "ia/the-life-of-saint-teresa-of-jesus-of-the-order-of-our-lady-of-carmel__the-life-of-saint-teresa-of-jesus-by-herself.txt",
+  "words": 150830,
+  "chunks": 1073,
+  "flags": []
+ },
+ {
+  "file": "ia/the-life-of-st-francis-of-assisi-from-the-legenda-santa-francisci-of-st-bonaventura__lifeofstfranciso00bona.txt",
+  "words": 61374,
+  "chunks": 451,
+  "flags": []
+ },
+ {
+  "file": "ia/the-living-flame-of-love__johnofthecross00johnuoft.txt",
+  "words": 83221,
+  "chunks": 535,
+  "flags": []
+ },
+ {
+  "file": "ia/the-narrative-of-joseph-of-arimathaea__jamesapocryphalnewtestament1924.txt",
+  "words": 303488,
+  "chunks": 2036,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ia/the-nine-homilies-of-the-hexaemeron__st-basillettersandselectedworks.txt",
+  "words": 298572,
+  "chunks": 2174,
+  "flags": [
+   "PAGE_NUMBERS"
+  ]
+ },
+ {
+  "file": "ia/the-philocalia-of-origen__thephilocaliaofo00origuoft.txt",
+  "words": 102165,
+  "chunks": 780,
+  "flags": []
+ },
+ {
+  "file": "ia/the-poems-of-john-donne__poemsjohndonne00clubgoog.txt",
+  "words": 64770,
+  "chunks": 371,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ia/the-provincial-letters-of-blaise-pascal__provinciallette00mcrgoog.txt",
+  "words": 152823,
+  "chunks": 1094,
+  "flags": []
+ },
+ {
+  "file": "ia/the-psalms-and-hymns-of-the-late-dr-isaac-watts__psalmsandhymnsl00goodgoog.txt",
+  "words": 105414,
+  "chunks": 554,
+  "flags": [
+   "SYMBOL_SOUP",
+   "PAGE_NUMBERS"
+  ]
+ },
+ {
+  "file": "ia/the-reformed-pastor-a-discourse-on-the-pastoral-office__reformedpastor00baxtgoog.txt",
+  "words": 98971,
+  "chunks": 756,
+  "flags": []
+ },
+ {
+  "file": "ia/the-scale-of-perfection__scaleofperfectio0000walt-c0h2.txt",
+  "words": 109936,
+  "chunks": 864,
+  "flags": [
+   "PAGE_NUMBERS"
+  ]
+ },
+ {
+  "file": "ia/the-shepherd-of-hermas-pastor-of-hermas__shepherdofhermas02hermuoft.txt",
+  "words": 33694,
+  "chunks": 234,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "ia/the-spiritual-conferences.txt",
+  "words": 142108,
+  "chunks": 1069,
+  "flags": []
+ },
+ {
+  "file": "ia/the-temple-and-a-priest-to-the-temple__templeandpriestt0000geor.txt",
+  "words": 71594,
+  "chunks": 452,
+  "flags": [
+   "PAGE_NUMBERS"
+  ]
+ },
+ {
+  "file": "ia/the-temple__temple0000geor-o2q4.txt",
+  "words": 70915,
+  "chunks": 396,
+  "flags": [
+   "TOC_HEAVY"
+  ]
+ },
+ {
+  "file": "ia/the-way-of-perfection__thewayofperfecti00tereuoft.txt",
+  "words": 91457,
+  "chunks": 688,
+  "flags": []
+ },
+ {
+  "file": "ia/unspoken-sermons-first-third-series__unspokensermonsf0000macd.txt",
+  "words": 77608,
+  "chunks": 580,
+  "flags": []
+ },
+ {
+  "file": "gutenberg/95-theses.txt",
+  "words": 7824,
+  "chunks": 45,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/abandonment-to-divine-providence.txt",
+  "words": 37657,
+  "chunks": 250,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/autobiography-life.txt",
+  "words": 207106,
+  "chunks": 1485,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/barlaam-and-ioasaph.txt",
+  "words": 86014,
+  "chunks": 616,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/heretics.txt",
+  "words": 67722,
+  "chunks": 467,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/large-catechism.txt",
+  "words": 51412,
+  "chunks": 373,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/letters-vol-1-2.txt",
+  "words": 191291,
+  "chunks": 1285,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/on-holy-images.txt",
+  "words": 56708,
+  "chunks": 369,
+  "flags": [
+   "PG_BOILERPLATE",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "gutenberg/orthodoxy.txt",
+  "words": 66864,
+  "chunks": 465,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/poems-1918.txt",
+  "words": 32242,
+  "chunks": 209,
+  "flags": [
+   "PG_BOILERPLATE",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "gutenberg/poetical-works-vol-1-2.txt",
+  "words": 96270,
+  "chunks": 598,
+  "flags": [
+   "PG_BOILERPLATE",
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "gutenberg/power-through-prayer.txt",
+  "words": 24817,
+  "chunks": 175,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/preacher-and-prayer.txt",
+  "words": 24370,
+  "chunks": 170,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/purpose-in-prayer.txt",
+  "words": 39101,
+  "chunks": 267,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/ruysbroeck-and-the-mystics.txt",
+  "words": 26497,
+  "chunks": 187,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/selected-poems.txt",
+  "words": 32661,
+  "chunks": 223,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/selections-from-the-writings.txt",
+  "words": 88003,
+  "chunks": 623,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/small-catechism.txt",
+  "words": 7250,
+  "chunks": 44,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/st-francis-of-assisi.txt",
+  "words": 47322,
+  "chunks": 313,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/the-everlasting-man.txt",
+  "words": 110320,
+  "chunks": 729,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/what-s-wrong-with-the-world.txt",
+  "words": 63181,
+  "chunks": 427,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "gutenberg/writings-vol-1-2.txt",
+  "words": 156636,
+  "chunks": 1090,
+  "flags": [
+   "PG_BOILERPLATE"
+  ]
+ },
+ {
+  "file": "additions/chrysostom-homilies-acts-romans-npnf11.txt",
+  "words": 638301,
+  "chunks": 0,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "additions/desert-fathers-paradise-budge.txt",
+  "words": 226521,
+  "chunks": 1300,
+  "flags": []
+ },
+ {
+  "file": "additions/origen-first-principles-anf04.txt",
+  "words": 620089,
+  "chunks": 4463,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "additions/schaff-creeds-vol1.txt",
+  "words": 497599,
+  "chunks": 3344,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ },
+ {
+  "file": "additions/schaff-creeds-vol3.txt",
+  "words": 507849,
+  "chunks": 3160,
+  "flags": [
+   "SYMBOL_SOUP"
+  ]
+ }
+]

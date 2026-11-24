@@ -1,0 +1,76 @@
+---
+source_kind: ccel_extract
+source_file: corpus/church_fathers_complete.txt
+section: NPNEF2-11 / SULPITIUS SEVERUS, VINCENT OF LERINS, JOHN CASSIAN
+title: Dialogues of Sulpitius Severus
+---
+NPNF2-11 CONTENTS 
+
+
+
+
+
+THE WORKS OF SULPITIUS SEVERUS 
+
+
+
+
+
+Life and Writings of Sulpitius Severus 
+
+
+On the Life of St. Martin 
+
+
+The Letters of Sulpitius Severus 
+
+
+
+
+
+Dialogues of Sulpitius Severus 
+
+
+
+
+
+The Doubtful Letters of Sulpitius Severus 
+
+
+
+
+
+The Sacred History of Sulpitius Severus 
+
+
+
+
+
+See of All Heresies 
+
+
+
+
+
+THE WORKS OF JOHN CASSIAN 
+
+
+
+
+
+Prolegomena 
+
+
+The Twelve Books of John Cassian on the Institutes of the Coenobia, and the Remedies for the Eight Principal Faults 
+
+
+
+
+
+The Conferences of John Cassian 
+
+
+
+
+
+The Seven Books of John Cassian On The Incarnation of The Lord, Against Nestorius

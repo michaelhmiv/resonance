@@ -22,7 +22,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SearchIcon, SettingsIcon } from '@resonance/ui';
 
 import { colors, fontFamilies, radii, screenContainer, spacing } from '@resonance/theme';
-import { type Translation, getCachedSync } from '@resonance/core';
+import { type LibraryBook, type Translation, getCachedSync } from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
 import { ScriptureBrowser } from './ScriptureBrowser';
 import { LibraryBrowser } from './LibraryBrowser';
@@ -37,6 +37,12 @@ type ScreenView =
 
 interface WordScreenProps {
   onOpenSettings?: () => void;
+  /** Optional mobile callback to open Personal Library device-folder import flow. */
+  onOpenImport?: () => void;
+  /** Optional mobile callback to edit metadata on a personal imported book. */
+  onEditBookMetadata?: (book: LibraryBook) => void;
+  /** Optional revision counter to refresh the Library browser after imports/edits. */
+  libraryRevision?: number;
   /** Deep-link: auto-open this book on mount */
   initialBook?: string;
   /** Deep-link: chapter number */
@@ -47,6 +53,9 @@ interface WordScreenProps {
 
 export function WordScreen({
   onOpenSettings,
+  onOpenImport,
+  onEditBookMetadata,
+  libraryRevision = 0,
   initialBook,
   initialChapter,
   initialVerse,
@@ -290,7 +299,12 @@ export function WordScreen({
           onOpenChapter={openScriptureChapter}
         />
       ) : (
-        <LibraryBrowser onOpenBook={openLibraryBook} />
+        <LibraryBrowser
+          onOpenBook={openLibraryBook}
+          onOpenImport={onOpenImport}
+          onEditBookMetadata={onEditBookMetadata}
+          libraryRevision={libraryRevision}
+        />
       )}
 
       {/* Continue Reading card */}
@@ -299,7 +313,11 @@ export function WordScreen({
           <Pressable
             onPress={() => {
               const pos = lastReadPosition;
-              if (pos.bookId.startsWith('voice_') || pos.bookId.startsWith('author_')) {
+              if (
+                pos.bookId.startsWith('voice_') ||
+                pos.bookId.startsWith('author_') ||
+                pos.bookId.startsWith('personal_')
+              ) {
                 setSurface('library');
                 setView({ name: 'reading', mode: { kind: 'library', bookId: pos.bookId } });
               } else {

@@ -1,6 +1,11 @@
 /**
  * BottomTabBar — persistent bottom navigation for mobile.
  *
+ * WEB-ONLY: this component uses next/link + next/navigation. It lived in
+ * @resonance/ui until Phase 1 (issue #53, P1-01); its only consumer is the
+ * web app, so it now lives here and the shared UI barrel no longer exports
+ * it into React Native bundles.
+ *
  * URL-aware: derives `activeTab` from the current pathname and navigates
  * with `next/link` so the other two tabs are auto-prefetched on mount.
  * Designed to be mounted once at the layout level so every authenticated
@@ -22,7 +27,7 @@ import { Text, View, StyleSheet } from 'react-native';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { colors, fontFamilies, spacing, radii } from '@resonance/theme';
-import { SearchIcon, LibraryIcon, WindIcon } from './icons';
+import { SearchIcon, LibraryIcon, WindIcon } from '@resonance/ui';
 
 export type TabId = 'journal' | 'word' | 'patterns';
 

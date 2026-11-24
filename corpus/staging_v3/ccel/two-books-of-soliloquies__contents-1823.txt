@@ -1,0 +1,68 @@
+---
+source_kind: ccel_extract
+source_file: corpus/church_fathers_complete.txt
+section: contents@1823
+title: Two Books of Soliloquies
+---
+NPNF1-06 CONTENTS 
+
+
+
+
+
+Our Lord’s Sermon On The Mount 
+
+
+
+
+
+
+
+
+ST. AUGUSTINE: HOMILIES ON THE GOSPEL OF JOHN, HOMILIES ON THE FIRST EPISTLE OF JOHN, SOLILOQUIES 
+
+
+
+
+
+
+
+
+
+
+
+Ten Homilies On The First Epistle of John To The Parthians 
+
+
+Two Books of Soliloquies 
+
+
+
+
+
+NPNF1-08 
+ST. AUGUSTINE: EXPOSITION ON THE BOOK OF PSALMS 
+
+
+NPNF1-08 CONTENTS 
+
+
+
+
+
+Expositions On The Book of Psalms 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SOSTOM: ON THE PRIESTHOOD, ASCETIC TREATISES, SELECT HOMILIES AND LETTERS, HOMILIES ON

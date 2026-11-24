@@ -1,0 +1,134 @@
+---
+source_kind: ccel_extract
+source_file: corpus/church_fathers_complete.txt
+section: CYRIL OF JERUSALEM, GREGORY NAZIANZEN
+title: The Catechetical Lectures of S. Cyril, Archbishop of Jerusalem
+---
+NPNF2-07 CONTENTS 
+
+
+
+
+
+The Catechetical Lectures of S. Cyril, Archbishop of Jerusalem 
+
+
+
+
+
+Select Orations of Saint Gregory Nazianzen, Sometime Archbishop of Constantinople 
+Select Letters of Saint Gregory Nazianzen, Archbishop of Constantinople 
+
+
+NPNF2-08 
+BASIL: LETTERS AND SELECT WORKS 
+
+
+
+
+
+NPNF2-08 CONTENTS 
+
+
+The Treatise De Spiritu Sancto. The Nine Homilies of The Hexaemeron And The Letters of Saint Basil The Great 
+Archbishop of Caesaria 
+
+
+
+
+
+De Spiritu Sancto 
+The Hexaemeron 
+The Letters 
+
+
+NPNF2-09 
+HILARY OF POITIERS, JOHN OF DAMASCUS 
+
+
+NPNF2-09 CONTENTS 
+
+
+St. Hilary of Poitiers. Select Works 
+Introduction 
+
+
+Treatise De Synodis 
+
+
+
+
+
+De Trinitate 
+The Homilies on Psalms L, LIII., CXXX 
+
+
+Exposition of the Orthodox Faith by John of Damascus 
+
+
+NPNF2-10 
+AMBROSE: SELECTED WORKS AND LETTERS 
+
+
+NPNF2-10 CONTENTS 
+
+
+
+
+
+
+
+
+Some of The Principal Works of St. Ambrose 
+
+
+Prolegomena to St. Ambrose 
+DOGMATIC TREATISES, ETHICAL WORKS, AND SERMONS 
+
+
+
+
+
+On the Duties of the Clergy 
+
+
+
+
+
+On the Holy Spirit 
+
+
+
+
+
+On the Decease of His Brother Satyrus 
+Exposition of the Christian Faith 
+On the Mysteries 
+
+
+Concerning Repentance 
+
+
+
+
+
+Concerning Virgins 
+
+
+
+
+
+Concerning Widows 
+
+
+
+
+
+SELECTIONS FROM THE LETTERS OF ST. AMBROSE 
+
+
+
+
+
+NPNEF2-11 
+SULPITIUS SEVERUS, VINCENT OF LERINS, JOHN CASSIAN

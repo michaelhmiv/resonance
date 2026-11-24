@@ -1,0 +1,26 @@
+---
+source_kind: ccel_extract
+source_file: corpus/church_fathers_complete.txt
+section: ST AUGUSTINE: CITY OF GOD AND CHRISTIAN DOCTRINE
+title: On Christian Doctrine
+---
+NPNF1-02 CONTENTS 
+
+
+
+
+
+The City of God 
+
+
+
+
+
+On Christian Doctrine 
+
+
+
+
+
+NPNF1-03 
+ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES

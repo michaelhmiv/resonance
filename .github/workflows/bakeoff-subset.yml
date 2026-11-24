@@ -1,0 +1,30 @@
+name: bakeoff-subset
+on:
+  push:
+    branches: [phase1-bootable-apk]
+    paths: ['scripts/bakeoff/**', 'scripts/corpus/**', '.github/workflows/bakeoff-subset.yml']
+jobs:
+  subset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet onnxruntime transformers numpy huggingface_hub
+      - name: Build pool + subset
+        run: |
+          python scripts/corpus/build_units.py
+          python scripts/corpus/chunk_v3.py
+          python scripts/bakeoff/make_subset.py
+      - name: Embed subset + query
+        run: python scripts/bakeoff/run_bakeoff.py subset
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bakeoff-results
+          path: bakeoff-results.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bakeoff-candidates
+          path: bakeoff-candidates.json

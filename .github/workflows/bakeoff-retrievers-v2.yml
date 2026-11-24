@@ -1,0 +1,67 @@
+name: bakeoff-retrievers-v2
+on:
+  workflow_dispatch:
+
+jobs:
+  embed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [eg2-titled, qwen3-emb-0.6b, harrier-0.6b, voyage-4-nano]
+        shard: [0, 1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime deps
+        run: pip install --quiet onnxruntime transformers numpy huggingface_hub
+      - name: Build v3 subset
+        run: |
+          python scripts/corpus/build_units.py
+          python scripts/corpus/chunk_v3.py
+          python scripts/bakeoff/make_subset.py
+      - name: Embed shard ${{ matrix.shard }}/5 (${{ matrix.model }})
+        run: python scripts/bakeoff/run_retriever.py shard ${{ matrix.model }} ${{ matrix.shard }} 5
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shard-${{ matrix.model }}-${{ matrix.shard }}
+          path: shard_${{ matrix.model }}_${{ matrix.shard }}.npy
+
+  combine:
+    needs: embed
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [eg2-titled, qwen3-emb-0.6b, harrier-0.6b, voyage-4-nano]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install runtime deps
+        run: pip install --quiet onnxruntime transformers numpy huggingface_hub
+      - name: Build v3 subset
+        run: |
+          python scripts/corpus/build_units.py
+          python scripts/corpus/chunk_v3.py
+          python scripts/bakeoff/make_subset.py
+      - name: Download shards for ${{ matrix.model }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: shard-${{ matrix.model }}-*
+          merge-multiple: true
+      - name: Combine & evaluate ${{ matrix.model }}
+        run: python scripts/bakeoff/run_retriever.py combine ${{ matrix.model }} 5
+      - uses: actions/upload-artifact@v4
+        with:
+          name: retriever-${{ matrix.model }}
+          path: |
+            results-${{ matrix.model }}*.json
+            candidates-${{ matrix.model }}*.json
+            metrics-${{ matrix.model }}.json

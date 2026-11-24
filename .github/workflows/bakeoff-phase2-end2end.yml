@@ -1,0 +1,108 @@
+name: bakeoff-phase2-end2end
+on:
+  workflow_dispatch:
+
+jobs:
+  prep-candidates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet onnxruntime transformers numpy huggingface_hub
+      - name: Build v3 subset
+        run: |
+          python scripts/corpus/build_units.py
+          python scripts/corpus/chunk_v3.py
+          python scripts/bakeoff/make_subset.py
+      - name: Download pre-computed Voyage-4-Nano & Qwen3-Emb shards
+        run: |
+          for k in 0 1 2 3 4; do
+            gh run download 45394166454 --name "shard-voyage-4-nano-$k" --dir .
+            gh run download 45394734822 --name "shard-qwen3-emb-0.6b-$k" --dir .
+          done
+          ls -lh shard_*.npy
+      - name: Build stratified per-library int8 candidates
+        run: |
+          python scripts/bakeoff/build_stratified_candidates.py voyage-4-nano 5 512 voyage4-512d
+          python scripts/bakeoff/build_stratified_candidates.py voyage-4-nano 5 1024 voyage4-1024d
+          python scripts/bakeoff/build_stratified_candidates.py qwen3-emb-0.6b 5 1024 qwen3-1024d
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase2-candidates
+          path: |
+            results-*.json
+            candidates-*-flat.json
+            candidates-*-stratified.json
+
+  finish-eg2-qwen3-shard0:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet onnxruntime transformers numpy huggingface_hub
+      - run: gh run download 45384646621 --name bakeoff-candidates --dir /tmp/cand
+      - run: python3 scripts/bakeoff/rerank_qwen3.py 0 5 /tmp/cand/bakeoff-candidates.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eg2-qwen3-reranker-shard-0
+          path: rerank-qwen3-shard-0.json
+
+  rerank-bge:
+    needs: prep-candidates
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        pool: [voyage4-512d, voyage4-1024d, qwen3-1024d]
+        shard: [0, 1, 2]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet onnxruntime transformers numpy huggingface_hub
+      - uses: actions/download-artifact@v4
+        with:
+          name: phase2-candidates
+          path: /tmp/cand
+      - run: python3 scripts/bakeoff/rerank_bge_v2.py ${{ matrix.shard }} 3 "/tmp/cand/candidates-${{ matrix.pool }}-stratified.json" "bge-${{ matrix.pool }}-shard-${{ matrix.shard }}.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p2-bge-${{ matrix.pool }}-shard-${{ matrix.shard }}
+          path: bge-${{ matrix.pool }}-shard-${{ matrix.shard }}.json
+
+  rerank-qwen3:
+    needs: prep-candidates
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        pool: [voyage4-1024d, qwen3-1024d]
+        shard: [0, 1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet onnxruntime transformers numpy huggingface_hub
+      - uses: actions/download-artifact@v4
+        with:
+          name: phase2-candidates
+          path: /tmp/cand
+      - run: python3 scripts/bakeoff/rerank_qwen3.py ${{ matrix.shard }} 5 "/tmp/cand/candidates-${{ matrix.pool }}-stratified.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p2-qwen3-${{ matrix.pool }}-shard-${{ matrix.shard }}
+          path: rerank-qwen3-shard-${{ matrix.shard }}.json

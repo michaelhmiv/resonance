@@ -1,0 +1,62 @@
+[
+ {
+  "slug": "kempis-imitation-of-christ",
+  "status": "ok",
+  "origin": "PG 1653 via pglaf",
+  "chars": 374134
+ },
+ {
+  "slug": "brother-lawrence-practice",
+  "status": "ok",
+  "origin": "PG 5657 via pglaf",
+  "chars": 80287
+ },
+ {
+  "slug": "john-of-the-cross-dark-night",
+  "status": "ok",
+  "origin": "IA the-dark-night-of-the-soul-by-saint-john-of-the-cross/the-dark-night-of-the-soul-by-saint-john-of-the-cross_djvu.txt",
+  "chars": 262439
+ },
+ {
+  "slug": "teresa-interior-castle",
+  "status": "ok",
+  "origin": "IA stteresaofavilat0000stte/stteresaofavilat0000stte_djvu.txt",
+  "chars": 1719264
+ },
+ {
+  "slug": "julian-revelations",
+  "status": "ok",
+  "origin": "PG 52958 via pglaf",
+  "chars": 475950
+ },
+ {
+  "slug": "pascal-pensees",
+  "status": "pending"
+ },
+ {
+  "slug": "ignatius-spiritual-exercises",
+  "status": "ok",
+  "origin": "PG 70790 via pglaf",
+  "chars": 363856
+ },
+ {
+  "slug": "bunyan-pilgrims-progress",
+  "status": "ok",
+  "origin": "IA PilgrimsProgress-Portugues-Portugese-Portuguais-ByJohnBunyan/PilgrimsProgress-Portugues-Bunyan_djvu.txt",
+  "chars": 506004
+ },
+ {
+  "slug": "herbert-the-temple",
+  "status": "ok",
+  "origin": "IA teem00herb/teem00herb_djvu.txt",
+  "chars": 287993
+ },
+ {
+  "slug": "cassian-conferences",
+  "status": "pending"
+ },
+ {
+  "slug": "origen-first-principles-ia",
+  "status": "pending"
+ }
+]

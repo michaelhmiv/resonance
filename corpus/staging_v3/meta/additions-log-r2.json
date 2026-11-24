@@ -1,0 +1,305 @@
+[
+ {
+  "slug": "barlaam-and-ioasaph",
+  "kind": "gutenberg",
+  "chars": 487460,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/749/pg749.txt"
+ },
+ {
+  "slug": "on-holy-images",
+  "kind": "gutenberg",
+  "chars": 358486,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/49917/pg49917.txt"
+ },
+ {
+  "slug": "poems-1918",
+  "kind": "gutenberg",
+  "chars": 192454,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/22403/pg22403.txt"
+ },
+ {
+  "slug": "summa-contra-gentiles-seu-de-veritate-catholicae-fidei",
+  "kind": "ia",
+  "status": "pending",
+  "reason": "retry failed: https://archive.org/download/summacontragenti0000thom/summacontragenti0000thom_djvu.txt"
+ },
+ {
+  "slug": "the-homilies-of-st-john-chrysostom-on-the-acts-of-the-apostles-and-the-epistle-to-the-romans",
+  "kind": "ia",
+  "status": "pending",
+  "reason": "retry failed: https://archive.org/download/homiliesonactsof0011john/homiliesonactsof0011john_djvu.txt"
+ },
+ {
+  "slug": "writings-vol-1-2",
+  "kind": "gutenberg",
+  "chars": 931634,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/71937/pg71937.txt"
+ },
+ {
+  "slug": "abandonment-to-divine-providence",
+  "kind": "gutenberg",
+  "chars": 222047,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/52057/pg52057.txt"
+ },
+ {
+  "slug": "autobiography-life",
+  "kind": "gutenberg",
+  "chars": 1115001,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/8120/pg8120.txt"
+ },
+ {
+  "slug": "ruysbroeck-and-the-mystics",
+  "kind": "gutenberg",
+  "chars": 154471,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/66820/pg66820.txt"
+ },
+ {
+  "slug": "95-theses",
+  "kind": "gutenberg",
+  "chars": 49987,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/274/pg274.txt"
+ },
+ {
+  "slug": "large-catechism",
+  "kind": "gutenberg",
+  "chars": 288586,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/1722/pg1722.txt"
+ },
+ {
+  "slug": "letters-vol-1-2",
+  "kind": "gutenberg",
+  "chars": 1130022,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/45423/pg45423.txt"
+ },
+ {
+  "slug": "pneumatologia-or-a-discourse-concerning-the-holy-spirit",
+  "kind": "ia",
+  "chars": 1063923,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://archive.org/download/pneumatologiaord0001owen/pneumatologiaord0001owen_djvu.txt"
+ },
+ {
+  "slug": "power-through-prayer",
+  "kind": "gutenberg",
+  "chars": 145356,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/65115/pg65115.txt"
+ },
+ {
+  "slug": "preacher-and-prayer",
+  "kind": "gutenberg",
+  "chars": 143261,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/63486/pg63486.txt"
+ },
+ {
+  "slug": "purpose-in-prayer",
+  "kind": "gutenberg",
+  "chars": 227410,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/66112/pg66112.txt"
+ },
+ {
+  "slug": "small-catechism",
+  "kind": "gutenberg",
+  "chars": 43491,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/1670/pg1670.txt"
+ },
+ {
+  "slug": "heretics",
+  "kind": "gutenberg",
+  "chars": 388490,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/470/pg470.txt"
+ },
+ {
+  "slug": "orthodoxy",
+  "kind": "gutenberg",
+  "chars": 382102,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/130/pg130.txt"
+ },
+ {
+  "slug": "poetical-works-vol-1-2",
+  "kind": "gutenberg",
+  "chars": 587977,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/9543/pg9543.txt"
+ },
+ {
+  "slug": "selected-poems",
+  "kind": "gutenberg",
+  "chars": 219799,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/41215/pg41215.txt"
+ },
+ {
+  "slug": "selections-from-the-writings",
+  "kind": "gutenberg",
+  "chars": 507510,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/60333/pg60333.txt"
+ },
+ {
+  "slug": "st-francis-of-assisi",
+  "kind": "gutenberg",
+  "chars": 269710,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/63084/pg63084.txt"
+ },
+ {
+  "slug": "the-everlasting-man",
+  "kind": "gutenberg",
+  "chars": 624815,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/65688/pg65688.txt"
+ },
+ {
+  "slug": "the-spiritual-conferences",
+  "kind": "ia",
+  "chars": 904919,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://archive.org/download/spiritualconfere00franuoft/spiritualconfere00franuoft_djvu.txt"
+ },
+ {
+  "slug": "what-s-wrong-with-the-world",
+  "kind": "gutenberg",
+  "chars": 362799,
+  "status": "ok",
+  "recovered": true,
+  "from": "https://gutenberg.pglaf.org/cache/epub/1717/pg1717.txt"
+ },
+ {
+  "slug": "origen-first-principles-anf04",
+  "kind": "additions",
+  "chars": 4236619,
+  "status": "ok",
+  "from": "https://ccel.org/ccel/schaff/anf04/cache/anf04.txt",
+  "note": "Origen, On First Principles (ANF IV translation, public domain)"
+ },
+ {
+  "slug": "spurgeon-morning-and-evening",
+  "status": "pending",
+  "reason": "CCEL fetch failed: https://ccel.org/ccel/spurgeon/morning/cache/morning.txt"
+ },
+ {
+  "slug": "schaff-creeds-vol1",
+  "kind": "additions",
+  "chars": 3691888,
+  "status": "ok",
+  "from": "https://ccel.org/ccel/schaff/creeds1/cache/creeds1.txt",
+  "note": "Schaff, Creeds of Christendom vol 1 (ecumenical creeds)"
+ },
+ {
+  "slug": "schaff-creeds-vol3",
+  "kind": "additions",
+  "chars": 4453928,
+  "status": "ok",
+  "from": "https://ccel.org/ccel/schaff/creeds3/cache/creeds3.txt",
+  "note": "Schaff, Creeds of Christendom vol 3 (Heidelberg, Westminster)"
+ },
+ {
+  "slug": "desert-fathers-paradise-budge",
+  "kind": "additions",
+  "chars": 1413397,
+  "status": "ok",
+  "from": "https://archive.org/download/ParadiseOfTheHolyFathersV1/ParadiseOfTheHolyFathersV1_djvu.txt",
+  "note": "IA pre-1928 edition"
+ },
+ {
+  "slug": "desert-fathers-wisdom-hannay",
+  "status": "pending",
+  "reason": "IA search unresolved: title:(wisdom of the desert) AND creator:(hannay)"
+ },
+ {
+  "slug": "eckhart-sermons-field-1909",
+  "status": "pending",
+  "reason": "IA search unresolved: title:(meister eckhart) AND (sermons) AND date:[1900 TO 1928]"
+ },
+ {
+  "slug": "theologia-germanica-winkworth",
+  "status": "pending",
+  "reason": "IA search unresolved: title:(theologia germanica) AND date:[1850 TO 1928]"
+ },
+ {
+  "slug": "fenelon-spiritual-letters",
+  "status": "pending",
+  "reason": "IA search unresolved: title:(fenelon) AND (letters OR counsel) AND date:[1700 TO 1928]"
+ },
+ {
+  "slug": "guyon-method-of-prayer",
+  "status": "pending",
+  "reason": "IA search unresolved: title:(guyon) AND (prayer) AND date:[1700 TO 1928]"
+ },
+ {
+  "slug": "chrysostom-homilies-acts-romans-npnf11",
+  "kind": "additions",
+  "chars": 4442822,
+  "status": "ok",
+  "from": "ccel npnf111"
+ },
+ {
+  "slug": "spurgeon-morning-and-evening",
+  "status": "pending",
+  "reason": "IA unresolved r2"
+ },
+ {
+  "slug": "eckhart-sermons-field-1909",
+  "status": "pending",
+  "reason": "IA unresolved r2"
+ },
+ {
+  "slug": "theologia-germanica-winkworth",
+  "status": "pending",
+  "reason": "gutendex/pglaf unresolved"
+ },
+ {
+  "slug": "fenelon-spiritual-letters",
+  "status": "pending",
+  "reason": "IA unresolved r2"
+ },
+ {
+  "slug": "guyon-method-of-prayer",
+  "status": "pending",
+  "reason": "IA unresolved r2"
+ },
+ {
+  "slug": "desert-fathers-wisdom-hannay",
+  "status": "pending",
+  "reason": "IA unresolved r2"
+ }
+]

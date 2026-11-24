@@ -14,7 +14,7 @@
 
 import { type ReactNode } from 'react';
 import { View } from 'react-native-web';
-import { BottomTabBar } from '@resonance/ui';
+import { BottomTabBar } from './BottomTabBar';
 
 const MOBILE_BAR_RESERVE = 60; // matches .bottom-tab-bar height in globals.css
 

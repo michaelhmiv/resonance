@@ -1,0 +1,194 @@
+---
+source_kind: ccel_extract
+source_file: corpus/church_fathers_complete.txt
+section: contents@855
+title: The Canonical Epistle, With the Commentaries of Theodore Balsamon and John Zonaras
+---
+ANF06 CONTENTS 
+
+
+
+
+
+
+
+
+DIONYSIUS 
+
+
+
+
+
+
+
+
+JULIUS AFRICANUS 
+
+
+
+
+
+The Extant Writings of Julius Africanus 
+
+
+
+
+
+ANATOLIUS AND MINOR WRITERS 
+
+
+
+
+
+
+
+
+ALEXANDER OF LYCOPOLIS 
+
+
+Of the Manichaeans 
+
+
+
+
+
+PETER OF ALEXANDRIA 
+
+
+
+
+
+The Genuine Acts of Peter 
+
+
+
+
+
+The Canonical Epistle, With the Commentaries of Theodore Balsamon and John Zonaras 
+
+
+
+
+
+Fragments from the Writings of Peter 
+
+
+
+
+
+Epistles on the Arian Heresy And the Deposition of Arius 
+
+
+
+
+
+
+
+
+The Banquet of the Ten Virgins; Or, Concerning Chastity 
+
+
+
+
+
+Concerning Free-Will 
+
+
+
+
+
+
+
+
+Oration on the Palms 
+
+
+
+
+
+Three Fragments from the Homily on the Cross and Passion of Christ 
+
+
+
+
+
+Some Other Fragments of the Same Methodius 
+
+
+
+
+
+
+
+
+
+NS. HOMILY. AND LITURGIES 
+
+
+
+
+
+
+
+
+
+
+
+On the Workmanship of God, or the Formation of Man A Treatise Addressed to His Pupil Demetrianus 
+
+
+
+
+
+Of the Manner in Which the Persecutors Died Addressed to Donatus 
+
+
+
+
+
+
+
+
+Fragments of Lactantius 
+
+
+VENANTIUS 
+
+
+On Easter 
+
+
+ASTERIUS URBANUS 
+
+
+
+
+
+The Extant Writings of Asterius Urbanus 
+
+
+
+
+
+VICTORINUS 
+
+
+
+
+
+Commentary On The Apocalypse of The Blessed John 
+
+
+
+
+
+DIONYSIUS 
+
+
+Against the Sabellians 
+
+
+
+
+
+The Teaching of The Twelve Apostles

@@ -1,0 +1,58 @@
+name: bakeoff-qwen3-emb
+on:
+  workflow_dispatch:
+
+jobs:
+  embed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet onnxruntime transformers numpy huggingface_hub
+      - name: Build v3 subset
+        run: |
+          python scripts/corpus/build_units.py
+          python scripts/corpus/chunk_v3.py
+          python scripts/bakeoff/make_subset.py
+      - name: Embed shard ${{ matrix.shard }}/5 (qwen3-emb-0.6b)
+        run: python scripts/bakeoff/run_retriever.py shard qwen3-emb-0.6b ${{ matrix.shard }} 5
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shard-qwen3-emb-0.6b-${{ matrix.shard }}
+          path: shard_qwen3-emb-0.6b_${{ matrix.shard }}.npy
+
+  combine:
+    needs: embed
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet onnxruntime transformers numpy huggingface_hub
+      - name: Build v3 subset
+        run: |
+          python scripts/corpus/build_units.py
+          python scripts/corpus/chunk_v3.py
+          python scripts/bakeoff/make_subset.py
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: shard-qwen3-emb-0.6b-*
+          merge-multiple: true
+      - name: Combine & evaluate qwen3-emb-0.6b
+        run: python scripts/bakeoff/run_retriever.py combine qwen3-emb-0.6b 5
+      - uses: actions/upload-artifact@v4
+        with:
+          name: retriever-qwen3-emb-0.6b
+          path: |
+            results-qwen3-emb-0.6b*.json
+            candidates-qwen3-emb-0.6b*.json
+            metrics-qwen3-emb-0.6b.json

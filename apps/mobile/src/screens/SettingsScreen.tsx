@@ -29,10 +29,11 @@ import {
 } from 'react-native';
 
 import { colors, fontFamilies, layout, spacing } from '@resonance/theme';
-import { EMBEDDING_MODELS, type EmbeddingModelId, getModelInfo } from '@resonance/core';
-import { LLM_MODELS } from '@resonance/core';
+import { OFFLINE_ENGINE_MANIFEST } from '@resonance/core';
 import { useSettingsStore } from '../settings/settingsStore';
-import { switchEmbeddingModel, setLlmActive } from '../settings/modelManager';
+import { useOfflineEngineStore } from '../packages/offlineEngineManager';
+import { usePersonalLibraryStore } from '../personal/personalLibraryService';
+import { PersonalLibraryImportModal } from '../components/PersonalLibraryImportModal';
 import {
   getStorageInfo,
   clearAllJournalData,
@@ -45,7 +46,6 @@ import {
   Section,
   ToggleRow,
   SegmentedRow,
-  ChoiceRow,
   ActionRow,
   InfoRow,
   RowDivider,
@@ -80,8 +80,8 @@ export function SettingsScreen(): ReactNode {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <EmbeddingModelSection />
-      <ReflectionModelSection />
+      <OfflineEngineSection />
+      <PersonalLibrarySection />
       <ReadingPreferencesSection />
       <PrivacyDataSection />
       <StorageSection />
@@ -96,108 +96,265 @@ export function SettingsScreen(): ReactNode {
   );
 }
 
-// ── 1. Embedding Model ────────────────────────────────────────────────────
+// ── 1. Offline Resonance Engine (Voyage-4-Nano 512d + Qwen3-Reranker-0.6B) ──
 
-const EMBEDDING_CHOICES = EMBEDDING_MODELS.map((m) => ({
-  value: m.id as EmbeddingModelId,
-  label: m.label,
-  sizeMb: m.sizeMb,
-  license: m.license,
-}));
+function OfflineEngineSection(): ReactNode {
+  const {
+    phase,
+    wifiOnly,
+    downloadedBytes,
+    totalBytes,
+    groups,
+    corpusManifest,
+    installedPackIds,
+    setSheetVisible,
+    setWifiOnly,
+    startDownload,
+    pauseDownload,
+    syncCorpusManifest,
+    downloadCorpusPack,
+    removeOfflineEngine,
+    refreshStatus,
+  } = useOfflineEngineStore();
 
-function EmbeddingModelSection(): ReactNode {
-  const embeddingModel = useSettingsStore((s) => s.embeddingModel);
-  const setEmbeddingModel = useSettingsStore((s) => s.setEmbeddingModel);
-  const [switching, setSwitching] = useState(false);
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
+  const [statusNote, setStatusNote] = useState<string | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
-  const handleSelect = useCallback(
-    (id: EmbeddingModelId) => {
-      if (id === embeddingModel) return;
-      setEmbeddingModel(id);
-      // Fire-and-forget the model swap (stub loads the new ONNX session;
-      // failures degrade gracefully — resonance simply pauses until ready).
-      setSwitching(true);
-      void switchEmbeddingModel(id).finally(() => setSwitching(false));
-    },
-    [embeddingModel, setEmbeddingModel]
-  );
+  useEffect(() => {
+    void refreshStatus();
+  }, [refreshStatus]);
+
+  const pct =
+    totalBytes > 0 ? Math.min(100, Math.round((downloadedBytes / totalBytes) * 100)) : 0;
+
+  const phaseLabel =
+    phase === 'ready'
+      ? 'Ready offline'
+      : phase === 'downloading'
+        ? `Downloading (${pct}%)`
+        : phase === 'installing_packs'
+          ? 'Indexing Library…'
+          : phase === 'paused'
+            ? `Paused (${pct}%)`
+            : phase === 'error'
+              ? 'Interrupted — tap to retry'
+              : 'Not downloaded (~1.08 GB)';
+
+  const handleCheckUpdates = useCallback(async () => {
+    setCheckingUpdates(true);
+    setStatusNote(null);
+    try {
+      const m = await syncCorpusManifest();
+      setStatusNote(
+        `Synced ${m.packs.length} pack(s) from GitHub Releases (${m.releaseTag}).`
+      );
+    } finally {
+      setCheckingUpdates(false);
+    }
+  }, [syncCorpusManifest]);
 
   return (
     <Section
-      title="Embedding Model"
+      title="Offline Resonance Engine"
       description={
-        'The model that finds echoes between your writing and the Library. ' +
-        'This is local math — it does not interpret or generate text.'
+        'Local-only passage search & relevance scoring. Never generates prose, ' +
+        'prayers, or advice — only surfaces real passages from Scripture and your Library.'
       }
     >
-      {switching ? (
-        <View style={styles.loadingInline}>
-          <ActivityIndicator color={colors.accentMuted} size="small" />
-        </View>
+      <InfoRow label="Status" value={phaseLabel} />
+      <RowDivider />
+      <InfoRow
+        label="Embedder"
+        value={
+          groups.embedder.ready
+            ? 'Voyage-4-Nano 512d · Ready'
+            : `Voyage-4-Nano 512d · ${formatBytes(groups.embedder.totalBytes)}`
+        }
+      />
+      <RowDivider />
+      <InfoRow
+        label="Reranker"
+        value={
+          groups.reranker.ready
+            ? 'Qwen3-Reranker-0.6B · Ready'
+            : `Qwen3-Reranker-0.6B · ${formatBytes(groups.reranker.totalBytes)}`
+        }
+      />
+      <RowDivider />
+      <InfoRow
+        label="Fusion & Silence"
+        value={`α=${OFFLINE_ENGINE_MANIFEST.fusionAlpha.toFixed(2)} · τ=${OFFLINE_ENGINE_MANIFEST.silenceThreshold.toFixed(2)}`}
+      />
+      <RowDivider />
+      <ToggleRow
+        label="Prefer Wi-Fi for downloads"
+        hint="Recommended for the ~1.08 GB one-time download."
+        value={wifiOnly}
+        onToggle={(v) => void setWifiOnly(v)}
+      />
+      <RowDivider />
+
+      {phase === 'downloading' || phase === 'installing_packs' ? (
+        <>
+          <ActionRow
+            label={`View download progress (${pct}%)`}
+            onPress={() => setSheetVisible(true)}
+          />
+          <RowDivider />
+          <ActionRow label="Pause download" onPress={() => void pauseDownload()} />
+        </>
+      ) : phase === 'paused' ? (
+        <>
+          <ActionRow
+            label={`Resume download (${pct}%)`}
+            onPress={() => {
+              setSheetVisible(true);
+              void startDownload({ includeCorpusPacks: true });
+            }}
+          />
+        </>
+      ) : phase !== 'ready' ? (
+        <ActionRow
+          label="Download offline engine (~1.08 GB)"
+          onPress={() => setSheetVisible(true)}
+        />
       ) : null}
 
-      {EMBEDDING_CHOICES.map((opt, idx) => (
-        <ChoiceRow
-          key={opt.value}
-          label={opt.label}
-          meta={`${opt.sizeMb} MB · ${opt.license}`}
-          selected={opt.value === embeddingModel}
-          onSelect={() => handleSelect(opt.value)}
-        />
-      ))}
+      <RowDivider />
+      <ActionRow
+        label={
+          checkingUpdates
+            ? 'Checking GitHub Releases…'
+            : 'Check for Library pack updates'
+        }
+        onPress={() => void handleCheckUpdates()}
+      />
 
-      <QuietNote>
-        Active: {getModelInfo(embeddingModel).label}. Switching re-indexes your
-        journal on next launch.
-      </QuietNote>
+      {corpusManifest.packs.map((pack) => {
+        const installed = installedPackIds.includes(pack.id);
+        const packBytes = pack.passagesBytes + pack.vectorsBytes;
+        return (
+          <View key={pack.id}>
+            <RowDivider />
+            <ActionRow
+              label={
+                installed
+                  ? `${pack.label} · Installed`
+                  : `Download ${pack.label} (${formatBytes(packBytes)})`
+              }
+              onPress={() => void downloadCorpusPack(pack.id)}
+            />
+          </View>
+        );
+      })}
+
+      {downloadedBytes > 0 ? (
+        <>
+          <RowDivider />
+          <ActionRow
+            label={`Remove offline engine (${formatBytes(downloadedBytes)})`}
+            destructive
+            onPress={() => setConfirmRemove(true)}
+          />
+        </>
+      ) : null}
+
+      {statusNote ? <QuietNote>{statusNote}</QuietNote> : null}
+
+      <ConfirmModal
+        visible={confirmRemove}
+        title="Remove offline engine?"
+        body="Deletes the downloaded ONNX models and pre-embedded pack vectors to reclaim storage. Your journal entries, Scripture, and imported Personal Library texts stay intact."
+        confirmLabel="Remove"
+        destructive
+        onConfirm={() => {
+          setConfirmRemove(false);
+          void removeOfflineEngine();
+        }}
+        onCancel={() => setConfirmRemove(false)}
+      />
     </Section>
   );
 }
 
-// ── 2. Reflection Model (LLM) ─────────────────────────────────────────────
+// ── 2. Personal Library Folder (EPUB, PDF, DOCX, HTML, MD, TXT) ────────────
 
-function ReflectionModelSection(): ReactNode {
-  const llmEnabled = useSettingsStore((s) => s.llmEnabled);
-  const llmModel = useSettingsStore((s) => s.llmModel);
-  const setLlmEnabled = useSettingsStore((s) => s.setLlmEnabled);
+function PersonalLibrarySection(): ReactNode {
+  const {
+    connectedFolderLabel,
+    works,
+    scanning,
+    embeddingActiveBookId,
+    initialize,
+    scanFolders,
+    processEmbeddingQueue,
+  } = usePersonalLibraryStore();
 
-  const handleToggle = useCallback(
-    (enabled: boolean) => {
-      setLlmEnabled(enabled);
-      // Fire-and-forget the load/unload of the on-device LLM.
-      void setLlmActive(llmModel, enabled);
-    },
-    [llmModel, setLlmEnabled]
-  );
+  const [importVisible, setImportVisible] = useState(false);
 
-  const activeModel = LLM_MODELS.find((m) => m.id === llmModel) ?? LLM_MODELS[0];
+  useEffect(() => {
+    void initialize();
+  }, [initialize]);
+
+  const readyCount = works.filter((w) => w.embeddingStatus === 'ready').length;
+  const pendingCount = works.filter(
+    (w) => w.embeddingStatus === 'pending' || w.embeddingStatus === 'embedding'
+  ).length;
 
   return (
     <Section
-      title="Reflection Model"
+      title="Personal Library & Device Folder"
       description={
-        'Generates reflection prompts and weekly summaries. Runs entirely ' +
-        'on-device. Never writes prayers or interprets Scripture.'
+        'Connect a folder on your device to import your own EPUB, PDF, DOCX, ' +
+        'HTML, Markdown, and text works. Extracted, editable, and embedded 100% locally.'
       }
     >
-      <ToggleRow
-        label="Enable reflection features"
-        value={llmEnabled}
-        onToggle={handleToggle}
+      <InfoRow
+        label="Connected folder"
+        value={connectedFolderLabel ?? 'Not linked'}
       />
       <RowDivider />
-      {llmEnabled ? (
-        <View style={styles.subBlock}>
-          <InfoRow label="Model" value={activeModel.label} />
-          <InfoRow
-            label="Size"
-            value={`${Math.round(activeModel.sizeMb / 1024)} GB`}
+      <InfoRow
+        label="Imported works"
+        value={
+          works.length === 0
+            ? 'None yet'
+            : `${works.length} (${readyCount} embedded)`
+        }
+      />
+      <RowDivider />
+      <ActionRow
+        label="Import books & manage folder"
+        onPress={() => setImportVisible(true)}
+      />
+      <RowDivider />
+      <ActionRow
+        label={scanning ? 'Scanning folder…' : 'Scan folder for new books'}
+        onPress={() => void scanFolders()}
+      />
+      {pendingCount > 0 ? (
+        <>
+          <RowDivider />
+          <ActionRow
+            label={
+              embeddingActiveBookId
+                ? 'Embedding personal works…'
+                : `Embed ${pendingCount} pending work${pendingCount === 1 ? '' : 's'} now`
+            }
+            onPress={() => void processEmbeddingQueue()}
           />
-          <InfoRow label="License" value={activeModel.license} />
-        </View>
-      ) : (
-        <QuietNote>Off. Reflection prompts use your own recent writing only.</QuietNote>
-      )}
+        </>
+      ) : null}
+      <QuietNote>
+        Edit any book&apos;s title, author, era, shelf, tags, or echo toggle anytime
+        from Word → Library.
+      </QuietNote>
+
+      <PersonalLibraryImportModal
+        visible={importVisible}
+        onClose={() => setImportVisible(false)}
+      />
     </Section>
   );
 }
