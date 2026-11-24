@@ -1,0 +1,39 @@
+name: rerank-decider-test
+on:
+  workflow_dispatch:
+    inputs:
+      candidates_run:
+        description: 'Run ID holding the bakeoff-candidates artifact'
+        required: true
+jobs:
+  rerank:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install llama.cpp
+        run: |
+          gh release download --repo ggerganov/llama.cpp --pattern '*ubuntu-x64.tar.gz' --dir /tmp/llama
+          tar -xzf /tmp/llama/*.tar.gz -C /tmp/llama
+          BIN=$(find /tmp/llama -name llama-server -type f | head -1)
+          echo "$(dirname "$BIN")" >> "$GITHUB_PATH"
+          "$BIN" --version || true
+      - name: Download quantized Gemma 3n E2B (Q4_K_M)
+        run: |
+          curl -L --fail -o /tmp/model.gguf \
+            'https://huggingface.co/unsloth/gemma-3n-E2B-it-GGUF/resolve/main/gemma-3n-E2B-it-Q4_K_M.gguf'
+          ls -la /tmp/model.gguf
+      - name: Fetch candidates
+        run: gh run download ${{ inputs.candidates_run }} --name bakeoff-candidates --dir /tmp/cand
+      - name: Rerank shard
+        run: python3 scripts/bakeoff/rerank_decider.py ${{ matrix.shard }} 10 /tmp/cand/bakeoff-candidates.json /tmp/model.gguf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rerank-shard-${{ matrix.shard }}
+          path: rerank-shard-${{ matrix.shard }}.json
