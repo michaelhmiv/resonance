@@ -1,0 +1,240 @@
+---
+source_kind: ccel_extract
+source_file: corpus/church_fathers_complete.txt
+section: NPNF1-03 / ST. AUGUSTINE: ON THE HOLY TRINITY, DOCTRINAL TREATISES, MORAL TREATISES
+title: On Lying
+---
+NPNF1-03 CONTENTS 
+
+
+
+
+
+DOCTRINAL TREATISES OF SAINT AUGUSTIN 
+
+
+
+
+
+On The Trinity 
+
+
+
+
+
+The Enchiridion 
+
+
+
+
+
+On the Catechising of the Uninstructed 
+
+
+A Treatise on Faith and the Creed 
+
+
+
+
+
+Concerning Faith of Things Not Seen 
+
+
+
+
+
+
+
+
+On the Profit of Believing 
+
+On the Creed 
+
+MORAL TREATISES OF SAINT AUGUSTIN 
+On Continence 
+
+
+On the Good of Marriage 
+
+
+
+
+
+Of Holy Virginity 
+
+
+
+
+
+On the Good of Widowhood 
+
+
+
+
+
+On Lying 
+
+Against Lying 
+
+Of the Work of Monks 
+On Patience 
+
+
+On Care to Be Had for the Dead 
+
+
+
+
+
+NPNF 1-04 
+ST. AUGUSTINE: THE WRITINGS AGAINST THE MANICHAEANS AND AGAINST THE DONATISTS 
+
+
+NPNF1-04 CONTENTS 
+
+
+
+
+
+I. THE ANTI-MANICHAEAN WRITINGS 
+
+
+
+
+
+Introductory Essay on the Manichaean Heresy 
+
+
+
+
+
+On The Morals of The Catholic Church 
+
+
+
+
+
+On The Morals of The Manichaeans 
+
+
+On Two Souls, Against The Manichaeans 
+
+
+
+
+
+Acts Or Disputation Against Fortunatus The Manichaean 
+
+
+
+
+
+Against The Epistle of Manichaeus, Called Fundamental 
+
+
+
+
+
+Reply To Faustus The Manichaean 
+
+
+
+
+
+Concerning The Nature of Good, Against The Manichaeans 
+
+
+
+
+
+I]. THE ANTI-DONATIST WRITINGS 
+
+
+On Baptism, Against the Donatists 
+
+
+
+
+
+Answer To The Letters of Petilian, The Donatist 
+
+
+
+
+
+The Correction of The Donatists 
+
+
+
+
+
+NPNF1-05 
+
+
+
+
+
+SAINT AUGUSTIN’S ANTI-PELAGIAN WORKS 
+
+
+
+
+
+NPNF1-05 CONTENTS 
+
+
+
+
+
+A Treatise On The Merits And Forgiveness of Sins, And On The Baptism of Infants 
+
+
+
+
+
+
+
+
+A Treatise Concerning Man’s Perfection In Righteousness 
+
+
+
+
+
+A Work On The Proceedings of Pelagius 
+
+
+
+
+
+A Treatise On The Grace of Christ, And On Original Sin 
+
+
+
+
+
+On Marriage And Concupiscence 
+
+
+
+
+
+
+
+
+A Treatise On Grace And Free Will 
+
+
+A Treatise On Rebuke And Grace 
+
+
+
+
+
+A Treatise On The Predestination of The Saints 
+
+
+
+
+
+A Treatise On The Gift of Perseverance

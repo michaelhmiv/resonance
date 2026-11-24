@@ -1,0 +1,107 @@
+name: Build & Publish Corpus Packs (512d int8)
+
+# Builds pre-embedded 512d int8 RVEC + gzipped passage packs for the full
+# 110,893-chunk corpus using pinned Voyage-4-Nano INT8 ONNX weights.
+#
+# Editable GitHub Releases:
+#   Setting `publish_release: true` creates or updates the specified GitHub
+#   Release (`--clobber`) and refreshes `packs-manifest.json` with SHA-256
+#   checksums. You can also edit release notes or replace individual pack
+#   assets directly in the GitHub Releases UI without shipping a new APK.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "GitHub Release tag to create or update"
+        required: true
+        default: "corpus-packs-latest"
+      pack_version:
+        description: "Semantic version written into packs-manifest.json"
+        required: true
+        default: "1.0.0"
+      publish_release:
+        description: "Upload packs + manifest directly to GitHub Releases"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  embed-shards:
+    name: Embed shard ${{ matrix.shard }}/8
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Python ONNX dependencies
+        run: pip install --no-cache-dir numpy onnxruntime huggingface-hub tokenizers
+      - name: Embed corpus shard ${{ matrix.shard }}
+        run: |
+          python3 scripts/corpus/build_packs.py embed-shard \
+            --chunks corpus/chunks_v3.jsonl \
+            --shard ${{ matrix.shard }} \
+            --num-shards 8 \
+            --batch-size 16 \
+            --threads 4 \
+            --out-dir out/shards
+      - uses: actions/upload-artifact@v4
+        with:
+          name: corpus-pack-shard-${{ matrix.shard }}
+          path: out/shards/
+          retention-days: 7
+
+  assemble-and-publish:
+    name: Assemble RVEC packs & manifest
+    needs: embed-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --no-cache-dir numpy
+      - name: Download all shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: corpus-pack-shard-*
+          path: out/shards
+          merge-multiple: true
+      - name: Assemble RVEC v1 packs + packs-manifest.json
+        run: |
+          python3 scripts/corpus/build_packs.py assemble \
+            --chunks corpus/chunks_v3.jsonl \
+            --shards-dir out/shards \
+            --out-dir out/packs \
+            --repo "${{ github.repository }}" \
+            --release-tag "${{ inputs.release_tag }}" \
+            --version "${{ inputs.pack_version }}"
+          ls -lh out/packs/
+          cat out/packs/packs-manifest.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: resonance-corpus-packs-${{ inputs.pack_version }}
+          path: out/packs/
+          retention-days: 30
+      - name: Create or update editable GitHub Release
+        if: ${{ inputs.publish_release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ inputs.release_tag }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/packs/* --clobber
+          else
+            gh release create "$TAG" out/packs/* \
+              --title "Resonance Corpus Packs (${{ inputs.pack_version }})" \
+              --notes "Pre-embedded 512d int8 Voyage-4-Nano corpus packs and packs-manifest.json. Editable anytime via workflow re-run or GitHub Releases UI."
+          fi

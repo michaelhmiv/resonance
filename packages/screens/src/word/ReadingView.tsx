@@ -488,9 +488,37 @@ export function ReadingView({
     setActiveTarget(null);
   }, []);
 
-  // ── Library sections (pseudo-chapters, batches of 25) ──────────────────
+  // ── Library sections (real chapter/division headings when present, else 25-passage parts) ──
   const librarySections = useMemo(() => {
     if (isScripture || passages.length === 0) return [];
+
+    const hasDivisions = passages.some(
+      (p) => 'division' in p && typeof p.division === 'string' && p.division.trim().length > 0
+    );
+
+    if (hasDivisions) {
+      const sections: { title: string; data: (VersePassage | LibraryPassage)[] }[] = [];
+      let currentTitle: string | null = null;
+      let currentData: (VersePassage | LibraryPassage)[] = [];
+
+      for (const p of passages) {
+        const div: string =
+          'division' in p && typeof p.division === 'string' && p.division.trim().length > 0
+            ? p.division.trim()
+            : currentTitle ?? 'Opening';
+        if (currentTitle !== null && div !== currentTitle && currentData.length > 0) {
+          sections.push({ title: currentTitle, data: currentData });
+          currentData = [];
+        }
+        currentTitle = div;
+        currentData.push(p);
+      }
+      if (currentData.length > 0) {
+        sections.push({ title: currentTitle ?? 'Section 1', data: currentData });
+      }
+      return sections;
+    }
+
     const batchSize = 25;
     const sections: { title: string; data: (VersePassage | LibraryPassage)[] }[] = [];
     for (let i = 0; i < passages.length; i += batchSize) {

@@ -10,10 +10,27 @@ Allowed LLM uses:
 - shift narratives
 - concise summaries of evidence windows
 - operational organization
+- **passage selection for retrieval (ruled by Michael, 2026-11-24):** a
+  *local, on-device* model may read a journal entry together with an
+  embedding-retrieved candidate shortlist and choose/order the passages
+  shown — a librarian, never an author. It produces no text the user reads
+  as spiritual content; every passage shown remains a real text from
+  Scripture, the author library, or the user's own writings. Embeddings
+  retrieve by resemblance and cannot discern posture or direction (who
+  wronged whom, which way the writer is moving); the reader step exists
+  to exercise exactly that judgment, locally and privately. *(Adopted
+  2026-11-24 via bake-off v2: `Voyage-4-Nano` INT8 ONNX @ 512d `int8`
+  packs + `Qwen3-Reranker-0.6B` INT8 ONNX yes/no scorer, both Apache 2.0,
+  generating zero user-facing prose; see `bakeoff-v2-decision.md`.)*
 
 Disallowed posture:
 
 - generated prayers/advice as the primary product
+- generated reflection questions or devotional prompts (Michael, 2026-11-24:
+  no boilerplate questions wasting the user's time — the app leads people to
+  real texts; it does not manufacture engagement filler)
+- any cloud LLM in the product path (Michael, 2026-11-24: the reader is
+  local, on-device, or there is no reader)
 - confident spiritual diagnosis
 - treating model interpretations as source-of-truth
 

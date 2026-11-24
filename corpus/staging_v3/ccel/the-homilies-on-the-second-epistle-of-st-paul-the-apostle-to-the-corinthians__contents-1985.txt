@@ -1,0 +1,38 @@
+---
+source_kind: ccel_extract
+source_file: corpus/church_fathers_complete.txt
+section: contents@1985
+title: The Homilies On The Second Epistle of St. Paul The Apostle To The Corinthians
+---
+NPNF1-11 CONTENTS 
+
+
+
+
+
+
+
+
+The Homilies On The Second Epistle of St. Paul The Apostle To The Corinthians 
+
+
+
+
+
+
+
+
+
+
+
+NPNF1-13 
+
+
+
+
+
+
+
+
+The Homilies of St. John Chrysostom On The Epistles of St. Paul The Apostle To The Philippians, Colossians, And 
+Thessalonians

@@ -17,6 +17,8 @@ import type {
   LibraryPackage,
   LibraryBook,
   LibraryPassage,
+  PersonalWorkMetadata,
+  PersonalWorkMetadataPatch,
   JournalSegment,
   Highlight,
   Bookmark,
@@ -45,6 +47,12 @@ export interface DataLayer {
   getLibraryPackages(): Promise<LibraryPackage[]>;
   getLibraryBook(bookId: string): Promise<LibraryBook | null>;
   getLibraryPassages(bookId: string): Promise<LibraryPassage[]>;
+  /** Optional: list personal user-imported works with full metadata/embedding state. */
+  getPersonalWorks?(): Promise<PersonalWorkMetadata[]>;
+  /** Optional: update editable metadata (title, author, era, collection, tags, notes, resonance toggle). */
+  updatePersonalWorkMetadata?(bookId: string, patch: PersonalWorkMetadataPatch): Promise<PersonalWorkMetadata | null>;
+  /** Optional: delete a user-imported personal work, its passages, vectors, and local file copy. */
+  deletePersonalWork?(bookId: string): Promise<boolean>;
   /**
    * Returns the full voice library catalog with the current user's per-book
    * opt-in state. Replaces the per-package `getLibraryPackagePrefs`.

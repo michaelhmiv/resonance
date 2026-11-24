@@ -1,0 +1,26 @@
+---
+source_kind: ccel_extract
+source_file: corpus/church_fathers_complete.txt
+section: contents@2146
+title: The Ecclesiastical History of Socrates Scholasticus
+---
+NPNF2-02 CONTENTS 
+
+
+
+
+
+Theecclesiastical History of Socrates Scholasticus 
+
+
+
+
+
+
+
+
+The Ecclesiastical History of Sozomen 
+
+
+NF2-03 
+;ODORET, JEROME, GENNADIUS, & RUFINUS: HISTORICAL WRITINGS

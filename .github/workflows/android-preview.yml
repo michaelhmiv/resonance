@@ -1,0 +1,131 @@
+name: Android preview APK
+
+# Phase 1 (issue #53): build a sideloadable Android APK on GitHub
+# Actions and distribute it through Firebase App Distribution.
+# Michael ruled 2026-11-23 to use Actions instead of EAS Build —
+# no Expo account, same runner pattern as his other apps.
+#
+# Signing: the banked upload keystore (repo secrets
+# ANDROID_KEYSTORE_*) is the app's permanent signing identity, so
+# Firebase builds update in place on a tester's phone. The
+# generated build.gradle signs release with the debug key; that
+# line is removed so the release comes out unsigned, then
+# zipalign + apksigner sign it with the banked key.
+#
+# Release notes: Firebase shows apps/mobile/release-notes.txt to
+# testers. Per Michael's standing rule the notes must describe
+# what actually changed in THIS build — refresh that file in the
+# same commit as any user-visible change before pushing.
+
+on:
+  workflow_dispatch:
+  push:
+    # workflow_dispatch requires the workflow on the default branch,
+    # so pushes also build. The phase1 branch entry can be dropped
+    # once this lands on main.
+    branches: [main, phase1-bootable-apk]
+    paths:
+      - "apps/mobile/**"
+      - "packages/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/android-preview.yml"
+
+permissions:
+  contents: read
+
+env:
+  FIREBASE_DISTRIBUTION_TESTERS: michaelhmiv@gmail.com
+
+jobs:
+  checks:
+    name: Typecheck (all workspaces)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # --ignore-scripts: hnswlib-node (web-server-only) builds a
+      # native addon via node-gyp; nothing in the checks or the
+      # Android bundle executes it.
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+
+  android-apk:
+    name: Build + distribute APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Expo prebuild (generates android/)
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform android --no-install
+      - name: Remove debug signing from release build type
+        working-directory: apps/mobile/android
+        run: |
+          sed -i '/signingConfig signingConfigs.debug/d' app/build.gradle
+          if grep -q "signingConfig signingConfigs.debug" app/build.gradle; then
+            echo "::error::debug signingConfig still present in build.gradle"
+            exit 1
+          fi
+          echo "Release build type is unsigned; banked keystore signs below."
+      - name: Gradle assembleRelease (unsigned)
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Sign with banked upload keystore
+        working-directory: apps/mobile/android
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload-keystore.p12"
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          UNSIGNED=$(ls app/build/outputs/apk/release/*-unsigned.apk | head -1)
+          if [ -z "$UNSIGNED" ]; then
+            echo "::error::no unsigned APK found"; ls app/build/outputs/apk/release/; exit 1
+          fi
+          "$BUILD_TOOLS/zipalign" -p -f 4 "$UNSIGNED" aligned.apk
+          "$BUILD_TOOLS/apksigner" sign \
+            --ks "$RUNNER_TEMP/upload-keystore.p12" \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --key-pass env:ANDROID_KEY_PASSWORD \
+            --out resonance-preview.apk aligned.apk
+          "$BUILD_TOOLS/apksigner" verify --print-certs resonance-preview.apk
+          ls -la resonance-preview.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: resonance-preview-apk
+          path: apps/mobile/android/resonance-preview.apk
+          retention-days: 30
+      - name: Configure Firebase credentials
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+      - name: Distribute via Firebase App Distribution
+        env:
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+        run: |
+          firebase appdistribution:distribute \
+            apps/mobile/android/resonance-preview.apk \
+            --app "$FIREBASE_APP_ID" \
+            --testers "$FIREBASE_DISTRIBUTION_TESTERS" \
+            --release-notes-file apps/mobile/release-notes.txt

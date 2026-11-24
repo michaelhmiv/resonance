@@ -129,6 +129,7 @@ const raw = {
   installedVoices: [
     { id: 'voice_julian', title: 'Revelations of Divine Love', author: 'Julian of Norwich', era: 'Medieval', packageId: 'medieval_devotional' },
     { id: 'voice_lawrence', title: 'The Practice of the Presence of God', author: 'Brother Lawrence', era: '17th c.', packageId: 'catholic_reform' },
+    { id: 'personal_bonhoeffer', title: 'Life Together', author: 'Dietrich Bonhoeffer', era: 'Personal', packageId: 'personal:personal-library', source: 'personal' },
   ],
 };
 
@@ -146,7 +147,10 @@ assert.equal(summary.findingYou[0].bookName, 'Matthew');
 assert.equal(summary.findingYou[0].count, 2);
 assert.equal(summary.findingYou[0].neverRead, true, 'unread Matthew must be flagged neverRead=true');
 assert.equal(summary.bookshelf.scripture.length, 66, 'bookshelf must include all 66 Bible books');
-assert.equal(summary.bookshelf.literature.length, 2, 'bookshelf must include installed literature');
+assert.equal(summary.bookshelf.literature.length, 3, 'bookshelf must include installed literature + personal library');
+
+const personalVol = summary.bookshelf.literature.find((v) => v.id === 'personal_bonhoeffer');
+assert.equal(personalVol.groupId, 'personal', 'personal library work must classify into Personal shelf volume');
 
 const exodusVol = summary.bookshelf.scripture.find((v) => v.id === 'Exodus');
 const matthewVol = summary.bookshelf.scripture.find((v) => v.id === 'Matthew');

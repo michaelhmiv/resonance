@@ -6,11 +6,22 @@
     "declaration": true,
     "baseUrl": ".",
     "paths": {
-      "@resonance/core": ["../core/src"],
-      "@resonance/core/*": ["../core/src/*"],
-      "@resonance/theme": ["../theme/src"],
-      "@resonance/theme/*": ["../theme/src/*"]
-    }
+      "@resonance/core": [
+        "../core/src"
+      ],
+      "@resonance/core/*": [
+        "../core/src/*"
+      ],
+      "@resonance/theme": [
+        "../theme/src"
+      ],
+      "@resonance/theme/*": [
+        "../theme/src/*"
+      ]
+    },
+    "ignoreDeprecations": "6.0"
   },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*"
+  ]
 }

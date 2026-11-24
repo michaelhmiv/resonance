@@ -1,225 +1,396 @@
 /**
- * Resonance service — matches journal text to Library passages and surfaces
- * the most resonant Scripture, voices, and past entries.
+ * Resonance service — matches journal text to Scripture, Voices of the Church,
+ * user-imported Personal Library works, and past journal entries.
  *
- * Pipeline: embed journal text → cosine similarity against all passage
- * vectors → selection (top-K with diversity) → return as ResonanceCard[].
- *
- * The vectors for Library passages are pre-computed at seed time and loaded
- * into memory as Float32Array. User journal vectors are stored in SQLite
- * (journal_segment_vectors) and loaded on demand.
- *
- * (design spec §7.2 — resonance: inline cards, selection algorithm,
- *  "where you were" past entries, reflection prompts)
+ * Locked shipping pipeline (bake-off v2 confirmed 512d):
+ *   1. Embed journal entry via Voyage-4-Nano INT8 -> 512d L2-normalized query
+ *   2. Stratified Per-Library Fetch against 512d int8 vectors:
+ *        - Top 20 Scripture passages (.rvec)
+ *        - Top 30 Witness + Personal Library passages (.rvec + SQLite passage_vectors)
+ *   3. Pointwise Yes/No reranking via Qwen3-Reranker-0.6B INT8 (when ready)
+ *   4. Per-Library Z-Score Fusion (α = 0.60) + Calibrated Silence (τ = 0.06) +
+ *      Per-Work Cap (2)
+ *   5. Past-self echoes from SQLite `journal_segment_vectors`
  */
 
+import * as FileSystem from 'expo-file-system/legacy';
+import {
+  EMBEDDING_DIM,
+  OFFLINE_ENGINE_MANIFEST,
+  base64ToBytes,
+  blobToVector,
+  cosineSimilarity,
+  dotProductFloat32Int8,
+  parseRvec,
+  perLibraryZScoreFuse,
+  type FusionCandidate,
+  type ResonanceCard,
+  type ResonanceResult,
+} from '@resonance/core';
 import { getDatabase } from '../db/database';
 import {
-  embedText,
-  cosineSimilarity,
-  blobToVector,
+  embedQuery,
   isEmbeddingReady,
 } from './embeddingService';
-import type { PassageHit } from '../db/queries/bibleQueries';
+import {
+  isRerankerReady,
+  scoreCandidatePair,
+} from './rerankerService';
+import {
+  getPackLocalPaths,
+  useOfflineEngineStore,
+} from '../packages/offlineEngineManager';
 
-// ── Types ───────────────────────────────────────────────────────────────────
+export type { ResonanceCard, ResonanceResult };
 
-export interface ResonanceCard {
-  passageId: number;
-  text: string;
-  source: string;
-  translation: string | null;
-  similarity: number;
-  kind: 'scripture' | 'voice' | 'past_entry';
+// ── Unified in-memory 512d int8 vector store ────────────────────────────────
+
+interface PackedVectorMatrix {
+  library: 'scripture' | 'witness' | 'personal';
+  dim: number;
+  count: number;
+  scales: Float32Array;
+  vectors: Int8Array;
+  meta: Array<{
+    passageId: number;
+    bookId: string;
+    workId: string;
+    source: string;
+    text: string;
+    translation: string | null;
+  }>;
 }
 
-export interface ResonanceResult {
-  /** Top Scripture passages. */
-  scripture: ResonanceCard[];
-  /** Top voice-of-the-Church passages. */
-  voices: ResonanceCard[];
-  /** Past journal entries with high similarity. */
-  pastEntries: ResonanceCard[];
-}
-
-// ── In-memory vector store for Library passages ─────────────────────────────
-
-interface PassageVector {
-  passageId: number;
-  vector: Float32Array;
-  text: string;
-  source: string;
-  translation: string | null;
-}
-
-let libraryVectors: PassageVector[] | null = null;
+let loadedMatrices: PackedVectorMatrix[] | null = null;
 
 /**
- * Load all Library passage vectors into memory. Called once at app start
- * (or when a new Book Package is installed). The vectors file is a flat
- * binary blob: N passages × dim Float32 values, preceded by a header
- * containing N and dim.
+ * Load all installed 512d int8 `.rvec` corpus packs + embedded Personal Library
+ * works (`include_in_resonance = 1`) from SQLite into memory.
  */
 export async function loadLibraryVectors(): Promise<void> {
-  if (libraryVectors !== null) return;
+  if (loadedMatrices !== null) return;
 
   const db = getDatabase();
-  if (!db) return;
+  if (!db) {
+    loadedMatrices = [];
+    return;
+  }
+
+  const matrices: PackedVectorMatrix[] = [];
 
   try {
-    // In a production build, vectors are loaded from the seeded binary
-    // file. For now, pull text + metadata from SQLite and leave vectors
-    // as zero-length (resonance will return no matches until the vector
-    // file is loaded).
-    const rows = await db.getAllAsync<{
-      id: number;
+    // 1. Load installed GitHub Releases `.rvec` corpus packs (if downloaded)
+    const manifest = useOfflineEngineStore.getState().corpusManifest;
+    for (const pack of manifest.packs) {
+      const { vectorsPath } = getPackLocalPaths(pack.id);
+      const info = await FileSystem.getInfoAsync(vectorsPath);
+      if (!info.exists) continue;
+      try {
+        const b64 = await FileSystem.readAsStringAsync(vectorsPath, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const rvec = parseRvec(base64ToBytes(b64));
+        const rows =
+          pack.kind === 'bible'
+            ? await db.getAllAsync<{
+                id: number;
+                book_id: string;
+                chapter: number | null;
+                verse_start: number | null;
+                text: string;
+                translation: string | null;
+                title: string | null;
+                author: string | null;
+              }>(
+                `SELECT p.id, p.book_id, p.chapter, p.verse_start, p.text, p.translation,
+                        b.title, b.author
+                 FROM passages p
+                 LEFT JOIN books b ON b.id = p.book_id
+                 WHERE p.translation = 'WEB'
+                 ORDER BY p.id
+                 LIMIT ?;`,
+                [rvec.count]
+              )
+            : await db.getAllAsync<{
+                id: number;
+                book_id: string;
+                chapter: number | null;
+                verse_start: number | null;
+                text: string;
+                translation: string | null;
+                title: string | null;
+                author: string | null;
+              }>(
+                `SELECT p.id, p.book_id, p.chapter, p.verse_start, p.text, p.translation,
+                        b.title, b.author
+                 FROM passages p
+                 JOIN books b ON b.id = p.book_id
+                 WHERE b.package_id = ? AND b.source != 'personal'
+                 ORDER BY p.id
+                 LIMIT ?;`,
+                [pack.id, rvec.count]
+              );
+
+        const usable = Math.min(rvec.count, rows.length);
+        if (usable > 0) {
+          matrices.push({
+            library: pack.kind === 'bible' ? 'scripture' : 'witness',
+            dim: rvec.dim,
+            count: usable,
+            scales: rvec.scales.subarray(0, usable),
+            vectors: rvec.vectors.subarray(0, usable * rvec.dim),
+            meta: rows.slice(0, usable).map((r) => ({
+              passageId: r.id,
+              bookId: r.book_id,
+              workId: pack.kind === 'bible' ? 'web' : r.book_id,
+              source: formatPassageSource(r),
+              text: r.text,
+              translation: r.translation,
+            })),
+          });
+        }
+      } catch {
+        // Skip corrupt/incomplete pack gracefully
+      }
+    }
+
+    // 2. Load embedded Personal Library works (`include_in_resonance = 1`)
+    const personalRows = await db.getAllAsync<{
+      passage_id: number;
       book_id: string;
-      chapter: number | null;
-      verse_start: number | null;
-      verse_end: number | null;
+      dim: number;
+      scale: number;
+      vector_int8: Uint8Array;
       text: string;
-      translation: string | null;
+      division: string | null;
+      title: string | null;
+      author: string | null;
     }>(
-      `SELECT id, book_id, chapter, verse_start, verse_end, text, translation
-       FROM passages
-       ORDER BY id;`
+      `SELECT pv.passage_id, pv.book_id, pv.dim, pv.scale, pv.vector_int8,
+              p.text, p.division, b.title, b.author
+       FROM passage_vectors pv
+       JOIN passages p ON p.id = pv.passage_id
+       JOIN books b ON b.id = pv.book_id
+       JOIN personal_books pb ON pb.book_id = pv.book_id
+       WHERE pb.include_in_resonance = 1 AND pv.dim = ?
+       ORDER BY pv.passage_id;`,
+      [EMBEDDING_DIM]
     );
 
-    libraryVectors = rows.map((r) => {
-      let source: string;
-      if (r.translation != null) {
-        const bookName = r.book_id.replace(/^[A-Z]+_/, '').replace(/_/g, ' ');
-        const ref = r.verse_start != null
-          ? `${bookName} ${r.chapter ?? ''}:${r.verse_start}`
-          : `${bookName} ${r.chapter ?? ''}`;
-        source = r.translation ? `${ref} (${r.translation})` : ref;
-      } else {
-        source = r.book_id;
+    if (personalRows.length > 0) {
+      const count = personalRows.length;
+      const scales = new Float32Array(count);
+      const vectors = new Int8Array(count * EMBEDDING_DIM);
+      const meta: PackedVectorMatrix['meta'] = [];
+
+      for (let i = 0; i < count; i++) {
+        const r = personalRows[i];
+        scales[i] = r.scale;
+        const raw =
+          r.vector_int8 instanceof Uint8Array
+            ? r.vector_int8
+            : new Uint8Array(r.vector_int8 as unknown as ArrayBuffer);
+        const signed = new Int8Array(
+          raw.buffer,
+          raw.byteOffset,
+          Math.min(EMBEDDING_DIM, raw.byteLength)
+        );
+        vectors.set(signed, i * EMBEDDING_DIM);
+
+        const labelParts = [r.title ?? r.book_id];
+        if (r.author) labelParts.push(r.author);
+        if (r.division) labelParts.push(r.division);
+        meta.push({
+          passageId: r.passage_id,
+          bookId: r.book_id,
+          workId: r.book_id,
+          source: labelParts.join(' · '),
+          text: r.text,
+          translation: null,
+        });
       }
-      return {
-        passageId: r.id,
-        vector: new Float32Array(0), // loaded from binary file in production
-        text: r.text,
-        source,
-        translation: r.translation,
-      };
-    });
 
-    // In production: load the binary vector file and fill in vectors.
-    // This is a no-op for now — vectors stay empty until the binary file
-    // reader is wired.
+      matrices.push({
+        library: 'personal',
+        dim: EMBEDDING_DIM,
+        count,
+        scales,
+        vectors,
+        meta,
+      });
+    }
   } catch {
-    libraryVectors = [];
+    // Leave whatever loaded cleanly
   }
+
+  loadedMatrices = matrices;
 }
 
-/** Free the in-memory vector store (e.g. when switching embedding model). */
+function formatPassageSource(r: {
+  book_id: string;
+  chapter: number | null;
+  verse_start: number | null;
+  translation: string | null;
+  title: string | null;
+  author: string | null;
+}): string {
+  if (r.translation != null) {
+    const bookName = r.book_id.replace(/^[A-Z]+_/, '').replace(/_/g, ' ');
+    const ref =
+      r.verse_start != null
+        ? `${bookName} ${r.chapter ?? ''}:${r.verse_start}`
+        : `${bookName} ${r.chapter ?? ''}`;
+    return r.translation ? `${ref} (${r.translation})` : ref;
+  }
+  if (r.title && r.author) return `${r.author} · ${r.title}`;
+  return r.title ?? r.book_id;
+}
+
+/** Invalidate the in-memory vector store (e.g. after importing or embedding a personal book). */
 export function clearLibraryVectors(): void {
-  libraryVectors = null;
+  loadedMatrices = null;
 }
 
-// ── Find resonant passages ──────────────────────────────────────────────────
+// ── Find resonant passages (Stratified Fetch + Qwen3-Reranker + Z-Fusion) ──
 
-/** Min similarity threshold to surface a passage (tunable). */
 const MIN_SIMILARITY = 0.15;
-/** Max cards per category. */
+const STRATIFIED_SCRIPTURE_K = 20;
+const STRATIFIED_WITNESS_K = 30;
 const MAX_PER_CATEGORY = 3;
-/** Min text length to bother embedding (avoids noise from 1-2 words). */
 const MIN_TEXT_LENGTH = 12;
 
-/**
- * Given journal text, find the most resonant passages from the Library
- * and the user's past entries. Returns null if the embedding model
- * isn't loaded or the text is too short.
- *
- * (design spec §7.2: inline cards, not a side panel; surfaced as the
- *  user pauses or finishes a thought)
- */
+interface RawHit {
+  library: 'scripture' | 'witness' | 'personal';
+  passageId: number;
+  bookId: string;
+  workId: string;
+  source: string;
+  text: string;
+  translation: string | null;
+  denseScore: number;
+}
+
 export async function findResonance(
   journalText: string
 ): Promise<ResonanceResult | null> {
   if (!isEmbeddingReady()) return null;
   if (journalText.trim().length < MIN_TEXT_LENGTH) return null;
 
-  const queryVec = await embedText(journalText);
+  const queryVec = await embedQuery(journalText);
   if (!queryVec) return null;
 
-  // If libraryVectors are empty (no binary file loaded), return empty results.
-  if (!libraryVectors || libraryVectors.length === 0) {
-    return { scripture: [], voices: [], pastEntries: [] };
+  if (loadedMatrices === null) {
+    await loadLibraryVectors();
   }
+  const matrices = loadedMatrices ?? [];
 
-  // Compute similarities against all Library passages.
-  const scored: (PassageVector & { sim: number })[] = [];
-  for (const pv of libraryVectors) {
-    if (pv.vector.length === 0) continue;
-    const sim = cosineSimilarity(queryVec, pv.vector);
-    if (sim >= MIN_SIMILARITY) {
-      scored.push({ ...pv, sim });
+  const scriptureHits: RawHit[] = [];
+  const nonScriptureHits: RawHit[] = [];
+
+  // Stage 1: Stratified Per-Library Fetch in unified 512d int8 vector space
+  for (const mat of matrices) {
+    const dim = mat.dim;
+    for (let i = 0; i < mat.count; i++) {
+      const sim = dotProductFloat32Int8(
+        queryVec,
+        mat.vectors,
+        i * dim,
+        mat.scales[i],
+        dim
+      );
+      if (sim < MIN_SIMILARITY) continue;
+      const m = mat.meta[i];
+      const hit: RawHit = {
+        library: mat.library,
+        passageId: m.passageId,
+        bookId: m.bookId,
+        workId: m.workId,
+        source: m.source,
+        text: m.text,
+        translation: m.translation,
+        denseScore: sim,
+      };
+      if (mat.library === 'scripture') scriptureHits.push(hit);
+      else nonScriptureHits.push(hit);
     }
   }
 
-  // Sort by similarity descending.
-  scored.sort((a, b) => b.sim - a.sim);
+  scriptureHits.sort((a, b) => b.denseScore - a.denseScore);
+  nonScriptureHits.sort((a, b) => b.denseScore - a.denseScore);
 
-  // Select with diversity: avoid surfacing 3 passages from the same chapter.
-  const scripture = selectWithDiversity(
-    scored.filter((s) => s.translation !== null),
-    MAX_PER_CATEGORY
-  ).map(toCard('scripture'));
+  const pool: RawHit[] = [
+    ...scriptureHits.slice(0, STRATIFIED_SCRIPTURE_K),
+    ...nonScriptureHits.slice(0, STRATIFIED_WITNESS_K),
+  ];
 
-  const voices = selectWithDiversity(
-    scored.filter((s) => s.translation === null),
-    MAX_PER_CATEGORY
-  ).map(toCard('voice'));
+  // Stage 2: Qwen3-Reranker-0.6B pointwise scoring (when loaded)
+  const useReranker = isRerankerReady();
+  const candidates: FusionCandidate[] = [];
+  const hitById = new Map<string, RawHit>();
 
-  // Search past journal entries.
+  for (const hit of pool) {
+    const id = `${hit.library}:${hit.passageId}`;
+    hitById.set(id, hit);
+    let rerankProb: number | null = null;
+    let rerankLogit: number | null = null;
+    if (useReranker) {
+      const scored = await scoreCandidatePair(journalText, hit.text, hit.source);
+      if (scored) {
+        rerankProb = scored.prob;
+        rerankLogit = scored.logit;
+      }
+    }
+    candidates.push({
+      id,
+      workId: hit.workId,
+      library: hit.library,
+      denseScore: hit.denseScore,
+      rerankProb,
+      rerankLogit,
+    });
+  }
+
+  // Stage 3: Per-Library Z-Score Fusion (α = 0.60) + Calibrated Silence (τ = 0.06)
+  const fused = perLibraryZScoreFuse(candidates, {
+    alpha: OFFLINE_ENGINE_MANIFEST.fusionAlpha,
+    silenceThreshold: OFFLINE_ENGINE_MANIFEST.silenceThreshold,
+    perWorkCap: OFFLINE_ENGINE_MANIFEST.perWorkCap,
+    topK: 6,
+  });
+
   const pastEntries = await findResonantPastEntries(queryVec);
+
+  if (fused.silent) {
+    return { scripture: [], voices: [], pastEntries };
+  }
+
+  const scripture: ResonanceCard[] = [];
+  const voices: ResonanceCard[] = [];
+
+  for (const item of fused.results) {
+    const hit = hitById.get(item.id);
+    if (!hit) continue;
+    const card: ResonanceCard = {
+      passageId: hit.passageId,
+      bookId: hit.bookId,
+      text: hit.text,
+      source: hit.source,
+      translation: hit.translation,
+      similarity: item.rerankProb ?? hit.denseScore,
+      kind: hit.library === 'scripture' ? 'scripture' : 'voice',
+    };
+    if (card.kind === 'scripture' && scripture.length < MAX_PER_CATEGORY) {
+      scripture.push(card);
+    } else if (card.kind === 'voice' && voices.length < MAX_PER_CATEGORY) {
+      voices.push(card);
+    }
+  }
 
   return { scripture, voices, pastEntries };
 }
 
-// ── Select top-K with diversity (no duplicate chapters) ─────────────────────
-
-function selectWithDiversity<T extends { sim: number; passageId: number; source: string }>(
-  sorted: T[],
-  k: number
-): T[] {
-  const result: T[] = [];
-  const seenChapters = new Set<string>();
-
-  for (const item of sorted) {
-    // Use the source as a diversity key (rough grouping by book+chapter).
-    const key = item.source.split(':')[0] ?? item.source;
-    if (seenChapters.has(key)) continue;
-    seenChapters.add(key);
-    result.push(item);
-    if (result.length >= k) break;
-  }
-
-  return result;
-}
-
-// ── Convert to ResonanceCard ────────────────────────────────────────────────
-
-function toCard(kind: 'scripture' | 'voice') {
-  return (pv: PassageVector & { sim: number }): ResonanceCard => ({
-    passageId: pv.passageId,
-    text: pv.text,
-    source: pv.source,
-    translation: pv.translation,
-    similarity: pv.sim,
-    kind,
-  });
-}
-
 // ── Search past journal entries ─────────────────────────────────────────────
 
-/**
- * Find the user's past journal entries that are most similar to the current
- * text ("where you were"). Re-uses the same embedding model; past entries
- * have their vectors stored in journal_segment_vectors.
- */
 async function findResonantPastEntries(
   queryVec: Float32Array
 ): Promise<ResonanceCard[]> {
@@ -227,7 +398,6 @@ async function findResonantPastEntries(
   if (!db) return [];
 
   try {
-    // Load past entry vectors from SQLite.
     const rows = await db.getAllAsync<{
       segment_id: string;
       vector_blob: Uint8Array;
@@ -246,7 +416,7 @@ async function findResonantPastEntries(
     for (const row of rows) {
       if (row.vector_blob == null || row.vector_blob.byteLength === 0) continue;
       const vec = blobToVector(row.vector_blob);
-      if (vec.length === 0) continue;
+      if (vec.length !== queryVec.length) continue;
       const sim = cosineSimilarity(queryVec, vec);
       if (sim >= MIN_SIMILARITY) {
         const date = new Date(row.created_at);
@@ -257,6 +427,7 @@ async function findResonantPastEntries(
         });
         scored.push({
           passageId: 0,
+          bookId: `journal:${row.segment_id}`,
           text: row.text ?? '',
           source: `Your journal — ${dateLabel}`,
           translation: null,
@@ -273,13 +444,8 @@ async function findResonantPastEntries(
   }
 }
 
-// ── Store journal entry vector ────────────────────────────────────────────────
+// ── Store journal entry vector ──────────────────────────────────────────────
 
-/**
- * Embed a journal segment's text and store its vector in SQLite for future
- * resonance lookups. Called by the journal auto-save path after a segment
- * is flushed.
- */
 export async function storeSegmentVector(
   segmentId: string,
   text: string
@@ -287,21 +453,22 @@ export async function storeSegmentVector(
   if (!isEmbeddingReady()) return;
   if (text.trim().length < MIN_TEXT_LENGTH) return;
 
-  const vec = await embedText(text);
+  const vec = await embedQuery(text);
   if (!vec) return;
 
   const db = getDatabase();
   if (!db) return;
 
   try {
-    const blob = new Uint8Array(vec.buffer.slice(0, vec.byteLength) as ArrayBuffer);
+    const blob = new Uint8Array(
+      vec.buffer.slice(vec.byteOffset, vec.byteOffset + vec.byteLength) as ArrayBuffer
+    );
     await db.runAsync(
       `INSERT OR REPLACE INTO journal_segment_vectors (segment_id, vector_blob)
        VALUES (?, ?);`,
-      segmentId,
-      blob
+      [segmentId, blob]
     );
   } catch {
-    // Non-fatal — resonance works on best-effort.
+    // Non-fatal
   }
 }

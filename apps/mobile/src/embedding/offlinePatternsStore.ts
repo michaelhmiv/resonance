@@ -1,16 +1,19 @@
 /**
  * Offline SQLite concordance adapter for mobile Patterns.
  *
- * Queries local SQLite tables (Migration v1 + v2) and delegates all
- * concordance calculations to the pure shared engine in `@resonance/core`.
- * Zero network calls — 100% private and instant on-device.
+ * Queries local SQLite tables (Migration v1 + v2 + v3 Personal Library & 512d
+ * int8 passage_vectors) and delegates all concordance calculations to the pure
+ * shared engine in `@resonance/core`. Zero network calls — 100% private and
+ * instant on-device.
  */
 
 import {
+  blobToVector,
   buildBookBridgesFromData,
   buildConcordanceDayDetail,
   buildConcordanceSummary,
   classifyLiteratureGroup,
+  dotProductFloat32Int8,
   LITERATURE_SHELF_GROUPS,
   normalizePatternDate,
   parseBibleBookName,
@@ -25,6 +28,7 @@ import {
   type PatternFeedbackInput,
   type PatternTimeframe,
   type PatternsSummary,
+  type VectorBridgeHit,
 } from '@resonance/core';
 import { getDatabase } from '../db/database';
 import { getCrossReferences } from '../db/queries/readingQueries';
@@ -44,25 +48,50 @@ async function safeAll<T>(sql: string, params: Array<string | number | null> = [
 }
 
 async function loadInstalledVoices(): Promise<InstalledVoiceBookInfo[]> {
-  const rows = await safeAll<{
+  // Migration v3 adds personal_books(include_in_resonance); fall back cleanly on older DBs.
+  let rows = await safeAll<{
     id: string;
     title: string | null;
     author: string | null;
     era: string | null;
     package_id: string | null;
+    source: string | null;
+    include_in_resonance: number | null;
   }>(
-    `SELECT id, title, author, era, package_id
-     FROM books
-     WHERE type = 'voice'
-     ORDER BY COALESCE(author, title, id);`,
+    `SELECT b.id, b.title, b.author, b.era, b.package_id, b.source, pb.include_in_resonance
+     FROM books b
+     LEFT JOIN personal_books pb ON pb.book_id = b.id
+     WHERE b.type = 'voice'
+     ORDER BY COALESCE(b.author, b.title, b.id);`,
   );
-  return rows.map((r) => ({
-    id: r.id,
-    title: r.title,
-    author: r.author,
-    era: r.era,
-    packageId: r.package_id,
-  }));
+
+  if (rows.length === 0) {
+    const legacyRows = await safeAll<{
+      id: string;
+      title: string | null;
+      author: string | null;
+      era: string | null;
+      package_id: string | null;
+      source: string | null;
+    }>(
+      `SELECT id, title, author, era, package_id, source
+       FROM books
+       WHERE type = 'voice'
+       ORDER BY COALESCE(author, title, id);`,
+    );
+    rows = legacyRows.map((r) => ({ ...r, include_in_resonance: null }));
+  }
+
+  return rows
+    .filter((r) => r.include_in_resonance !== 0)
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      author: r.author,
+      era: r.era,
+      packageId: r.package_id,
+      source: r.source,
+    }));
 }
 
 async function loadLocalRaw(
@@ -188,6 +217,102 @@ async function loadLocalRaw(
   };
 }
 
+/**
+ * Score a single book's Migration-v3 int8 `passage_vectors` against recent
+ * `journal_segment_vectors` for true on-device semantic bridges (512d Voyage-4-Nano).
+ * Returns [] cleanly when vectors haven't been embedded yet so lexical/cross-ref
+ * bridges take over seamlessly.
+ */
+async function computeBookVectorBridges(
+  bookIds: string[],
+  bookPassages: CandidateBookPassage[],
+  start: string,
+  end: string,
+): Promise<VectorBridgeHit[]> {
+  if (bookIds.length === 0 || bookPassages.length === 0) return [];
+
+  const journalVecRows = await safeAll<{
+    segment_id: string;
+    vector_blob: Uint8Array;
+    text: string | null;
+    created_at: number;
+  }>(
+    `SELECT jsv.segment_id, jsv.vector_blob, js.text, js.created_at
+     FROM journal_segment_vectors jsv
+     JOIN journal_segments js ON js.id = jsv.segment_id
+     WHERE js.segment_type = 'text' AND js.text IS NOT NULL AND jsv.vector_blob IS NOT NULL
+     ORDER BY js.created_at DESC
+     LIMIT 20;`,
+  );
+
+  const queries = journalVecRows
+    .filter((r) => inWindow(normalizePatternDate(r.created_at), start, end))
+    .map((r) => ({
+      vec: blobToVector(r.vector_blob),
+      date: normalizePatternDate(r.created_at),
+      text: r.text ?? '',
+    }))
+    .filter((q) => q.vec.length > 0 && q.text.trim().length >= 12);
+
+  if (queries.length === 0) return [];
+
+  const placeholders = bookIds.map(() => '?').join(', ');
+  const pvRows = await safeAll<{
+    passage_id: number;
+    dim: number;
+    scale: number;
+    vector_int8: Uint8Array;
+  }>(
+    `SELECT passage_id, dim, scale, vector_int8
+     FROM passage_vectors
+     WHERE book_id IN (${placeholders})
+     LIMIT 600;`,
+    bookIds,
+  );
+  if (pvRows.length === 0) return [];
+
+  const passageById = new Map<number, CandidateBookPassage>();
+  for (const p of bookPassages) passageById.set(p.id, p);
+
+  const hits: VectorBridgeHit[] = [];
+  for (const pv of pvRows) {
+    const passage = passageById.get(pv.passage_id);
+    if (!passage || !pv.vector_int8 || pv.dim <= 0) continue;
+    const rawBytes =
+      pv.vector_int8 instanceof Uint8Array
+        ? pv.vector_int8
+        : new Uint8Array(pv.vector_int8 as unknown as ArrayBuffer);
+    const int8 = new Int8Array(
+      rawBytes.buffer,
+      rawBytes.byteOffset,
+      rawBytes.byteLength,
+    );
+    if (int8.length < pv.dim) continue;
+
+    let bestScore = -1;
+    let bestQuery = queries[0];
+    for (const q of queries) {
+      if (q.vec.length !== pv.dim) continue;
+      const sim = dotProductFloat32Int8(q.vec, int8, 0, pv.scale, pv.dim);
+      if (sim > bestScore) {
+        bestScore = sim;
+        bestQuery = q;
+      }
+    }
+
+    if (bestScore >= 0.28) {
+      hits.push({
+        passage,
+        score: bestScore,
+        journalDate: bestQuery.date,
+        journalExcerpt: bestQuery.text,
+      });
+    }
+  }
+
+  return hits.sort((a, b) => b.score - a.score).slice(0, 3);
+}
+
 export async function getOfflinePatternsSummary(
   start: string,
   end: string,
@@ -238,6 +363,9 @@ export async function getOfflineBookBridges(
     const bookName = parseBibleBookName(id) ?? id;
     const slug = bookName.replace(/\s+/g, '_');
     const resolvedBookId = bookId || `WEB_${slug}`;
+    const candidateBookIds = Array.from(
+      new Set([resolvedBookId, `WEB_${slug}`, `web_${slug}`]),
+    );
     const passageRows = await safeAll<{
       id: number;
       book_id: string;
@@ -293,6 +421,13 @@ export async function getOfflineBookBridges(
       if (crossRefPairs.length >= 3) break;
     }
 
+    const vectorBridgeHits = await computeBookVectorBridges(
+      candidateBookIds,
+      bookPassages,
+      tfWindow.start,
+      tfWindow.end,
+    );
+
     return buildBookBridgesFromData({
       kind: 'bible',
       id: bookName,
@@ -303,13 +438,14 @@ export async function getOfflineBookBridges(
       raw,
       bookPassages,
       crossRefPairs,
+      vectorBridgeHits,
     });
   }
 
   const voice = installedVoices.find((v) => v.id === id || v.id === bookId) ?? null;
   const resolvedBookId = voice?.id ?? bookId ?? id;
   const title = voice?.author ?? voice?.title ?? id;
-  const eraGroupId = classifyLiteratureGroup(voice?.packageId, voice?.era);
+  const eraGroupId = classifyLiteratureGroup(voice?.packageId, voice?.era, voice?.source);
   const eraMeta = LITERATURE_SHELF_GROUPS.find((g) => g.id === eraGroupId);
   const subtitle = [voice?.title, eraMeta?.fullLabel].filter(Boolean).join(' · ') || 'Installed Literature';
 
@@ -328,6 +464,13 @@ export async function getOfflineBookBridges(
     text: p.text ?? '',
   }));
 
+  const vectorBridgeHits = await computeBookVectorBridges(
+    [resolvedBookId],
+    bookPassages,
+    tfWindow.start,
+    tfWindow.end,
+  );
+
   return buildBookBridgesFromData({
     kind: 'voice',
     id: resolvedBookId,
@@ -337,6 +480,7 @@ export async function getOfflineBookBridges(
     timeframe,
     raw,
     bookPassages,
+    vectorBridgeHits,
   });
 }
 

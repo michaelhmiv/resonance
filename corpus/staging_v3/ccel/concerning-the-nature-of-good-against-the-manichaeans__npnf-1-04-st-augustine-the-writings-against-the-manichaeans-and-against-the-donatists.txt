@@ -1,0 +1,80 @@
+---
+source_kind: ccel_extract
+source_file: corpus/church_fathers_complete.txt
+section: NPNF 1-04 / ST. AUGUSTINE: THE WRITINGS AGAINST THE MANICHAEANS AND AGAINST THE DONATISTS
+title: Concerning The Nature of Good, Against The Manichaeans
+---
+NPNF1-04 CONTENTS 
+
+
+
+
+
+I, THE ANTI-MANICHAEAN WRITINGS 
+
+
+
+
+
+On The Morals Of The Catholic Church 
+
+
+
+
+
+On The Morals Of The Manichaeans 
+
+
+On Two Souls, Against The Manichaeans 
+
+
+
+
+
+Acts Or Disputation Against Fortunatus The Manichaean 
+
+
+
+
+
+Against The Epistle Of Manichaeus, Called Fundamental 
+
+
+
+
+
+Reply To Faustus The Manichaean 
+
+
+
+
+
+Concerning The Nature Of Good, Against The Manichaeans 
+
+
+
+
+
+Il. THE ANTI-DONATIST WRITINGS 
+
+
+On Baptism, Against the Donatists 
+
+
+
+
+
+Answer To The Letters of Petilian, The Donatist 
+
+
+
+
+
+The Correction Of The Donatists 
+
+
+
+
+
+NPNF1-04 
+ST. AUGUSTINE: THE WRITINGS AGAINST THE MANICHAEANS AND AGAINST THE DONATISTS

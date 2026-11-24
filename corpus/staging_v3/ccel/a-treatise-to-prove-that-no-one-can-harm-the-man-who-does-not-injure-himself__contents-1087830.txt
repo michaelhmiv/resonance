@@ -1,0 +1,85 @@
+---
+source_kind: ccel_extract
+source_file: corpus/church_fathers_complete.txt
+section: contents@1087830
+title: A Treatise To Prove That No One Can Harm The Man Who Does Not Injure Himself
+---
+NPNF1-09 CONTENTS 
+
+
+Treatise Concerning The Christian Priesthood 
+
+
+
+
+
+An Exhortation To Theodore After His Fall 
+
+
+
+
+
+Letter To A Young Widow 
+
+
+
+
+
+Homilies On S. Ignatius and S. Babylas 
+
+
+
+
+
+
+
+
+Instructions To Catechumens 
+
+
+Homily Against Those Who Say That Demons Govern Human Affairs 
+
+
+
+
+
+
+
+
+Homily On The Passage (Matt. XXVI. 19), “Father If It Be Possible Let This Cup Pass From Me,” etc., and Against 
+Marcionists And Manichaeans 
+
+
+
+
+
+
+
+
+
+
+
+A Treatise To Prove That No One Can Harm The Man Who Does Not Injure Himself 
+
+
+Letters Of St. Chrysostom To Olympias 
+
+
+
+
+
+Correspondence Of St. Chrysostom With The Bishop Of Rome 
+
+
+
+
+
+
+
+
+The Homilies On The Statues To The People Of Antioch 
+
+
+NPNF1-09 
+ST. CHRYSOSTOM: ON THE PRIESTHOOD, ASCETIC TREATISES, SELECT HOMILIES AND LETTERS, HOMILIES ON 
+THE STATUTES

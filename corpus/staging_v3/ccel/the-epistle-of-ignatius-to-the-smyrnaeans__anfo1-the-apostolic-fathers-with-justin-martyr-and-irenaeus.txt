@@ -1,0 +1,209 @@
+---
+source_kind: ccel_extract
+source_file: corpus/church_fathers_complete.txt
+section: ANFO1 / THE APOSTOLIC FATHERS WITH JUSTIN MARTYR AND IRENAEUS
+title: The Epistle of Ignatius to the Smyrnaeans
+---
+ANF0O1 CONTENTS 
+
+
+
+
+
+The First Epistle of Clement to the Corinthians 
+
+
+
+
+
+MATHETES 
+
+
+The Epistle of Mathetes to Diognetus 
+
+
+
+
+
+POLYCARP 
+
+
+The Epistle of Polycarp to the Philippians 
+
+
+
+
+
+The Epistle Concerning the Martyrdom of Polycarp 
+
+
+
+
+
+IGNATIUS 
+
+
+The Epistles of Ignatius 
+
+
+
+
+
+
+
+
+The Epistle of Ignatius to the Magnesians Shorter and Longer Versions 
+
+
+
+
+
+The Epistle of Ignatius to the Trallians Shorter and Longer Versions 
+
+
+
+
+
+
+
+
+The Epistle of Iqnatius to the Smyrnaeans Shorter and Longer Versions 
+
+
+
+
+
+The Epistle of Ignatius to Polycarp Shorter and Longer Versions 
+
+
+
+
+
+The Syriac Version of the Ignatian Epistles 
+
+
+
+
+
+The Epistle of Ignatius to Polycarp 
+
+
+
+
+
+
+
+
+The Epistle of Ignatius to the Tarsians 
+
+
+
+
+
+The Epistle of Ignatius to the Antiochians 
+
+
+
+
+
+The Epistle of Ignatius to Hero, a Deacon of Antioch 
+
+
+
+
+
+The Epistle of Ignatius to the Philippians 
+
+
+
+
+
+
+
+
+The Epistle of Ignatius to St. John the Apostle Ignatius, and the brethren who are with him, to John the holy presbyter 
+
+
+
+
+
+A Second Epistle of Ignatius to St. John His friend Ignatius to John the holy presbyter 
+
+
+
+
+
+The Epistle of Ignatius to the Virgin Mary Her friend Ignatius to the Christ-bearing Mary 
+
+
+
+
+
+Reply of the Blessed Virgin to this Letter The lowly handmaid of Christ Jesus to Ignatius, her beloved fellow-disciple 
+
+
+
+
+
+The Martyrdom of Ignatius 
+
+
+
+
+
+
+
+
+The Epistle of Barnabas 
+PAPIAS 
+
+
+
+
+
+
+
+
+The First Apology of Justin 
+
+
+
+
+
+The Second Apology of Justin for the Christians Addressed to the Roman Senate 
+
+
+
+
+
+Dialogue of Justin, Philosopher and Martyr, with Trypho, a Jew 
+
+
+
+
+
+
+
+
+Fragments of the Lost Work of Justin on the Resurrection 
+
+
+
+
+
+Other Fragments from the Lost Writings of Justin 
+
+
+
+
+
+The Martyrdom of Justin Martyr 
+
+
+
+
+
+
+
+
+IRENZUS

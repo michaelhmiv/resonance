@@ -114,6 +114,8 @@ function SettingsGear({ onPress }: { onPress: () => void }) {
 
 export { SettingsGear };
 
+import { OfflineEngineSheet } from '../components/OfflineEngineSheet';
+
 export function RootNavigator(): ReactNode {
   return (
     <NavigationContainer>
@@ -138,6 +140,7 @@ export function RootNavigator(): ReactNode {
           options={{ title: 'Settings' }}
         />
       </Stack.Navigator>
+      <OfflineEngineSheet />
     </NavigationContainer>
   );
 }

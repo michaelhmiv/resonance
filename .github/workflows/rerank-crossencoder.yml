@@ -1,0 +1,27 @@
+name: rerank-crossencoder-test
+on:
+  workflow_dispatch:
+    inputs:
+      candidates_run:
+        description: 'Run ID holding the bakeoff-candidates artifact'
+        required: true
+jobs:
+  rerank:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet onnxruntime transformers numpy huggingface_hub
+      - name: Fetch candidates
+        run: gh run download ${{ inputs.candidates_run }} --name bakeoff-candidates --dir /tmp/cand
+      - name: Score pairs (BGE reranker v2-m3, int8 ONNX)
+        run: python3 scripts/bakeoff/rerank_crossencoder.py /tmp/cand/bakeoff-candidates.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rerank-crossencoder
+          path: rerank-crossencoder.json

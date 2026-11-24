@@ -31,10 +31,10 @@ Top controls sit above a three-lens underline switcher (`Threads` · `Explore` �
 Every book installed on the device — all 66 books of Scripture and every enabled Christian Voice work — is a live door into deeper reading:
 
 - **Gentle `Group` toggle:**
-  - **Grouped (default):** Canonical Scripture sections (`Law`, `History`, `Wisdom`, `Prophets`, `Gospels`, `Epistles`, `Revelation`) and installed literature eras (`Fathers`, `Medieval`, `Reform`, `Devotional`) stand directly on wooden shelves as uniform-height cloth-bound omnibus volumes. Tapping any omnibus volume opens its individual books right beneath its shelf.
+  - **Grouped (default):** Canonical Scripture sections (`Law`, `History`, `Wisdom`, `Prophets`, `Gospels`, `Epistles`, `Revelation`) and installed literature eras (`Fathers`, `Medieval`, `Reform`, `Devotional`, plus `Personal` for user-imported works with resonance enabled) stand directly on wooden shelves as uniform-height cloth-bound omnibus volumes. Tapping any omnibus volume opens its individual books right beneath its shelf.
   - **Ungrouped:** Opens the entire study bookcase flat (Old Testament, New Testament, and Installed Literature A–Z).
 - **Uniform book styling:** All volumes on a shelf share uniform height and a symmetric 3-zone cloth spine (centered crest `✦`, auto-scaled centered serif title plate so long names never clip, centered colophon count or note ink dot, centered silk bookmark ribbon for highlights).
-- **Book Bridge panel below the shelves:** Tapping any visited *or unread* book lists its traces and ways in directly beneath the bookcase — combining user highlights/notes (when visited), stored resonance echoes, canonical cross-references from highlights in other books, and book-scoped passage bridges to the user's recent writing — with a direct `Open →` jump to Word.
+- **Book Bridge panel below the shelves:** Tapping any visited *or unread* book lists its traces and ways in directly beneath the bookcase — combining user highlights/notes (when visited), stored resonance echoes, canonical cross-references from highlights in other books, and book-scoped passage bridges (using on-device 512d int8 `passage_vectors` when embedded, with lexical fallback) to the user's recent writing — with a direct `Open →` jump to Word.
 
 ### Lens 2: Threads
 

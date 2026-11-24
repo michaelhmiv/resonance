@@ -135,6 +135,7 @@ export const LITERATURE_SHELF_GROUPS: readonly LiteratureShelfGroup[] = [
   { id: 'medieval', label: 'Medieval', fullLabel: 'Medieval Mystics' },
   { id: 'reform', label: 'Reform', fullLabel: 'Reform & Renewal' },
   { id: 'devotional', label: 'Devotional', fullLabel: 'Devotional & Poetry' },
+  { id: 'personal', label: 'Personal', fullLabel: 'Personal Library' },
 ];
 
 const BOOK_TO_GROUP = new Map<string, ScriptureShelfGroup>();
@@ -255,13 +256,21 @@ export function parseVerseRefParts(raw: string | null | undefined): {
 }
 
 /**
- * Map a library work's package_id / era string to one of the 4 uniform
- * Literature shelf volumes: fathers | medieval | reform | devotional.
+ * Map a library work's package_id / era / source string to one of the uniform
+ * Literature shelf volumes: fathers | medieval | reform | devotional | personal.
  */
 export function classifyLiteratureGroup(
   packageId?: string | null,
   era?: string | null,
+  source?: string | null,
 ): string {
+  if (
+    source?.toLowerCase() === 'personal' ||
+    packageId?.toLowerCase().startsWith('personal') ||
+    era?.trim().toLowerCase() === 'personal'
+  ) {
+    return 'personal';
+  }
   const combined = `${packageId ?? ''} ${era ?? ''}`.toLowerCase();
   if (/patristic|father|early|apostolic|nicene|antiquity/.test(combined)) return 'fathers';
   if (/medieval|mystic|scholastic|monastic|12th|13th|14th|15th/.test(combined)) return 'medieval';
@@ -487,6 +496,7 @@ export interface InstalledVoiceBookInfo {
   author: string | null;
   era?: string | null;
   packageId?: string | null;
+  source?: string | null;
 }
 
 export interface ConcordanceRawInput {
@@ -1290,7 +1300,7 @@ function buildBookshelf(
         author: authorName,
         spineLabel,
         primaryWork: (v.title ?? authorName).trim(),
-        groupId: classifyLiteratureGroup(v.packageId, v.era),
+        groupId: classifyLiteratureGroup(v.packageId, v.era, v.source),
         worksCount: 1,
         read: 0,
         highlights: 0,
@@ -1787,11 +1797,18 @@ export interface CrossRefBridgePair {
   targetText?: string | null;
 }
 
+export interface VectorBridgeHit {
+  passage: CandidateBookPassage;
+  score: number;
+  journalDate: string | null;
+  journalExcerpt: string;
+}
+
 /**
  * Build the live Book Bridge card for ANY Bible book or installed Voice book —
  * combining user traces (if visited), stored echoes, canonical cross-references
- * from user highlights, and book-scoped lexical/semantic passage bridges against
- * the user's recent journal entries & notes.
+ * from user highlights, 512d vector bridges (when present on-device), and
+ * book-scoped lexical passage bridges against the user's recent journal & notes.
  */
 export function buildBookBridgesFromData(input: {
   kind: 'bible' | 'voice';
@@ -1803,8 +1820,20 @@ export function buildBookBridgesFromData(input: {
   raw: ConcordanceRawInput;
   bookPassages: CandidateBookPassage[];
   crossRefPairs?: CrossRefBridgePair[];
+  vectorBridgeHits?: VectorBridgeHit[];
 }): BookBridgeResult {
-  const { kind, id, bookId, title, subtitle, timeframe, raw, bookPassages, crossRefPairs = [] } = input;
+  const {
+    kind,
+    id,
+    bookId,
+    title,
+    subtitle,
+    timeframe,
+    raw,
+    bookPassages,
+    crossRefPairs = [],
+    vectorBridgeHits = [],
+  } = input;
   const resolvedEdges = resolveEdges(raw);
   const items: BookBridgeItem[] = [];
 
@@ -1910,6 +1939,28 @@ export function buildBookBridgesFromData(input: {
         : `Canonically linked to your ${pair.fromHighlightRef} highlight`,
       date: null,
     });
+  }
+
+  // 3b. Precomputed 512d int8 semantic vector bridges (when offline engine vectors exist)
+  if (vectorBridgeHits.length > 0 && items.length < 4) {
+    const existingRefs = new Set(items.map((it) => it.ref.toLowerCase()));
+    for (const hit of vectorBridgeHits) {
+      if (items.length >= 4) break;
+      if (existingRefs.has(hit.passage.ref.toLowerCase())) continue;
+      existingRefs.add(hit.passage.ref.toLowerCase());
+      items.push({
+        id: `vec-${hit.passage.id}`,
+        via: 'semantic',
+        viaLabel: '✦ Near your words',
+        ref: hit.passage.ref,
+        bookId: hit.passage.bookId || bookId,
+        chapter: hit.passage.chapter ?? null,
+        verse: hit.passage.verse ?? null,
+        quote: cleanExcerpt(hit.passage.text, 180),
+        linkText: `Near your ${formatShortDate(hit.journalDate) || 'recent'} journal: “${cleanExcerpt(hit.journalExcerpt, 90)}”`,
+        date: hit.journalDate,
+      });
+    }
   }
 
   // 4. Book-scoped lexical/concept bridge against user's recent journal entries & notes

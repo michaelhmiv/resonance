@@ -7,13 +7,28 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@resonance/core": ["../core/src"],
-      "@resonance/core/*": ["../core/src/*"],
-      "@resonance/theme": ["../theme/src"],
-      "@resonance/theme/*": ["../theme/src/*"],
-      "@resonance/ui": ["../ui/src"],
-      "@resonance/ui/*": ["../ui/src/*"]
-    }
+      "@resonance/core": [
+        "../core/src"
+      ],
+      "@resonance/core/*": [
+        "../core/src/*"
+      ],
+      "@resonance/theme": [
+        "../theme/src"
+      ],
+      "@resonance/theme/*": [
+        "../theme/src/*"
+      ],
+      "@resonance/ui": [
+        "../ui/src"
+      ],
+      "@resonance/ui/*": [
+        "../ui/src/*"
+      ]
+    },
+    "ignoreDeprecations": "6.0"
   },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*"
+  ]
 }
