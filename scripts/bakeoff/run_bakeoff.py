@@ -37,8 +37,19 @@ def embed(tok, sess, texts, prefix, batch=32):
     for i in range(0, len(texts), batch):
         chunk = [prefix + t for t in texts[i:i + batch]]
         enc = tok(chunk, padding=True, truncation=True, max_length=512, return_tensors="np")
-        inputs = {n: enc[n] for n in sess.get_inputs()[0].name and
-                  [inp.name for inp in sess.get_inputs()] if n in enc}
+        inputs = {inp.name: enc[inp.name] for inp in sess.get_inputs() if inp.name in enc}
+        # Text-only run of the joint multimodal graph: modality feature
+        # inputs are required by the signature but inert when the text
+        # carries no media placeholder tokens. Feed zero-length features.
+        for inp in sess.get_inputs():
+            if inp.name in inputs: continue
+            shape = []
+            for j, d in enumerate(inp.shape):
+                if isinstance(d, int): shape.append(d)
+                elif j == 0: shape.append(len(chunk))
+                else: shape.append(0)
+            dt = np.float16 if "float16" in (inp.type or "") else np.float32
+            inputs[inp.name] = np.zeros(shape, dtype=dt)
         res = sess.run(None, inputs)[0]
         if res.ndim == 3:  # token embeddings -> mean pool w/ mask
             mask = enc["attention_mask"][..., None].astype(np.float32)
