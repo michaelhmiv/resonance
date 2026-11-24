@@ -91,8 +91,9 @@ def golden_queries():
     return out
 
 def full(tok, sess, prompts):
-    pool = [json.loads(l) for l in (ROOT / "corpus/chunks_v2.jsonl").open()]
-    print(f"pool: {len(pool):,} passages", flush=True)
+    fname = "chunks_subset.jsonl" if MODE == "subset" else "chunks_v2.jsonl"
+    pool = [json.loads(l) for l in (ROOT / f"corpus/{fname}").open()]
+    print(f"pool ({fname}): {len(pool):,} passages", flush=True)
     t0 = time.time()
     emb = embed(tok, sess, [p["text"] for p in pool], prompts.get("document", ""), batch=64)
     print(f"pool embedded in {(time.time()-t0)/60:.1f} min", flush=True)
