@@ -109,7 +109,7 @@ WORK_CATALOG_META: dict[str, tuple[str, str, str, str]] = {
     "the-way-of-perfection__thewayofperfecti00tereuoft": ("The Way of Perfection", "Teresa of Avila", "16th c.", "medieval-mystics"),
     "the-book-of-the-foundations-of-s-teresa-of-jesus-of-the-order-of-our-lady-of-carmel__bookoffoundation00tereuoft": ("The Book of the Foundations", "Teresa of Avila", "16th c.", "medieval-mystics"),
     "the-life-of-saint-teresa-of-jesus-of-the-order-of-our-lady-of-carmel__the-life-of-saint-teresa-of-jesus-by-herself": ("The Life of St. Teresa of Jesus", "Teresa of Avila", "16th c.", "medieval-mystics"),
-    "autobiography-life": ("Autobiography of St. Teresa (Gutenberg)", "Teresa of Avila", "16th c.", "medieval-mystics"),
+    "autobiography-life": ("The Life of St. Teresa of Jesus", "Teresa of Avila", "16th c.", "medieval-mystics"),
     "on-loving-god-by-st-bernard-of-clairvaux__on-loving-god-by-saint-bernard-of-clairvaux": ("On Loving God", "Bernard of Clairvaux", "12th c.", "medieval-mystics"),
     "on-consideration__onconsideration00bern": ("On Consideration", "Bernard of Clairvaux", "12th c.", "medieval-mystics"),
     "the-scale-of-perfection__scaleofperfectio0000walt-c0h2": ("The Scale of Perfection", "Walter Hilton", "14th c.", "medieval-mystics"),
@@ -151,7 +151,7 @@ WORK_CATALOG_META: dict[str, tuple[str, str, str, str]] = {
     "power-through-prayer": ("Power Through Prayer", "E.M. Bounds", "19th c.", "modern-witnesses"),
     "preacher-and-prayer": ("Preacher and Prayer", "E.M. Bounds", "19th c.", "modern-witnesses"),
     "purpose-in-prayer": ("Purpose in Prayer", "E.M. Bounds", "20th c.", "modern-witnesses"),
-    "selections-from-the-writings": ("Selections from the Writings", "Public Domain Anthology", "19th c.", "modern-witnesses"),
+    "selections-from-the-writings": ("Selections from the Writings of Kierkegaard", "Søren Kierkegaard", "19th c.", "modern-witnesses"),
 }
 
 
@@ -225,7 +225,7 @@ def format_doc(chunk: dict[str, Any]) -> str:
     if chunk.get("source") == "bible":
         title = f"Bible — {chunk.get('chunk_id', '')}"
     else:
-        wid = chunk["work_id"].split("__")[0].replace("-", " ").title()
+        wid, _, _, _ = metadata_for_work(chunk["work_id"])
         div = (chunk.get("division") or "").strip()
         title = f"{wid} — {div[:80]}" if div else wid
     return f"Represent the document for retrieval: [{title}]\n{chunk['text']}"

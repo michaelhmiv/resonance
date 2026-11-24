@@ -1,8 +1,8 @@
-Resonance — Core Engine Prompt & Browsable Library Catalog build.
+Resonance — Audited Clean Corpus & Browsable Library Catalog build.
 
 What's in this build:
-• Initial Offline Engine download prompt now downloads ONLY the core engine (Voyage-4-Nano 512d INT8 + Qwen3-Reranker-0.6B INT8 + ~4 MB Bible vectors = ~998 MB) — never forces the 80-work Church Library up front
-• New Library Catalog Browser (Word → Library → Browse Catalog, and Settings → Browse Library Catalog): search & filter 79 classic works across 4 collections (The Church Fathers, Medieval & Contemplative Voices, Reformation & Devotional Classics, Modern Witnesses), see exact per-book sizes, and download individual books (50 KB–2 MB each) or whole collections on demand — or remove any book anytime
-• Fast batched SQLite ingestion (400-row batches) so downloaded books install in milliseconds instead of stalling the app
-• Personal Library & Device Folder import (EPUB, PDF, DOCX, HTML, Markdown, TXT) with extraction diagnostics, metadata editor, and on-device 512d int8 embedding
-• Living Concordance Patterns tab & Study Bookshelf, plus the new gold open-book app icon on cream
+• Deep corpus audit & scrubbing across the entire Church Library: removed 100% of Google Books watermarks/preambles, raw Archive.org YAML headers, Project Gutenberg/Transcriber footers, library loan slips, URLs, Victorian publisher catalogs, back-of-book indexes, OCR cover noise, TOC-only stubs, severely corrupted scans, and duplicate editions (72 clean, audited Church classics + WEB Bible)
+• Stronger on-device document boilerplate scrubbing for Personal Library imports (EPUB, PDF, DOCX, HTML, Markdown, TXT)
+• Core-only initial download prompt (Voyage-4-Nano 512d INT8 + Qwen3-Reranker-0.6B INT8 + ~4 MB Bible vectors = ~998 MB)
+• Browsable Library Catalog (Word → Library → Browse Catalog, and Settings → Browse Library Catalog) to cherry-pick individual books (50 KB–2 MB) or whole collections with fast batched SQLite installation
+• Living Concordance Patterns tab, Study Bookshelf, and gold open-book app icon on cream
