@@ -23,6 +23,11 @@ Allowed LLM uses:
 Disallowed posture:
 
 - generated prayers/advice as the primary product
+- generated reflection questions or devotional prompts (Michael, 2026-11-24:
+  no boilerplate questions wasting the user's time — the app leads people to
+  real texts; it does not manufacture engagement filler)
+- any cloud LLM in the product path (Michael, 2026-11-24: the reader is
+  local, on-device, or there is no reader)
 - confident spiritual diagnosis
 - treating model interpretations as source-of-truth
 
