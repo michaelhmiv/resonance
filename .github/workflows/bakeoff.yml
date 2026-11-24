@@ -17,7 +17,7 @@ jobs:
       - name: Install deps
         run: pip install --quiet onnxruntime transformers numpy huggingface_hub
       - name: Run
-        run: python scripts/bakeoff/run_bakeoff.py ${{ inputs.mode || 'spike' }}
+        run: python scripts/bakeoff/run_bakeoff.py $(cat scripts/bakeoff/mode.txt 2>/dev/null || echo spike)
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
