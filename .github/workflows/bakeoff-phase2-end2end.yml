@@ -1,11 +1,5 @@
 name: bakeoff-phase2-end2end
 on:
-  push:
-    branches: [bakeoff/models-optimization]
-    paths:
-      - 'scripts/bakeoff/build_stratified_candidates.py'
-      - 'scripts/bakeoff/rerank_bge_v2.py'
-      - '.github/workflows/bakeoff-phase2-end2end.yml'
   workflow_dispatch:
 
 jobs:

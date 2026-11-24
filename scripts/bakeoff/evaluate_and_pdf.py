@@ -426,7 +426,7 @@ def main():
     summaries = []
     silences = {}
     for spec in args.model:
-        lbl, path = spec.split("=", 1)
+        lbl, path = spec.rsplit("=", 1)
         data = json.loads(Path(path).read_text())
         models_ordered.append((lbl, data))
         summaries.append(evaluate_model(lbl, data, golden))
