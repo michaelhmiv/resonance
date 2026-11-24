@@ -19,166 +19,62 @@ A pattern may be shown only when it can point back to one or more durable traces
 
 If there is no evidence, the UI should render an empty or partial state instead of inventing a summary.
 
-## Page sections
+## Page structure: Three Calm Lenses
 
-### Recently
+Top controls sit above a three-lens underline switcher (`Threads` · `Explore` · `Activity`):
 
-At rest, show a short summary of the current window.
+- **Timeframe switcher:** `30d | 90d | All` scopes concordance summaries, What Kept Finding You, and bookshelf heat/trace indicators.
+- **`?` Spine Key button:** Opens a calm popover explaining the cloth-bound spine cues (Warm Linen = unread, Antique Gold + `✦` = unread echoing, Sage = visited/read, centered silk ribbon = highlighted, violet ink dot = note, Walnut + foil `✦` = visited & echoing).
 
-Examples:
+### Lens 1: Explore (Study Bookshelf)
 
-- `Recently, several traces gathered around trust, provision, and tomorrow.`
-- `Recently, your activity includes 4 journal entries, 6 reading traces, and 2 notes.`
-- `Patterns need a few traces: journal entries, readings, highlights, or notes.`
+Every book installed on the device — all 66 books of Scripture and every enabled Christian Voice work — is a live door into deeper reading:
 
-The Recently card may use theme snapshots when present. Otherwise, it may summarize raw activity counts.
+- **Gentle `Group` toggle:**
+  - **Grouped (default):** Canonical Scripture sections (`Law`, `History`, `Wisdom`, `Prophets`, `Gospels`, `Epistles`, `Revelation`) and installed literature eras (`Fathers`, `Medieval`, `Reform`, `Devotional`, plus `Personal` for user-imported works with resonance enabled) stand directly on wooden shelves as uniform-height cloth-bound omnibus volumes. Tapping any omnibus volume opens its individual books right beneath its shelf.
+  - **Ungrouped:** Opens the entire study bookcase flat (Old Testament, New Testament, and Installed Literature A–Z).
+- **Uniform book styling:** All volumes on a shelf share uniform height and a symmetric 3-zone cloth spine (centered crest `✦`, auto-scaled centered serif title plate so long names never clip, centered colophon count or note ink dot, centered silk bookmark ribbon for highlights).
+- **Book Bridge panel below the shelves:** Tapping any visited *or unread* book lists its traces and ways in directly beneath the bookcase — combining user highlights/notes (when visited), stored resonance echoes, canonical cross-references from highlights in other books, and book-scoped passage bridges (using on-device 512d int8 `passage_vectors` when embedded, with lexical fallback) to the user's recent writing — with a direct `Open →` jump to Word.
 
-### Activity Calendar
+### Lens 2: Threads
 
-The calendar is an activity map, not an insight by itself.
+- **Recently:** Short evidence-backed summary of the active timeframe window.
+- **What Kept Finding You (`✦`):** Passages and Christian voices that repeatedly surfaced in `resonance_edges` across distinct traces/days — highlighting when a book has not been opened yet (`not opened yet`), exposing expandable trace evidence, `Open in Word →`, and `Keep` / `Not quite` feedback persisted via `recordPatternFeedback`.
+- **Trails Across Days:** Multi-hop vertical timelines connecting journal entries, Scripture echoes, highlights/notes, and voices across days.
+- **A Quiet Question:** Grounded in the active timeframe with an inline Journal reply composer that saves directly as a durable journal entry.
 
-Each day may show dots for:
+### Lens 3: Activity
 
-| Dot | Source evidence |
-|---|---|
-| Journal | `journal_entries.created_at` |
-| Reading | `reading_events.created_at` |
-| Highlight | `highlights.created_at` |
-| Note | `highlights.note_text` with `note_updated_at` or `updated_at` |
-| Bookmark | `bookmarks.created_at` |
-| Echo | `resonance_events` or `resonance_edges.last_seen_at` |
+- **Activity Calendar:** Month view with multi-dot markers (`journal`, `reading`, `highlight`, `note`, `bookmark`, `echo`).
+- **Day Detail (Cross-Day Context):** Clicking a day loads grouped traces for that date while resolving connections across a rolling 30-day context window so cross-day echoes, returns, and trails attach directly to the activity items recorded on that day.
+- **A Quiet Question:** Same grounded inline reply card.
 
-Use a max-dot rule so the month view stays readable. Recommended behavior:
+## API & DataLayer contract
 
-- one to three activity types: show one dot per type
-- more than three activity types: show first three plus a `+` marker
-- no activity: show only the day number
-
-### Day detail
-
-Clicking a day opens grouped evidence for that date. Each journal entry, reading, highlight, note, and bookmark may carry inline connections (echoes, returned-to signals, themes, trails) that relate to that specific trace.
-
-Required groups:
-
-- Journal
-- Reading
-- Highlights
-- Notes
-- Bookmarks
-
-Each activity item should be expandable when it has connections. Expanding an item reveals the related connections with their evidence, so the user sees *why* a pattern appeared without leaving the activity context.
-
-There is no separate "Connections" card. Connections are shown only as branches bound directly to the item that produced them.
-
-The day detail should be useful even when only journal and reading data exist. Missing optional adaptive tables must not crash the day view.
-
-### Connection types
-
-Connections surface in the day detail, attached to the activity traces that generated them. A trace may have zero, one, or several connections.
-
-#### Echo
-
-Echoes are specific relationships, usually backed by `resonance_edges`. When an echo relates to a journal entry, reading, highlight, note, or bookmark, it appears as an inline branch on that item.
-
-Show:
-
-- source label
-- target label
-- reason
-- confidence or evidence strength
-- one to three supporting excerpts
-
-Allowed language:
-
-- `This echoes...`
-- `This sits near...`
-- `This passage also appeared near...`
-
-Avoid language:
-
-- `This means...`
-- `God is telling you...`
-- `Your spiritual condition is...`
-
-#### Returned To
-
-Returned To is based on repeated durable activity, not model interpretation. It appears inline on the reading, highlight, note, bookmark, or journal entry that is part of the repeated set.
-
-Examples:
-
-- repeated reading of the same verse, chapter, book, or voice source
-- highlight plus note on the same reference
-- bookmark plus later reading on the same reference
-- repeated journal entries sitting near the same passage or theme after graph tables are wired
-
-The inline view must show dates and activity types.
-
-#### Recurring Theme
-
-Themes are provisional, time-windowed summaries. They are not identity labels. A theme appears inline on every participating trace.
-
-Theme inline cards should show:
-
-- label
-- summary
-- evidence count
-- date window
-- supporting evidence excerpts
-
-Themes should be backed by `theme_snapshots` when available. If snapshots are missing, a local keyword fallback is acceptable only as a temporary degraded state and must still avoid identity claims.
-
-#### Trail
-
-A trail is a chain, not a single semantic match. Trails appear inline on each trace that participates in the chain.
-
-Example shape:
-
-```text
-journal entry -> Scripture echo -> voice passage -> prior journal entry
-```
-
-Trails should expose ordered evidence. Early implementations may build lightweight trails from theme evidence, Returned To signals, and top echoes. Full trails should eventually use graph relationships from `resonance_nodes` and `resonance_edges`.
-
-### Quiet Question
-
-The Quiet Question should be grounded in the current evidence window when possible.
-
-Priority:
-
-1. Returned To signal
-2. Active theme snapshot
-3. Echo/trail evidence
-4. Recent journal activity
-5. Generic fallback
-
-Examples:
-
-- `You returned to Matthew 6. What part of that has stayed with you?`
-- `Several traces touched provision. What do you want to notice about that?`
-- `Looking back at these entries, what seems worth remembering?`
-
-Generated responses should not become source-of-truth interpretations. If the user writes an answer, save the answer as a durable journal entry.
-
-## API contract
+All three surfaces run through `DataLayer` (`getPatternsSummary`, `getPatternDayDetail`, `getBookBridges`, `recordPatternFeedback`) powered by the shared pure engine in `packages/core/src/patterns-engine.ts` — running 100% offline against SQLite on mobile and over the Next.js API routes on web.
 
 ### `GET /api/patterns/summary`
 
 Query parameters:
 
-- `start=YYYY-MM-DD`
-- `end=YYYY-MM-DD`
+- `start=YYYY-MM-DD` (calendar month start)
+- `end=YYYY-MM-DD` (calendar month end)
+- `timeframe=30d|90d|all` (optional, default `30d`)
 
 Response shape:
 
 ```ts
 {
   window: { start: string; end: string };
+  timeframe: '30d' | '90d' | 'all';
   recently: string;
   days: PatternDaySummary[];
   themes: PatternTheme[];
   echoes: PatternEcho[];
+  findingYou: FindingYouSignal[];
   returnedTo: ReturnedSignal[];
   trails: PatternTrail[];
+  bookshelf: BookshelfSummary;
   quietQuestion: string;
   health: {
     journalEntryCount: number;
@@ -190,6 +86,17 @@ Response shape:
   };
 }
 ```
+
+### `GET /api/patterns/book-bridge`
+
+Query parameters:
+
+- `kind=bible|voice`
+- `id=<book name or voice book id>`
+- `timeframe=30d|90d|all`
+- `bookId=<optional canonical bookId>`
+
+Returns a `BookBridgeResult` with trace counts and grounded `BookBridgeItem[]` (`trace` | `echo` | `crossref` | `semantic`) for both visited and unread books.
 
 ### `GET /api/patterns/day?date=YYYY-MM-DD`
 

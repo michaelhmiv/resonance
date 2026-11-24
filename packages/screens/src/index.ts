@@ -6,4 +6,5 @@ export { LibraryBrowser } from './word/LibraryBrowser';
 export { SearchScreen } from './word/SearchScreen';
 export { JournalScreen } from './journal/JournalScreen';
 export { PatternsScreen } from './patterns/PatternsScreen';
+export type { PatternsScreenProps } from './patterns/PatternsScreen';
 export { SettingsScreen } from './settings/SettingsScreen';
