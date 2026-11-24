@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
-"""EmbeddingGemma 2 bake-off runner (GitHub Actions).
+"""EmbeddingGemma 2 bake-off runner v2 — raw ONNX Runtime, no optimum /
+sentence-transformers (their version drift killed attempts 1-2; driving the
+model directly also gives exact control of the input recipe for packs).
 
-Spike mode: embed 10 sentences, verify paraphrase geometry (the pipeline is
-only 'working' if paraphrases land closer than unrelated pairs).
-Full mode: embed the chunks_v2 pool + the 50 golden-set queries, cosine
-top-5 per query -> results.json.
-
-Runner: sentence-transformers over the official ONNX int8 build. The LiteRT
-.litertlm path is attempted first in spike mode and its outcome logged; the
-production pack pipeline decision rides on that log line.
+Recipe: the model's own prompt templates are read from the repo's
+config_sentence_transformers.json at runtime (never from memory). Mean
+pooling over the attention mask, truncate to 512 dims, L2-normalize.
+Spike mode asserts paraphrase geometry before any full run is trusted.
 """
 import json, re, sys, time
 from pathlib import Path
@@ -16,26 +14,40 @@ import numpy as np
 
 MODE = sys.argv[1] if len(sys.argv) > 1 else "spike"
 ROOT = Path(__file__).resolve().parents[2]
+REPO = "onnx-community/embeddinggemma-2-ONNX"
 
-def try_litert():
-    try:
-        import litert_lm  # noqa
-        return "litert_lm importable"
-    except Exception as e:
-        return f"litert_lm unavailable: {type(e).__name__}"
+def load():
+    from huggingface_hub import hf_hub_download
+    import onnxruntime as ort
+    from transformers import AutoTokenizer
+    cfg = json.loads(Path(hf_hub_download(REPO, "config_sentence_transformers.json")).read_text())
+    prompts = cfg.get("prompts", {})
+    print("model prompts:", prompts, flush=True)
+    tok = AutoTokenizer.from_pretrained(REPO)
+    path = hf_hub_download(REPO, "onnx/model_quantized.onnx")
+    sess = ort.InferenceSession(path, providers=["CPUExecutionProvider"])
+    return tok, sess, prompts
 
-def load_model():
-    from sentence_transformers import SentenceTransformer
-    t0 = time.time()
-    model = SentenceTransformer(
-        "onnx-community/embeddinggemma-2-ONNX", backend="onnx",
-        model_kwargs={"file": "model_quantized.onnx"},
-        truncate_dim=512)
-    model.max_seq_length = 512
-    print(f"model loaded in {time.time()-t0:.1f}s; dim=512 (truncated, renormalized by ST)", flush=True)
-    return model
+def embed(tok, sess, texts, prefix, batch=32):
+    out = []
+    for i in range(0, len(texts), batch):
+        chunk = [prefix + t for t in texts[i:i + batch]]
+        enc = tok(chunk, padding=True, truncation=True, max_length=512, return_tensors="np")
+        inputs = {n: enc[n] for n in sess.get_inputs()[0].name and
+                  [inp.name for inp in sess.get_inputs()] if n in enc}
+        res = sess.run(None, inputs)[0]
+        if res.ndim == 3:  # token embeddings -> mean pool w/ mask
+            mask = enc["attention_mask"][..., None].astype(np.float32)
+            emb = (res * mask).sum(1) / mask.sum(1)
+        else:
+            emb = res
+        out.append(emb[:, :512])
+        if i and i % (batch * 100) == 0:
+            print(f"  embedded {i:,}/{len(texts):,}", flush=True)
+    v = np.concatenate(out).astype(np.float32)
+    return v / np.linalg.norm(v, axis=1, keepdims=True)
 
-def spike(model):
+def spike(tok, sess, prompts):
     sents = [
         "I am exhausted from being awake all night with the baby.",
         "I haven't slept properly since my daughter was born and I'm running on empty.",
@@ -44,8 +56,8 @@ def spike(model):
         "I keep worrying about money and what the future holds for my family.",
         "The recipe calls for two cups of flour and a teaspoon of salt.",
     ]
-    emb = model.encode(sents, prompt_name="query", normalize_embeddings=True)
-    sim = emb @ emb.T
+    e = embed(tok, sess, sents, prompts.get("query", ""))
+    sim = e @ e.T
     print("paraphrase pair (0,1):", round(float(sim[0,1]), 3))
     print("unrelated pair  (0,2):", round(float(sim[0,2]), 3))
     print("thematic pair   (3,4):", round(float(sim[3,4]), 3))
@@ -59,21 +71,18 @@ def golden_queries():
     for block in re.split(r"\n### ", text)[1:]:
         head = block.splitlines()[0].strip()
         m = re.search(r"\*\*Journal:\*\* \"(.+?)\"", block, re.S)
-        if m: out.append({"id": head.split(" — ")[0], "title": head, "journal": m.group(1).replace("\n", " ")})
+        if m: out.append({"id": head.split(" — ")[0], "title": head,
+                          "journal": m.group(1).replace("\n", " ")})
     return out
 
-def full(model):
+def full(tok, sess, prompts):
     pool = [json.loads(l) for l in (ROOT / "corpus/chunks_v2.jsonl").open()]
     print(f"pool: {len(pool):,} passages", flush=True)
     t0 = time.time()
-    emb = model.encode([p["text"] for p in pool], prompt_name="document",
-                       batch_size=64, normalize_embeddings=True, show_progress_bar=False)
+    emb = embed(tok, sess, [p["text"] for p in pool], prompts.get("document", ""), batch=64)
     print(f"pool embedded in {(time.time()-t0)/60:.1f} min", flush=True)
-    np.save("/tmp/pool_emb.npy", emb)
     queries = golden_queries()
-    print(f"queries: {len(queries)}", flush=True)
-    q = model.encode([x["journal"] for x in queries], prompt_name="query",
-                     normalize_embeddings=True)
+    q = embed(tok, sess, [x["journal"] for x in queries], prompts.get("query", ""))
     sims = q @ emb.T
     results = []
     for i, query in enumerate(queries):
@@ -87,8 +96,7 @@ def full(model):
     print("wrote bakeoff-results.json", flush=True)
 
 if __name__ == "__main__":
-    print("litert check:", try_litert(), flush=True)
-    m = load_model()
+    tok, sess, prompts = load()
     if MODE == "spike":
-        sys.exit(0 if spike(m) else 1)
-    full(m)
+        sys.exit(0 if spike(tok, sess, prompts) else 1)
+    full(tok, sess, prompts)
