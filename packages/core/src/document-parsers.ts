@@ -1494,12 +1494,100 @@ export function detectPersonalFormat(filename: string): PersonalSourceFormat | n
   return null;
 }
 
+export function detectPersonalFormatFromMime(
+  mimeType: string | null | undefined
+): PersonalSourceFormat | null {
+  if (!mimeType) return null;
+  const clean = mimeType.toLowerCase().split(';')[0].trim();
+  if (clean === 'application/epub+zip' || clean === 'application/epub') return 'epub';
+  if (clean === 'application/pdf') return 'pdf';
+  if (
+    clean === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ) {
+    return 'docx';
+  }
+  if (clean === 'text/html' || clean === 'application/xhtml+xml') return 'html';
+  if (clean === 'text/markdown' || clean === 'text/x-markdown') return 'md';
+  if (clean === 'text/plain') return 'txt';
+  return null;
+}
+
+export function detectPersonalFormatFromBytes(
+  bytes: Uint8Array
+): PersonalSourceFormat | null {
+  if (bytes.length < 4) return null;
+
+  // PDF magic: %PDF- (allow optional leading whitespace/BOM within first 64 bytes)
+  const headAscii = decodeLatin1(bytes.subarray(0, Math.min(bytes.length, 64)));
+  if (headAscii.includes('%PDF-')) return 'pdf';
+
+  // ZIP container: PK\x03\x04 -> inspect archive entries for EPUB vs DOCX
+  if (
+    bytes[0] === 0x50 &&
+    bytes[1] === 0x4b &&
+    (bytes[2] === 0x03 || bytes[2] === 0x05) &&
+    (bytes[3] === 0x04 || bytes[3] === 0x06)
+  ) {
+    try {
+      const zip = openZipArchive(bytes);
+      const keys = Array.from(zip.entries.keys()).map((k) => k.toLowerCase());
+      if (keys.includes('meta-inf/container.xml') || keys.includes('mimetype')) {
+        const mt = zip.readText('mimetype')?.trim().toLowerCase() ?? '';
+        if (mt.includes('epub') || keys.includes('meta-inf/container.xml')) {
+          return 'epub';
+        }
+      }
+      if (keys.includes('word/document.xml')) {
+        return 'docx';
+      }
+    } catch {
+      // Not a supported EPUB/DOCX archive
+    }
+    return null;
+  }
+
+  // Reject binary payloads (NUL bytes or high ratio of control characters)
+  const sampleLen = Math.min(bytes.length, 2048);
+  let ctrlCount = 0;
+  for (let i = 0; i < sampleLen; i++) {
+    const b = bytes[i];
+    if (b === 0) return null;
+    if (b < 0x20 && b !== 0x09 && b !== 0x0a && b !== 0x0d) {
+      ctrlCount++;
+    }
+  }
+  if (ctrlCount / sampleLen > 0.05) return null;
+
+  const textSample = decodeUtf8(bytes.subarray(0, Math.min(bytes.length, 4096)))
+    .replace(/^\uFEFF/, '')
+    .trimStart();
+  if (!textSample) return null;
+
+  if (
+    /^(<!doctype\s+html\b|<html\b|<head\b|<body\b|<\?xml\b[^>]*>\s*<(?:!doctype\s+html|html)\b)/i.test(
+      textSample
+    )
+  ) {
+    return 'html';
+  }
+  if (
+    /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.test(textSample) ||
+    /^#{1,3}\s+\S/m.test(textSample)
+  ) {
+    return 'md';
+  }
+  return 'txt';
+}
+
 export function extractDocumentFromBytes(
   bytes: Uint8Array,
   filename: string,
   explicitFormat?: PersonalSourceFormat
 ): RawDocumentExtraction {
-  const format = explicitFormat ?? detectPersonalFormat(filename);
+  const format =
+    explicitFormat ??
+    detectPersonalFormat(filename) ??
+    detectPersonalFormatFromBytes(bytes);
   if (!format) {
     throw new Error(
       `Unsupported file type for "${filename}". Supported: EPUB, PDF, DOCX, HTML, Markdown, TXT.`

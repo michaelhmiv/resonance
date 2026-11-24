@@ -1,8 +1,7 @@
-Resonance — Audited Clean Corpus & Browsable Library Catalog build.
+Resonance — Personal Library Individual Files & Cloud Folder Import build.
 
 What's in this build:
-• Deep corpus audit & scrubbing across the entire Church Library: removed 100% of Google Books watermarks/preambles, raw Archive.org YAML headers, Project Gutenberg/Transcriber footers, library loan slips, URLs, Victorian publisher catalogs, back-of-book indexes, OCR cover noise, TOC-only stubs, severely corrupted scans, and duplicate editions (72 clean, audited Church classics + WEB Bible)
-• Stronger on-device document boilerplate scrubbing for Personal Library imports (EPUB, PDF, DOCX, HTML, Markdown, TXT)
-• Core-only initial download prompt (Voyage-4-Nano 512d INT8 + Qwen3-Reranker-0.6B INT8 + ~4 MB Bible vectors = ~998 MB)
-• Browsable Library Catalog (Word → Library → Browse Catalog, and Settings → Browse Library Catalog) to cherry-pick individual books (50 KB–2 MB) or whole collections with fast batched SQLite installation
-• Living Concordance Patterns tab, Study Bookshelf, and gold open-book app icon on cream
+• Added individual & multi-file import ("Choose files") in Add to Your Library — pick one or more EPUB, PDF, DOCX, HTML, Markdown, or TXT books directly from your phone, Google Drive, iCloud Drive, or Downloads (single picks jump straight to metadata review; multi-picks stage for 1-tap batch import)
+• Fixed Google Drive / cloud folder import crash by migrating Personal Library folder scanning and file reading off expo-file-system/legacy SAF to modern expo-file-system v56 APIs
+• Added MIME-type & magic-byte format detection, clean Google Drive folder labels, and metadata-backed title resolution for opaque cloud URIs
+• Everything remains 100% local after import — files are copied, extracted, and embedded on-device

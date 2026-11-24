@@ -303,10 +303,10 @@ function PersonalLibrarySection(): ReactNode {
 
   return (
     <Section
-      title="Personal Library & Device Folder"
+      title="Personal Library"
       description={
-        'Connect a folder on your device to import your own EPUB, PDF, DOCX, ' +
-        'HTML, Markdown, and text works. Extracted, editable, and embedded 100% locally.'
+        'Import individual books or link a folder from your device, Google Drive, or iCloud ' +
+        '(EPUB, PDF, DOCX, HTML, Markdown, TXT). Extracted, editable, and embedded 100% locally.'
       }
     >
       <InfoRow
@@ -324,7 +324,7 @@ function PersonalLibrarySection(): ReactNode {
       />
       <RowDivider />
       <ActionRow
-        label="Import books & manage folder"
+        label="Import files or manage folder"
         onPress={() => setImportVisible(true)}
       />
       <RowDivider />

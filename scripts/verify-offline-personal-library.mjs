@@ -13,6 +13,8 @@ import {
   gunzipBytes,
   extractDocumentFromBytes,
   computeContentFingerprint,
+  detectPersonalFormatFromMime,
+  detectPersonalFormatFromBytes,
 } from '../packages/core/src/document-parsers.ts';
 import {
   processPersonalDocument,
@@ -227,5 +229,42 @@ const silent = perLibraryZScoreFuse([
 ]);
 assert.equal(silent.silent, true);
 assert.equal(silent.results.length, 0);
+
+// 9. Cloud/Google Drive opaque URI format detection (MIME + magic bytes)
+assert.equal(detectPersonalFormatFromMime('application/epub+zip'), 'epub');
+assert.equal(detectPersonalFormatFromMime('application/pdf; charset=binary'), 'pdf');
+assert.equal(
+  detectPersonalFormatFromMime(
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ),
+  'docx'
+);
+assert.equal(detectPersonalFormatFromMime('text/html; charset=utf-8'), 'html');
+assert.equal(detectPersonalFormatFromMime('text/markdown'), 'md');
+assert.equal(detectPersonalFormatFromMime('text/plain'), 'txt');
+assert.equal(detectPersonalFormatFromMime('image/png'), null);
+
+assert.equal(detectPersonalFormatFromBytes(epubBytes), 'epub');
+assert.equal(detectPersonalFormatFromBytes(pdfBytes), 'pdf');
+assert.equal(detectPersonalFormatFromBytes(docxBytes), 'docx');
+assert.equal(
+  detectPersonalFormatFromBytes(new TextEncoder().encode('<!DOCTYPE html><html><body><p>Hello</p></body></html>')),
+  'html'
+);
+assert.equal(detectPersonalFormatFromBytes(new TextEncoder().encode(mdText)), 'md');
+assert.equal(
+  detectPersonalFormatFromBytes(new TextEncoder().encode('A quiet morning prayer without markup.')),
+  'txt'
+);
+assert.equal(
+  detectPersonalFormatFromBytes(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00])),
+  null
+);
+// Extraction works even when filename is an opaque Drive document ID without extension
+const driveEpubProc = processPersonalDocument(
+  extractDocumentFromBytes(epubBytes, 'acc=1;doc=encoded=y1nJfcHy3Lu8zea7Lm9dEuAdXBQ')
+);
+assert.equal(driveEpubProc.suggestedTitle, 'The Practice of the Presence of God');
+assert.equal(driveEpubProc.format, 'epub');
 
 console.log('✓ All offline 512d int8 & Personal Library verification checks passed.');
