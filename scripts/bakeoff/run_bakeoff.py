@@ -124,6 +124,16 @@ def full(tok, sess, prompts):
              "text": pool[j]["text"][:600]} for r, j in enumerate(top)]})
     Path("bakeoff-results.json").write_text(json.dumps(results, indent=1))
     print("wrote bakeoff-results.json", flush=True)
+    cands = []
+    for i, query in enumerate(queries):
+        top = np.argsort(-sims[i])[:50]
+        cands.append({**query, "candidates": [
+            {"n": r + 1, "score": round(float(sims[i][j]), 4),
+             "work_id": pool[j]["work_id"], "source": pool[j]["source"],
+             "ref": pool[j]["chunk_id"] if pool[j]["source"] == "bible" else None,
+             "text": pool[j]["text"][:1200]} for r, j in enumerate(top)]})
+    Path("bakeoff-candidates.json").write_text(json.dumps(cands, indent=1))
+    print("wrote bakeoff-candidates.json", flush=True)
 
 def shard(tok, sess, prompts, k, n):
     pool = [json.loads(l) for l in (ROOT / "corpus/chunks_v2.jsonl").open()]
@@ -170,6 +180,16 @@ def combine(tok, sess, prompts, n):
              "text": pool[j]["text"][:600]} for r, j in enumerate(top)]})
     Path("bakeoff-results.json").write_text(json.dumps(results, indent=1))
     print("wrote bakeoff-results.json", flush=True)
+    cands = []
+    for i, query in enumerate(queries):
+        top = np.argsort(-sims[i])[:50]
+        cands.append({**query, "candidates": [
+            {"n": r + 1, "score": round(float(sims[i][j]), 4),
+             "work_id": pool[j]["work_id"], "source": pool[j]["source"],
+             "ref": pool[j]["chunk_id"] if pool[j]["source"] == "bible" else None,
+             "text": pool[j]["text"][:1200]} for r, j in enumerate(top)]})
+    Path("bakeoff-candidates.json").write_text(json.dumps(cands, indent=1))
+    print("wrote bakeoff-candidates.json", flush=True)
 
 if __name__ == "__main__":
     tok, sess, prompts = load()

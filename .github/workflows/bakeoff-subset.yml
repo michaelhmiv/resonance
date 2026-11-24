@@ -24,3 +24,7 @@ jobs:
         with:
           name: bakeoff-results
           path: bakeoff-results.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bakeoff-candidates
+          path: bakeoff-candidates.json

@@ -113,6 +113,13 @@ entries). Presentation therefore applies, in order:
    ranks in the top 15, the best Scripture passage takes the 5th slot.
 4. **Near-duplicate demotion:** a candidate whose text is a near-duplicate
    of an already-selected passage is skipped.
+5. **Reader rerank (added 2026-11-24, Michael's ruling):** guards 1–4 order
+   a shortlist; they cannot judge fit. A local reader model (see
+   `principles.md` §1) reranks the embedding top-50 and selects the final
+   list, judging the writer's situation and direction, not vocabulary
+   overlap. The Scripture slot (guard 3) applies only when no fitting
+   Scripture passage survives the reader's selection, and only within a
+   small score margin of the passage it displaces.
 
 ## 7. Personal library imports
 

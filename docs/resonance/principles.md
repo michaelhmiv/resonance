@@ -10,6 +10,15 @@ Allowed LLM uses:
 - shift narratives
 - concise summaries of evidence windows
 - operational organization
+- **passage selection for retrieval (ruled by Michael, 2026-11-24):** a
+  *local, on-device* model may read a journal entry together with an
+  embedding-retrieved candidate shortlist and choose/order the passages
+  shown — a librarian, never an author. It produces no text the user reads
+  as spiritual content; every passage shown remains a real text from
+  Scripture, the author library, or the user's own writings. Embeddings
+  retrieve by resemblance and cannot discern posture or direction (who
+  wronged whom, which way the writer is moving); the reader step exists
+  to exercise exactly that judgment, locally and privately.
 
 Disallowed posture:
 
