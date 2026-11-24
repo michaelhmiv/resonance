@@ -11,9 +11,15 @@ import type {
   WeeklyRoundup,
   ShiftReport,
   CalendarDay,
+  PatternTimeframe,
+  PatternsSummary,
+  PatternDayDetail,
+  BookBridgeResult,
+  PatternFeedbackInput,
   ReflectionPrompt,
   EmbeddingModelId,
 } from '@resonance/core';
+import { getDatabase } from '../db/database';
 import { getBooks, getChapters, getVerses, searchPassages } from '../db/queries/bibleQueries';
 import {
   getLibraryPackages,
@@ -40,6 +46,12 @@ import {
   generateShiftReport,
   getCalendarDays,
 } from '../embedding/patternsService';
+import {
+  getOfflinePatternsSummary,
+  getOfflinePatternDayDetail,
+  getOfflineBookBridges,
+  recordOfflinePatternFeedback,
+} from '../embedding/offlinePatternsStore';
 import {
   generateReflectionPrompt,
   generateClusterLabel,
@@ -157,12 +169,51 @@ export class MobileDataLayer implements DataLayer {
   }
 
   async loadSegments(): Promise<JournalSegment[]> {
-    return [];
+    const db = getDatabase();
+    if (!db) return [];
+    try {
+      return await db.getAllAsync<JournalSegment>(
+        `SELECT id, created_at, updated_at, segment_type, text, position_index, parent_date
+         FROM journal_segments
+         ORDER BY position_index ASC;`,
+      );
+    } catch {
+      return [];
+    }
   }
 
-  async saveSegment(_segment: JournalSegment): Promise<void> {}
+  async saveSegment(segment: JournalSegment): Promise<void> {
+    const db = getDatabase();
+    if (!db) return;
+    try {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO journal_segments
+           (id, created_at, updated_at, segment_type, text, position_index, parent_date)
+         VALUES (?, ?, ?, ?, ?, ?, ?);`,
+        [
+          segment.id,
+          segment.created_at,
+          segment.updated_at,
+          segment.segment_type,
+          segment.text,
+          segment.position_index,
+          segment.parent_date,
+        ],
+      );
+    } catch {
+      // best-effort
+    }
+  }
 
-  async deleteSegment(_id: string): Promise<void> {}
+  async deleteSegment(id: string): Promise<void> {
+    const db = getDatabase();
+    if (!db) return;
+    try {
+      await db.runAsync(`DELETE FROM journal_segments WHERE id = ?;`, [id]);
+    } catch {
+      // best-effort
+    }
+  }
 
   async getHighlightsForRefs(refs: string[]): Promise<Highlight[]> {
     // Mobile still uses whole-verse highlights — convert the legacy map to
@@ -251,14 +302,50 @@ export class MobileDataLayer implements DataLayer {
     return result;
   }
 
-  async recordReadingEvent(_bookId: string, _chapter: number, _verseRef: string, _timestamp: number): Promise<void> {}
+  async recordReadingEvent(bookId: string, chapter: number, verseRef: string, timestamp: number): Promise<void> {
+    const db = getDatabase();
+    if (!db) return;
+    try {
+      const id = `read-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      await db.runAsync(
+        `INSERT INTO reading_events (id, book_id, chapter, verse_ref, created_at) VALUES (?, ?, ?, ?, ?);`,
+        [id, bookId, chapter, verseRef, timestamp || Date.now()],
+      );
+    } catch {
+      // best-effort
+    }
+  }
 
-  async getReadingHistory(_startDate: string, _endDate: string): Promise<{ date: string; count: number }[]> {
-    return [];
+  async getReadingHistory(startDate: string, endDate: string): Promise<{ date: string; count: number }[]> {
+    const db = getDatabase();
+    if (!db) return [];
+    try {
+      const rows = await db.getAllAsync<{ created_at: number }>(`SELECT created_at FROM reading_events;`);
+      const byDate = new Map<string, number>();
+      for (const r of rows) {
+        const ms = r.created_at > 10_000_000_000 ? r.created_at : r.created_at * 1000;
+        const d = new Date(ms).toISOString().slice(0, 10);
+        if (d >= startDate && d <= endDate) {
+          byDate.set(d, (byDate.get(d) ?? 0) + 1);
+        }
+      }
+      return Array.from(byDate.entries()).map(([date, count]) => ({ date, count }));
+    } catch {
+      return [];
+    }
   }
 
   async getLastReadPosition(): Promise<{ bookId: string; chapter: number; verseRef: string } | null> {
-    return null; // Mobile: not implemented yet
+    const db = getDatabase();
+    if (!db) return null;
+    try {
+      const row = await db.getFirstAsync<{ book_id: string; chapter: number; verse_ref: string }>(
+        `SELECT book_id, chapter, verse_ref FROM reading_events ORDER BY created_at DESC LIMIT 1;`,
+      );
+      return row ? { bookId: row.book_id, chapter: row.chapter, verseRef: row.verse_ref } : null;
+    } catch {
+      return null;
+    }
   }
 
   async findResonance(journalText: string): Promise<ResonanceResult | null> {
@@ -269,7 +356,20 @@ export class MobileDataLayer implements DataLayer {
     return storeSegmentVector(segmentId, text);
   }
 
-  async appendQuoteToJournal(_quote: string, _source: string): Promise<void> {}
+  async appendQuoteToJournal(quote: string, source: string): Promise<void> {
+    const text = source ? `"${quote}"\n\n— ${source}` : quote;
+    const now = Date.now();
+    const date = new Date(now).toISOString().slice(0, 10);
+    await this.saveSegment({
+      id: `seg-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      created_at: now,
+      updated_at: now,
+      segment_type: 'text',
+      text,
+      position_index: Math.floor(now / 1000),
+      parent_date: date,
+    });
+  }
 
   async clusterEntries(segments: JournalSegment[]): Promise<EntryCluster[]> {
     return clusterEntries(segments) as Promise<EntryCluster[]>;
@@ -285,6 +385,31 @@ export class MobileDataLayer implements DataLayer {
 
   async getCalendarDays(segments: JournalSegment[], year: number, month: number): Promise<CalendarDay[]> {
     return getCalendarDays(segments, year, month) as Promise<CalendarDay[]>;
+  }
+
+  async getPatternsSummary(
+    start: string,
+    end: string,
+    timeframe: PatternTimeframe = '30d',
+  ): Promise<PatternsSummary> {
+    return getOfflinePatternsSummary(start, end, timeframe);
+  }
+
+  async getPatternDayDetail(date: string): Promise<PatternDayDetail> {
+    return getOfflinePatternDayDetail(date);
+  }
+
+  async getBookBridges(
+    kind: 'bible' | 'voice',
+    id: string,
+    timeframe: PatternTimeframe,
+    bookId?: string,
+  ): Promise<BookBridgeResult> {
+    return getOfflineBookBridges(kind, id, timeframe, bookId);
+  }
+
+  async recordPatternFeedback(input: PatternFeedbackInput): Promise<{ ok: boolean }> {
+    return recordOfflinePatternFeedback(input);
   }
 
   async generateReflectionPrompt(excerpts: string[]): Promise<ReflectionPrompt | null> {

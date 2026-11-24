@@ -5,3 +5,4 @@ What's in this build:
 • New Library Catalog Browser (Word → Library → Browse Catalog, and Settings → Browse Library Catalog): search & filter 79 classic works across 4 collections (The Church Fathers, Medieval & Contemplative Voices, Reformation & Devotional Classics, Modern Witnesses), see exact per-book sizes, and download individual books (50 KB–2 MB each) or whole collections on demand — or remove any book anytime
 • Fast batched SQLite ingestion (400-row batches) so downloaded books install in milliseconds instead of stalling the app
 • Personal Library & Device Folder import (EPUB, PDF, DOCX, HTML, Markdown, TXT) with extraction diagnostics, metadata editor, and on-device 512d int8 embedding
+• Living Concordance Patterns tab & Study Bookshelf, plus the new gold open-book app icon on cream

@@ -29,3 +29,6 @@ export * from './http-cache';
 export * from './document-parsers';
 export * from './corpus-pipeline';
 
+// ── Shared offline-capable Patterns & Study Bookshelf concordance engine ────
+export * from './patterns-engine';
+

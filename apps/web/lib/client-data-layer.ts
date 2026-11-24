@@ -20,6 +20,11 @@ import {
   type WeeklyRoundup,
   type ShiftReport,
   type CalendarDay,
+  type PatternTimeframe,
+  type PatternsSummary,
+  type PatternDayDetail,
+  type BookBridgeResult,
+  type PatternFeedbackInput,
   type ReflectionPrompt,
   type EmbeddingModelId,
   cacheGetEntry,
@@ -574,6 +579,38 @@ export class WebDataLayer implements DataLayer {
       const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const count = segments.filter((s) => s.parent_date === date && s.segment_type === 'text' && (s.text ?? '').trim()).length;
       return { date, hasEntries: count > 0, entryCount: count };
+    });
+  }
+
+  async getPatternsSummary(
+    start: string,
+    end: string,
+    timeframe: PatternTimeframe = '30d',
+  ): Promise<PatternsSummary> {
+    return api<PatternsSummary>(
+      `/api/patterns/summary?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&timeframe=${encodeURIComponent(timeframe)}`,
+    );
+  }
+
+  async getPatternDayDetail(date: string): Promise<PatternDayDetail> {
+    return api<PatternDayDetail>(`/api/patterns/day?date=${encodeURIComponent(date)}`);
+  }
+
+  async getBookBridges(
+    kind: 'bible' | 'voice',
+    id: string,
+    timeframe: PatternTimeframe,
+    bookId?: string,
+  ): Promise<BookBridgeResult> {
+    const params = new URLSearchParams({ kind, id, timeframe });
+    if (bookId) params.set('bookId', bookId);
+    return api<BookBridgeResult>(`/api/patterns/book-bridge?${params.toString()}`);
+  }
+
+  async recordPatternFeedback(input: PatternFeedbackInput): Promise<{ ok: boolean }> {
+    return api<{ ok: boolean }>('/api/patterns/feedback', {
+      method: 'POST',
+      body: JSON.stringify(input),
     });
   }
 
