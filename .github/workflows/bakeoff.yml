@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - name: Install deps
-        run: pip install --quiet sentence-transformers onnxruntime numpy huggingface_hub
+        run: pip install --quiet sentence-transformers "optimum[onnxruntime]" numpy huggingface_hub
       - name: Run
         run: python scripts/bakeoff/run_bakeoff.py ${{ inputs.mode || 'spike' }}
       - name: Upload results
