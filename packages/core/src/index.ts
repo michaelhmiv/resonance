@@ -25,3 +25,6 @@ export * from './schema';
 // ── HTTP cache (web-only; no-op on mobile and server) ───────────────────────
 export * from './http-cache';
 
+// ── Shared offline-capable Patterns & Study Bookshelf concordance engine ────
+export * from './patterns-engine';
+

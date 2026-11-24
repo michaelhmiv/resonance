@@ -25,6 +25,11 @@ import type {
   WeeklyRoundup,
   ShiftReport,
   CalendarDay,
+  PatternTimeframe,
+  PatternsSummary,
+  PatternDayDetail,
+  BookBridgeResult,
+  PatternFeedbackInput,
   ReflectionPrompt,
   EmbeddingModelId,
 } from './types';
@@ -130,6 +135,15 @@ export interface DataLayer {
   generateWeeklyRoundup(segments: JournalSegment[], weekStart: string): Promise<WeeklyRoundup>;
   generateShiftReport(segments: JournalSegment[], p1Start: string, p2Start: string): Promise<ShiftReport>;
   getCalendarDays(segments: JournalSegment[], year: number, month: number): Promise<CalendarDay[]>;
+  getPatternsSummary?(start: string, end: string, timeframe?: PatternTimeframe): Promise<PatternsSummary>;
+  getPatternDayDetail?(date: string): Promise<PatternDayDetail>;
+  getBookBridges?(
+    kind: 'bible' | 'voice',
+    id: string,
+    timeframe: PatternTimeframe,
+    bookId?: string,
+  ): Promise<BookBridgeResult>;
+  recordPatternFeedback?(input: PatternFeedbackInput): Promise<{ ok: boolean }>;
 
   // ── LLM (reflection) ───────────────────────────────────────────────────
   generateReflectionPrompt(excerpts: string[]): Promise<ReflectionPrompt | null>;
