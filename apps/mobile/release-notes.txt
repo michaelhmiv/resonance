@@ -5,3 +5,4 @@ What's in this build:
 • Non-blocking first-launch download sheet (~1.08 GB total from pinned Hugging Face commits + editable GitHub Releases corpus packs), with Wi-Fi preference, pause/resume, and "Journal while downloading"
 • Personal Library & Device Folder import: connect a folder on your phone (or Resonance Inbox) to import EPUB, PDF, DOCX, HTML, Markdown, and TXT works — with extraction diagnostics, scanned-PDF detection, full metadata editing (title, author, era, shelf, tags, notes, echo toggle), chapter rendering in Word → Library, and automatic on-device 512d int8 embedding
 • Updated Settings with Offline Engine status, GitHub Releases pack update sync, and Personal Library folder controls
+• New app icon: gold open book on cream (home screen, splash, and browser favicon)
