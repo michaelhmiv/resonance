@@ -140,7 +140,7 @@ function OfflineEngineSection(): ReactNode {
             ? 'Interrupted — tap to retry'
             : 'Not downloaded (~998 MB)';
 
-  const totalCatalogWorks = corpusManifest.works?.length || 79;
+  const totalCatalogWorks = corpusManifest.works?.length || 72;
 
   const handleCheckUpdates = useCallback(async () => {
     setCheckingUpdates(true);

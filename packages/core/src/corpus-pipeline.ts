@@ -32,7 +32,7 @@ const INDEX_LINE_RE =
   /(?:[,\s]\d{1,4}(?:-\d{1,4})?(?:,\s*\d{1,4}(?:-\d{1,4})?){2,}|^\s*[A-Z][a-z]+\.?\s+\d+[:.]\d+.*\b\d{2,4}\b|\.{4,}\s*\d+\s*$)/;
 
 const GUTENBERG_BOILERPLATE_RE =
-  /(?:project gutenberg|this ebook is for the use of anyone|gutenberg license|public domain in the usa|google book search|digitized by google|internet archive|distributed proofreading)/i;
+  /(?:project gutenberg|this ebook is for the use of anyone|gutenberg license|public domain in the usa|google book search|digitized by google|hosted by google|this is a digital copy of a book|make the world's books discoverable|about google book search|books\.google|internet archive|archive\.org|distributed proofreading|transcriber['’]s note|christian classics ethereal library|ccel\.org|imprimatur|nihil obstat)/i;
 
 function countWords(s: string): number {
   const trimmed = s.trim();

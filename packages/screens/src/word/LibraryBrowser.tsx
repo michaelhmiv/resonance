@@ -141,7 +141,7 @@ export function LibraryBrowser({
         <Text style={styles.emptyDescription}>
           {loadError ??
             (onOpenCatalog || onOpenImport
-              ? 'Browse 79 public-domain Church classics to download individual books or collections, or add your own EPUB, PDF, and text files from your device.'
+              ? 'Browse 72 public-domain Church classics to download individual books or collections, or add your own EPUB, PDF, and text files from your device.'
               : 'You can opt back in to any package from Settings → Library Contents.')}
         </Text>
         <View style={styles.emptyActionsRow}>

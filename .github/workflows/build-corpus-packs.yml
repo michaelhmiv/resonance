@@ -2,7 +2,7 @@ name: Build & Publish Corpus Packs (512d int8)
 
 # Builds pre-embedded 512d int8 RVEC + gzipped passage assets for:
 #   - Core `bible-web` pack (~4.2 MB)
-#   - All 79 individual Church Library works (50 KB–2 MB each) grouped into
+#   - All 72 audited, scrubbed Church Library works (50 KB–2 MB each) grouped into
 #     4 curated collections in `packs-manifest.json` (schema v2).
 #
 # Fast re-assembly mode:
@@ -99,7 +99,7 @@ jobs:
         run: |
           mkdir -p out/shards
           gh run download "${{ inputs.existing_shards_run_id }}" --pattern "corpus-pack-shard-*" --dir out/shards
-      - name: Assemble bible-web + 79 per-work RVEC packs + packs-manifest.json
+      - name: Assemble bible-web + audited per-work RVEC packs + packs-manifest.json
         run: |
           python3 scripts/corpus/build_packs.py assemble \
             --chunks corpus/chunks_v3.jsonl \
@@ -121,14 +121,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ inputs.release_tag }}"
+          WORK_COUNT=$(python3 -c 'import json; print(len(json.load(open("out/packs/packs-manifest.json")).get("works", [])))')
+          NOTES="Pre-embedded 512d int8 Voyage-4-Nano core Bible pack + ${WORK_COUNT} audited, scrubbed Church Library works across 4 curated collections (packs-manifest.json schema v2). Editable anytime via workflow re-run or GitHub Releases UI."
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" \
               --title "Resonance Corpus Packs (${{ inputs.pack_version }})" \
-              --notes "Pre-embedded 512d int8 Voyage-4-Nano core Bible pack + 79 individually downloadable Church Library works across 4 curated collections (packs-manifest.json schema v2). Editable anytime via workflow re-run or GitHub Releases UI."
+              --notes "$NOTES"
           else
             gh release edit "$TAG" \
               --title "Resonance Corpus Packs (${{ inputs.pack_version }})" \
-              --notes "Pre-embedded 512d int8 Voyage-4-Nano core Bible pack + 79 individually downloadable Church Library works across 4 curated collections (packs-manifest.json schema v2). Editable anytime via workflow re-run or GitHub Releases UI."
+              --notes "$NOTES"
           fi
 
           # Upload data assets in resilient batches of 15, then upload packs-manifest.json LAST
@@ -147,4 +149,16 @@ jobs:
             done
           done
           gh release upload "$TAG" out/packs/packs-manifest.json --clobber
-          echo "Release $TAG updated cleanly with $((TOTAL + 1)) assets."
+
+          # Prune obsolete assets (excluded/deduplicated works or legacy monolithic packs)
+          # no longer referenced in out/packs/ so the release stays clean.
+          mapfile -t REMOTE_ASSETS < <(gh release view "$TAG" --json assets --jq '.assets[].name')
+          PRUNED=0
+          for name in "${REMOTE_ASSETS[@]}"; do
+            if [ ! -f "out/packs/$name" ]; then
+              echo "Pruning obsolete release asset: $name"
+              gh release delete-asset "$TAG" "$name" --yes || true
+              PRUNED=$((PRUNED + 1))
+            fi
+          done
+          echo "Release $TAG updated cleanly with $((TOTAL + 1)) assets ($PRUNED obsolete pruned)."

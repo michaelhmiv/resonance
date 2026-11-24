@@ -147,7 +147,7 @@ export function LibraryCatalogModal({
               <Text style={styles.title}>Library Catalog</Text>
               <Text style={styles.subtitle}>
                 Pick individual books or whole collections · {installedWorkIds.length} of{' '}
-                {allWorks.length || 79} downloaded
+                {allWorks.length || 72} downloaded
               </Text>
             </View>
             <View style={styles.headerActions}>
@@ -197,7 +197,7 @@ export function LibraryCatalogModal({
           >
             {(
               [
-                { key: 'all', label: `All (${allWorks.length || 79})` },
+                { key: 'all', label: `All (${allWorks.length || 72})` },
                 { key: 'downloaded', label: `Downloaded (${installedWorkIds.length})` },
                 ...collections.map((c) => ({ key: c.id as FilterKey, label: c.label })),
               ] as Array<{ key: FilterKey; label: string }>
@@ -271,7 +271,7 @@ export function LibraryCatalogModal({
                     : 'Catalog packs are being prepared'}
                 </Text>
                 <Text style={styles.emptyBody}>
-                  Once the `corpus-packs-latest` release finishes publishing, all 79
+                  Once the `corpus-packs-latest` release finishes publishing, all 72
                   individual books and 4 collections will appear here ready to
                   cherry-pick. Tap the refresh icon above anytime to sync.
                 </Text>
