@@ -53,6 +53,7 @@ import { useJournalStore } from '../journal/journalStore';
 import { useFocusStore } from '../journal/focusManager';
 import { getVerseOfDay } from '../db/bibleQueries';
 import { useReadingTextStyle } from '../settings/settingsStore';
+import { useOfflineEngineStore } from '../packages/offlineEngineManager';
 
 // ── Item types for the FlashList ─────────────────────────────────────────────
 
@@ -81,6 +82,10 @@ export function JournalScreen(): ReactNode {
     handleReturn,
     initKeyboardListeners,
   } = useFocusStore();
+  const enginePhase = useOfflineEngineStore((s) => s.phase);
+  const downloadedBytes = useOfflineEngineStore((s) => s.downloadedBytes);
+  const totalBytes = useOfflineEngineStore((s) => s.totalBytes);
+  const setEngineSheetVisible = useOfflineEngineStore((s) => s.setSheetVisible);
   const navigation = useNavigation();
   const listRef = useRef<FlashListRef<ListItem>>(null);
 
@@ -99,11 +104,31 @@ export function JournalScreen(): ReactNode {
     return unsub;
   }, [initKeyboardListeners]);
 
-  // ── Wire settings gear into header ─────────────────────────────────────
+  // ── Wire settings gear + background download pill into header ──────────
   useEffect(() => {
+    const showPill =
+      enginePhase === 'downloading' ||
+      enginePhase === 'installing_packs' ||
+      enginePhase === 'paused';
+    const pct =
+      totalBytes > 0 ? Math.min(100, Math.round((downloadedBytes / totalBytes) * 100)) : 0;
+
     navigation.setOptions({
       headerRight: () => (
         <View style={styles.headerRight}>
+          {showPill ? (
+            <Pressable
+              onPress={() => setEngineSheetVisible(true)}
+              hitSlop={8}
+              style={styles.downloadPill}
+              accessibilityRole="button"
+              accessibilityLabel={`Offline engine download ${pct}%`}
+            >
+              <Text style={styles.downloadPillText}>
+                {enginePhase === 'paused' ? `❚❚ ${pct}%` : `↓ ${pct}%`}
+              </Text>
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={() => setSearchVisible((v) => !v)}
             hitSlop={10}
@@ -123,7 +148,7 @@ export function JournalScreen(): ReactNode {
         </View>
       ),
     });
-  }, [navigation]);
+  }, [navigation, enginePhase, downloadedBytes, totalBytes, setEngineSheetVisible]);
 
   // ── Initialize: create first text segment if document is empty ─────────
   useEffect(() => {
@@ -377,6 +402,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.lg,
     marginRight: spacing.md,
+  },
+  downloadPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: '#f3ede2',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  downloadPillText: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 11.5,
+    color: colors.accent,
   },
   activeInput: {
     ...serifText,

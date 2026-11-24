@@ -134,7 +134,7 @@ export async function installPackage(packageId: string): Promise<boolean> {
        VALUES (?, ?, ?, ?);`,
       packageId,
       '1.0.0',
-      'gte-small',
+      'voyage-4-nano',
       Date.now()
     );
 

@@ -55,6 +55,17 @@ export interface LibraryBook {
   author: string | null;
   era: string | null;
   package_id: string | null;
+  source?: string | null;
+  isPersonal?: boolean;
+  sourceFormat?: PersonalSourceFormat | null;
+  collection?: string | null;
+  tags?: string[];
+  notes?: string | null;
+  includeInResonance?: boolean;
+  embeddingStatus?: PersonalEmbeddingStatus | null;
+  embeddedChunks?: number;
+  totalChunks?: number;
+  ocrRequired?: boolean;
 }
 
 export interface LibraryPackage {
@@ -72,6 +83,111 @@ export interface LibraryPassage {
   text: string;
   translation: string | null;
   chunk_id: number | null;
+  division?: string | null;
+}
+
+// ── Personal Library (User-Owned Device Corpora — chunking-spec §7) ─────────
+
+export type PersonalSourceFormat = 'epub' | 'pdf' | 'docx' | 'html' | 'md' | 'txt';
+
+export type PersonalEmbeddingStatus = 'pending' | 'embedding' | 'ready' | 'error';
+
+export interface PersonalWorkMetadata {
+  bookId: string;
+  title: string;
+  author: string;
+  era: string;
+  collection: string;
+  tags: string[];
+  notes: string;
+  sourceFormat: PersonalSourceFormat;
+  sourceFilename: string;
+  localFilePath: string | null;
+  fileSizeBytes: number;
+  fileHash: string;
+  includeInResonance: boolean;
+  embeddingStatus: PersonalEmbeddingStatus;
+  embeddedChunks: number;
+  totalChunks: number;
+  embeddingModel: string | null;
+  lastError: string | null;
+  ocrRequired: boolean;
+  warnings: string[];
+  importedAt: number;
+  updatedAt: number;
+}
+
+export interface PersonalWorkMetadataPatch {
+  title?: string;
+  author?: string;
+  era?: string;
+  collection?: string;
+  tags?: string[];
+  notes?: string;
+  includeInResonance?: boolean;
+}
+
+export interface ExtractedBlock {
+  kind: 'heading' | 'paragraph' | 'poetry';
+  text: string;
+  level?: number;
+}
+
+export interface DetectedDocumentMetadata {
+  title?: string;
+  author?: string;
+  era?: string;
+  language?: string;
+  description?: string;
+  tags?: string[];
+  pageCount?: number;
+  chapterCount?: number;
+}
+
+export interface RawDocumentExtraction {
+  format: PersonalSourceFormat;
+  filename: string;
+  blocks: ExtractedBlock[];
+  rawText: string;
+  detectedMetadata: DetectedDocumentMetadata;
+  ocrRequired: boolean;
+  warnings: string[];
+}
+
+export interface CanonicalUnit {
+  seq: number;
+  division: string | null;
+  chapter: number;
+  kind: 'prose' | 'poetry';
+  text: string;
+  words: number;
+}
+
+export interface ChunkedPassage {
+  chunkIndex: number;
+  division: string | null;
+  chapter: number;
+  kind: 'prose' | 'poetry';
+  text: string;
+  words: number;
+  unitSeqs: number[];
+}
+
+export interface ProcessedPersonalDocument {
+  format: PersonalSourceFormat;
+  filename: string;
+  suggestedTitle: string;
+  suggestedAuthor: string;
+  suggestedEra: string;
+  suggestedTags: string[];
+  suggestedNotes: string;
+  units: CanonicalUnit[];
+  chunks: ChunkedPassage[];
+  divisions: string[];
+  wordCount: number;
+  quarantinedCount: number;
+  ocrRequired: boolean;
+  warnings: string[];
 }
 
 // ── Journal Segments ────────────────────────────────────────────────────────
@@ -177,9 +293,13 @@ export interface CalendarDay {
   entryCount: number;
 }
 
-// ── Models ──────────────────────────────────────────────────────────────────
+// ── Models & Offline Engine Manifest ────────────────────────────────────────
 
-export type EmbeddingModelId = 'gte-small' | 'bge-small-en' | 'all-minilm-l6';
+export type EmbeddingModelId =
+  | 'voyage-4-nano'
+  | 'gte-small'
+  | 'bge-small-en'
+  | 'all-minilm-l6';
 
 export type EmbeddingModelTier = 'local' | 'cloud';
 
@@ -190,6 +310,80 @@ export interface EmbeddingModelInfo {
   sizeMb: number;
   license: string;
   tier: EmbeddingModelTier;
+  quantization?: 'int8' | 'fp32';
+  huggingfaceRepo?: string;
+  commitSha?: string;
+}
+
+export type RerankerModelId = 'qwen3-reranker-0.6b' | 'none';
+
+export interface RerankerModelInfo {
+  id: RerankerModelId;
+  label: string;
+  sizeMb: number;
+  license: string;
+  quantization: 'int8' | 'none';
+  huggingfaceRepo?: string;
+  commitSha?: string;
+}
+
+export interface DownloadArtifactSpec {
+  /** Stable identifier persisted in offline_downloads. */
+  id: string;
+  /** Logical component group ('embedder' | 'reranker' | 'corpus'). */
+  group: 'embedder' | 'reranker' | 'corpus';
+  /** Human-readable display label. */
+  label: string;
+  /** Pinned immutable download URL. */
+  url: string;
+  /** Relative local path inside Resonance's offline_engine directory. */
+  relativePath: string;
+  /** Exact expected byte size (0 if dynamically resolved from manifest). */
+  sizeBytes: number;
+  /** Expected lowercase hex SHA-256 digest (null if resolved dynamically). */
+  sha256: string | null;
+}
+
+export interface CorpusPackManifestEntry {
+  id: string;
+  label: string;
+  description: string;
+  version: string;
+  kind: 'bible' | 'witnesses' | 'mixed';
+  workCount: number;
+  passageCount: number;
+  dim: number;
+  quantization: 'int8';
+  modelId: EmbeddingModelId;
+  passagesUrl: string;
+  passagesBytes: number;
+  passagesSha256: string | null;
+  vectorsUrl: string;
+  vectorsBytes: number;
+  vectorsSha256: string | null;
+}
+
+export interface CorpusPacksManifest {
+  schemaVersion: number;
+  releaseTag: string;
+  updatedAt: string;
+  modelId: EmbeddingModelId;
+  dim: number;
+  quantization: 'int8';
+  packs: CorpusPackManifestEntry[];
+}
+
+export interface OfflineEngineManifest {
+  version: string;
+  embeddingModelId: EmbeddingModelId;
+  rerankerModelId: RerankerModelId;
+  dim: number;
+  fusionAlpha: number;
+  silenceThreshold: number;
+  perWorkCap: number;
+  modelArtifacts: readonly DownloadArtifactSpec[];
+  corpusManifestUrl: string;
+  fallbackCorpusManifest: CorpusPacksManifest;
 }
 
 export type LlmModelId = 'qwen-2.5-1.5b' | 'deepseek-v4-pro' | 'none';

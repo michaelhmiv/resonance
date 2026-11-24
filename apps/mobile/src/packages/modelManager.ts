@@ -18,10 +18,10 @@ import {
 
 // ── Active model ─────────────────────────────────────────────────────────────
 
-/** Read the active embedding model from app_settings. Returns 'gte-small' by default. */
+/** Read the active embedding model from app_settings. Returns 'voyage-4-nano' by default. */
 export async function getActiveModel(): Promise<EmbeddingModelId> {
   const db = getDatabase();
-  if (!db) return 'gte-small';
+  if (!db) return 'voyage-4-nano';
 
   try {
     const row = await db.getFirstAsync<{ value: string }>(
@@ -33,7 +33,7 @@ export async function getActiveModel(): Promise<EmbeddingModelId> {
   } catch {
     // ignore
   }
-  return 'gte-small';
+  return 'voyage-4-nano';
 }
 
 /**

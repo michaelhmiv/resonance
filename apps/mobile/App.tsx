@@ -28,6 +28,8 @@ import { colors, fontFamilies, spacing } from './src/theme';
 import { openDatabase } from './src/db/database';
 import { useDbStore } from './src/db/dbStore';
 import { useSettingsStore } from './src/settings/settingsStore';
+import { useOfflineEngineStore } from './src/packages/offlineEngineManager';
+import { usePersonalLibraryStore } from './src/personal/personalLibraryService';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 // Keep the native splash up until fonts + database are ready, then hide
@@ -57,6 +59,8 @@ function AppContent(): ReactNode {
         // Load persisted user preferences now that the connection is live,
         // so accessibility/text-scale choices take effect from first paint.
         void useSettingsStore.getState().load();
+        void useOfflineEngineStore.getState().initialize();
+        void usePersonalLibraryStore.getState().initialize();
         return db;
       })
       .catch((err) => {

@@ -51,24 +51,24 @@ export const LICENSE_GROUPS: LicenseGroup[] = [
     ],
   },
   {
-    title: 'Embedding Models',
+    title: 'On-Device Models',
     entries: [
-      { name: 'GTE-small', license: 'MIT', detail: 'Alibaba DAMO Academy' },
-      { name: 'BGE-small-en-v1.5', license: 'MIT', detail: 'BAAI' },
-      { name: 'all-MiniLM-L6-v2', license: 'Apache 2.0', detail: 'Sentence-Transformers' },
-    ],
-  },
-  {
-    title: 'Reflection Model (LLM)',
-    entries: [
-      { name: 'Qwen 2.5 1.5B', license: 'Apache 2.0', detail: 'Alibaba' },
+      {
+        name: 'Voyage-4-Nano (INT8 ONNX · 512d)',
+        license: 'Apache 2.0',
+        detail: 'Voyage AI / onnx-community · Local embeddings',
+      },
+      {
+        name: 'Qwen3-Reranker-0.6B (INT8 Yes/No ONNX)',
+        license: 'Apache 2.0',
+        detail: 'Alibaba Qwen / n24q02m · Passage relevance scoring only',
+      },
     ],
   },
   {
     title: 'Open-Source Software',
     entries: [
       { name: 'ONNX Runtime', license: 'MIT', detail: 'Microsoft' },
-      { name: 'llama.cpp / llama.rn', license: 'MIT' },
       { name: 'React Native', license: 'MIT', detail: 'Meta' },
       { name: 'Expo', license: 'MIT' },
       { name: 'FlashList', license: 'MIT', detail: 'Shopify' },
