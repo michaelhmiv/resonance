@@ -37,9 +37,11 @@ export const CORPUS_PACKS_RELEASE_BASE =
   'https://github.com/michaelhmiv/resonance/releases/download/corpus-packs-latest';
 export const CORPUS_PACKS_MANIFEST_URL = `${CORPUS_PACKS_RELEASE_BASE}/packs-manifest.json`;
 
-/** Query instruction prefix matching bake-off v2 & pack build pipeline. */
+/** Exact query & document prefixes matching bake-off v2 & pack build pipeline. */
 export const VOYAGE_QUERY_PREFIX =
-  'Represent this query for retrieving relevant documents: ';
+  'Represent the query for retrieving supporting documents: ';
+export const VOYAGE_DOC_PREFIX =
+  'Represent the document for retrieval: ';
 
 /** G09-calibrated posture rubric for Qwen3-Reranker-0.6B pointwise Yes/No scoring. */
 export const QWEN3_RERANKER_INSTRUCTION =

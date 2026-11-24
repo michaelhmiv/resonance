@@ -91,11 +91,22 @@ def load_chunks(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def format_doc(chunk: dict[str, Any]) -> str:
+    if chunk.get("source") == "bible":
+        title = f"Bible — {chunk.get('chunk_id', '')}"
+    else:
+        wid = chunk["work_id"].split("__")[0].replace("-", " ").title()
+        div = (chunk.get("division") or "").strip()
+        title = f"{wid} — {div[:80]}" if div else wid
+    return f"Represent the document for retrieval: [{title}]\n{chunk['text']}"
+
+
 def cmd_embed_shard(args: argparse.Namespace) -> None:
+    import shutil
     import numpy as np
     import onnxruntime as ort
     from huggingface_hub import hf_hub_download
-    from tokenizers import Tokenizer
+    from transformers import AutoTokenizer
 
     rows = load_chunks(Path(args.chunks))
     n = len(rows)
@@ -104,29 +115,28 @@ def cmd_embed_shard(args: argparse.Namespace) -> None:
     start = (n * shard) // num_shards
     end = (n * (shard + 1)) // num_shards
     sub = rows[start:end]
-    print(f"[shard {shard}/{num_shards}] embedding rows [{start}:{end}] ({len(sub):,} chunks)")
+    print(f"[shard {shard}/{num_shards}] embedding rows [{start}:{end}] ({len(sub):,} chunks)", flush=True)
 
-    onnx_path = hf_hub_download(
-        VOYAGE_REPO, filename="onnx/model_quantized.onnx", revision=VOYAGE_SHA
-    )
-    hf_hub_download(
-        VOYAGE_REPO, filename="onnx/model_quantized.onnx_data", revision=VOYAGE_SHA
-    )
-    tok_path = hf_hub_download(
-        VOYAGE_REPO, filename="tokenizer.json", revision=VOYAGE_SHA
-    )
+    model_dir = Path("/tmp/model_voyage_4_nano")
+    model_dir.mkdir(parents=True, exist_ok=True)
+    for fn in ("onnx/model_quantized.onnx", "onnx/model_quantized.onnx_data"):
+        dst = model_dir / Path(fn).name
+        if not dst.exists():
+            shutil.copy(hf_hub_download(VOYAGE_REPO, filename=fn, revision=VOYAGE_SHA), dst)
 
-    tokenizer = Tokenizer.from_file(tok_path)
-    tokenizer.enable_truncation(max_length=512)
-    tokenizer.enable_padding(pad_id=0, pad_token="<pad>")
+    tokenizer = AutoTokenizer.from_pretrained(VOYAGE_REPO, revision=VOYAGE_SHA)
 
     sess_opts = ort.SessionOptions()
+    sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
     sess_opts.intra_op_num_threads = args.threads
     sess = ort.InferenceSession(
-        onnx_path, sess_options=sess_opts, providers=["CPUExecutionProvider"]
+        str(model_dir / "model_quantized.onnx"),
+        sess_options=sess_opts,
+        providers=["CPUExecutionProvider"],
     )
     input_names = [i.name for i in sess.get_inputs()]
     output_names = [o.name for o in sess.get_outputs()]
+    print(f"loaded voyage-4-nano inputs={input_names} outputs={output_names}", flush=True)
 
     # Length-sort for minimal padding overhead
     order = sorted(range(len(sub)), key=lambda i: len(sub[i]["text"]))
@@ -137,28 +147,37 @@ def cmd_embed_shard(args: argparse.Namespace) -> None:
     t0 = time.time()
     for b_start in range(0, len(order), batch_size):
         idxs = order[b_start : b_start + batch_size]
-        texts = [sub[i]["text"] for i in idxs]
-        encs = tokenizer.encode_batch(texts)
-        ids = np.array([e.ids for e in encs], dtype=np.int64)
-        mask = np.array([e.attention_mask for e in encs], dtype=np.int64)
+        texts = [format_doc(sub[i]) for i in idxs]
+        enc = tokenizer(
+            texts,
+            padding=True,
+            truncation=True,
+            max_length=512,
+            return_tensors="np",
+        )
+        ids = enc["input_ids"].astype(np.int64)
+        mask = enc["attention_mask"].astype(np.int64)
 
         feeds: dict[str, Any] = {}
         for name in input_names:
-            if "attention_mask" in name:
-                feeds[name] = mask
-            elif "position_ids" in name:
-                pos = np.broadcast_to(np.arange(ids.shape[1], dtype=np.int64), ids.shape)
-                feeds[name] = np.ascontiguousarray(pos)
-            else:
+            if name == "input_ids":
                 feeds[name] = ids
+            elif name == "attention_mask":
+                feeds[name] = mask
+            elif name == "token_type_ids":
+                feeds[name] = enc.get("token_type_ids", np.zeros_like(ids)).astype(np.int64)
+            elif name == "position_ids":
+                feeds[name] = np.maximum(np.cumsum(mask, axis=1) - 1, 0).astype(np.int64)
 
         outs = sess.run(output_names, feeds)
-        arr = outs[0]
-        if arr.ndim == 3:
+        out_map = dict(zip(output_names, outs))
+        if "pooler_output" in out_map and out_map["pooler_output"].ndim == 2:
+            pooled = out_map["pooler_output"]
+        elif outs[0].ndim == 3:
             m = mask[:, :, None].astype(np.float32)
-            pooled = (arr * m).sum(axis=1) / np.maximum(m.sum(axis=1), 1e-6)
+            pooled = (outs[0] * m).sum(axis=1) / np.maximum(m.sum(axis=1), 1e-6)
         else:
-            pooled = arr
+            pooled = outs[0]
 
         q, s = quantize_int8_512(pooled)
         for j, orig_i in enumerate(idxs):
