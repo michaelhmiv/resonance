@@ -5,6 +5,12 @@ on:
       candidates_run:
         description: 'Run ID holding the bakeoff-candidates artifact'
         required: true
+      model:
+        description: 'Decider model (quantized, phone-class)'
+        required: true
+        default: 'gemma3n-e2b-q4km'
+        type: choice
+        options: [gemma3n-e2b-q4km, lfm3-1.7b-q4km]
 jobs:
   rerank:
     runs-on: ubuntu-latest
@@ -24,10 +30,13 @@ jobs:
           BIN=$(find /tmp/llama -name llama-server -type f | head -1)
           echo "$(dirname "$BIN")" >> "$GITHUB_PATH"
           "$BIN" --version || true
-      - name: Download quantized Gemma 3n E2B (Q4_K_M)
+      - name: Download quantized decider model
         run: |
-          curl -L --fail -o /tmp/model.gguf \
-            'https://huggingface.co/unsloth/gemma-3n-E2B-it-GGUF/resolve/main/gemma-3n-E2B-it-Q4_K_M.gguf'
+          case '${{ inputs.model }}' in
+            gemma3n-e2b-q4km) URL='https://huggingface.co/unsloth/gemma-3n-E2B-it-GGUF/resolve/main/gemma-3n-E2B-it-Q4_K_M.gguf' ;;
+            lfm3-1.7b-q4km)   URL='https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF/resolve/main/LFM3-1.7B-Q4_K_M.gguf' ;;
+          esac
+          curl -L --fail -o /tmp/model.gguf "$URL"
           ls -la /tmp/model.gguf
       - name: Fetch candidates
         run: gh run download ${{ inputs.candidates_run }} --name bakeoff-candidates --dir /tmp/cand
@@ -35,5 +44,5 @@ jobs:
         run: python3 scripts/bakeoff/rerank_decider.py ${{ matrix.shard }} 10 /tmp/cand/bakeoff-candidates.json /tmp/model.gguf
       - uses: actions/upload-artifact@v4
         with:
-          name: rerank-shard-${{ matrix.shard }}
+          name: rerank-${{ inputs.model }}-shard-${{ matrix.shard }}
           path: rerank-shard-${{ matrix.shard }}.json
