@@ -1,65 +1,160 @@
 /**
- * Embedding service — on-device text → vector via ONNX Runtime.
+ * Embedding service — on-device text → 512d vector via ONNX Runtime.
  *
- * The embedding model (GTE-small default, 33 MB) runs locally through
- * `onnxruntime-react-native`. Vectors are Float32Array, 384 dimensions
- * for GTE-small. The model file and tokenizer sit in bundled assets.
+ * Locked shipping model (bake-off v2): `Voyage-4-Nano` INT8 ONNX
+ * (`onnx-community/voyage-4-nano-ONNX`), mean-pooled, MRL-sliced to 512d,
+ * L2-normalized, and quantized to symmetric per-vector `int8` for storage.
  *
  * All embedding stays on the device. Nothing is sent to a server.
- *
- * (design spec §7.1 — embeddings, model selection, first-launch prompt)
  */
 
 import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import {
+  DEFAULT_LOCAL_EMBEDDING_MODEL,
+  EMBEDDING_DIM,
+  EMBEDDING_MODELS,
+  VOYAGE_QUERY_PREFIX,
+  blobToVector,
+  cosineSimilarity,
+  getModelInfo,
+  l2Normalize,
+  quantizeVectorInt8,
+  vectorToBlob,
+  type EmbeddingModelId,
+  type EmbeddingModelInfo,
+} from '@resonance/core';
+import { getEmbedderModelPaths } from '../packages/offlineEngineManager';
 
-// ONNX Runtime is imported dynamically so that the module loads only on
-// native platforms (not web) and only after the model file is resolved.
-// This keeps the TypeScript surface clean even if the native module isn't
-// linked in every build configuration.
+export {
+  EMBEDDING_DIM,
+  EMBEDDING_MODELS,
+  getModelInfo,
+  cosineSimilarity,
+  vectorToBlob,
+  blobToVector,
+  quantizeVectorInt8,
+  type EmbeddingModelId,
+  type EmbeddingModelInfo,
+};
 
-/** Dimension of the embedding vectors for the active model. */
-export const EMBEDDING_DIM = 384;
+// ── Lightweight Hugging Face tokenizer.json loader ─────────────────────────
 
-/** Model identifiers that the app supports. */
-export type EmbeddingModelId = 'gte-small' | 'bge-small-en' | 'all-minilm-l6';
-
-export interface EmbeddingModelInfo {
-  id: EmbeddingModelId;
-  label: string;
-  dim: number;
-  sizeMb: number;
-  license: string;
+interface LoadedTokenizer {
+  vocab: Map<string, number>;
+  unkId: number;
+  bosId: number | null;
+  eosId: number | null;
+  maxLen: number;
 }
 
-export const EMBEDDING_MODELS: readonly EmbeddingModelInfo[] = [
-  {
-    id: 'gte-small',
-    label: 'GTE-small',
-    dim: 384,
-    sizeMb: 33,
-    license: 'MIT',
-  },
-  {
-    id: 'bge-small-en',
-    label: 'BGE-small-en-v1.5',
-    dim: 384,
-    sizeMb: 34,
-    license: 'MIT',
-  },
-  {
-    id: 'all-minilm-l6',
-    label: 'all-MiniLM-L6-v2',
-    dim: 384,
-    sizeMb: 23,
-    license: 'Apache 2.0',
-  },
-] as const;
+let tokenizer: LoadedTokenizer | null = null;
 
-export function getModelInfo(id: EmbeddingModelId): EmbeddingModelInfo {
-  return EMBEDDING_MODELS.find((m) => m.id === id) ?? EMBEDDING_MODELS[0];
+async function loadTokenizerFromJson(path: string, maxLen = 512): Promise<LoadedTokenizer | null> {
+  try {
+    const info = await FileSystem.getInfoAsync(path);
+    if (!info.exists) return null;
+    const raw = await FileSystem.readAsStringAsync(path);
+    const parsed = JSON.parse(raw) as {
+      model?: { vocab?: Record<string, number> };
+      added_tokens?: Array<{ id: number; content: string }>;
+    };
+    const vocab = new Map<string, number>();
+    if (parsed.model?.vocab) {
+      for (const [tok, id] of Object.entries(parsed.model.vocab)) {
+        vocab.set(tok, id);
+      }
+    }
+    if (Array.isArray(parsed.added_tokens)) {
+      for (const t of parsed.added_tokens) {
+        vocab.set(t.content, t.id);
+      }
+    }
+    const unkId =
+      vocab.get('<unk>') ?? vocab.get('[UNK]') ?? vocab.get('<|endoftext|>') ?? 0;
+    const bosId = vocab.get('<|im_start|>') ?? vocab.get('<s>') ?? vocab.get('[CLS]') ?? null;
+    const eosId = vocab.get('<|endoftext|>') ?? vocab.get('</s>') ?? vocab.get('[SEP]') ?? null;
+    return { vocab, unkId, bosId, eosId, maxLen };
+  } catch {
+    return null;
+  }
 }
 
-// ── Session management ─────────────────────────────────────────────────────
+/**
+ * Greedy longest-prefix subword tokenizer operating on Hugging Face
+ * `tokenizer.json` vocab (handles both ByteLevel `Ġ` and SentencePiece `▁`
+ * prefixes cleanly on Hermes without native Rust bindings).
+ */
+export function encodeWithTokenizer(
+  tok: LoadedTokenizer,
+  text: string,
+  maxLen = tok.maxLen
+): { inputIds: number[]; attentionMask: number[] } {
+  const ids: number[] = [];
+  if (tok.bosId !== null) ids.push(tok.bosId);
+
+  const words = text.trim().split(/(\s+)/);
+  for (let wIdx = 0; wIdx < words.length && ids.length < maxLen - 1; wIdx++) {
+    const piece = words[wIdx];
+    if (!piece) continue;
+    if (/^\s+$/.test(piece)) continue;
+
+    // Try ByteLevel (Ġ) or SentencePiece (▁) prefix for non-initial words
+    const prefixCandidates =
+      wIdx > 0 ? [`\u0120${piece}`, `\u2581${piece}`, piece] : [piece, `\u2581${piece}`];
+
+    let matchedWhole = false;
+    for (const cand of prefixCandidates) {
+      const id = tok.vocab.get(cand);
+      if (id !== undefined) {
+        ids.push(id);
+        matchedWhole = true;
+        break;
+      }
+    }
+    if (matchedWhole) continue;
+
+    // Greedy subword fallback
+    let pos = 0;
+    while (pos < piece.length && ids.length < maxLen - 1) {
+      let bestEnd = pos + 1;
+      let bestId = tok.unkId;
+      const limit = Math.min(piece.length, pos + 20);
+      for (let end = limit; end > pos; end--) {
+        const sub = piece.slice(pos, end);
+        const tries =
+          pos === 0 && wIdx > 0
+            ? [`\u0120${sub}`, `\u2581${sub}`, sub]
+            : pos > 0
+              ? [`##${sub}`, sub]
+              : [sub];
+        let found: number | undefined;
+        for (const t of tries) {
+          const hit = tok.vocab.get(t);
+          if (hit !== undefined) {
+            found = hit;
+            break;
+          }
+        }
+        if (found !== undefined) {
+          bestEnd = end;
+          bestId = found;
+          break;
+        }
+      }
+      ids.push(bestId);
+      pos = bestEnd;
+    }
+  }
+
+  if (tok.eosId !== null && ids.length < maxLen) ids.push(tok.eosId);
+  return {
+    inputIds: ids,
+    attentionMask: ids.map(() => 1),
+  };
+}
+
+// ── Session management ──────────────────────────────────────────────────────
 
 let session: unknown | null = null;
 let activeModelId: EmbeddingModelId | null = null;
@@ -69,200 +164,180 @@ export function getActiveEmbeddingModel(): EmbeddingModelId | null {
 }
 
 export function isEmbeddingReady(): boolean {
-  return session !== null && activeModelId !== null;
+  return session !== null && activeModelId !== null && tokenizer !== null;
 }
 
-/**
- * Initialize the ONNX session for the given model. Downloads/bundled
- * asset resolution is handled here. Safe to call multiple times — if
- * the model is already loaded, it's a no-op; if switching models, the
- * old session is disposed first.
- *
- * On platforms where the ONNX runtime isn't linked, this resolves to
- * `false` — callers should gracefully degrade (no resonance features).
- */
-export async function initEmbeddingModel(
-  modelId: EmbeddingModelId
-): Promise<boolean> {
-  if (session !== null && activeModelId === modelId) {
-    return true; // already loaded
-  }
-
-  // Dispose previous session if switching models.
+export async function disposeEmbeddingModel(): Promise<void> {
   if (session !== null) {
     try {
-      // The session object's dispose method varies by binding; we try
-      // the common path and ignore failures.
-      const s = session as { dispose?: () => void; close?: () => void };
+      const s = session as { release?: () => void; dispose?: () => void; close?: () => void };
+      s.release?.();
       s.dispose?.();
       s.close?.();
     } catch {
       // ignore
     }
-    session = null;
-    activeModelId = null;
   }
+  session = null;
+  activeModelId = null;
+  tokenizer = null;
+}
+
+/**
+ * Initialize the ONNX session for the active local embedding model
+ * (`voyage-4-nano` INT8 downloaded via `offlineEngineManager`).
+ *
+ * Gracefully resolves to `false` if the weights aren't downloaded yet or
+ * `onnxruntime-react-native` isn't linked in the current build.
+ */
+export async function initEmbeddingModel(
+  modelId: EmbeddingModelId = DEFAULT_LOCAL_EMBEDDING_MODEL
+): Promise<boolean> {
+  if (session !== null && activeModelId === modelId && tokenizer !== null) {
+    return true;
+  }
+
+  await disposeEmbeddingModel();
 
   if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
     return false;
   }
 
   try {
-    // Dynamic import so the native module isn't required at build time
-    // for every configuration (e.g. when running tsc --noEmit without
-    // native modules linked).
+    const paths = getEmbedderModelPaths();
+    const [onnxInfo, dataInfo, tokInfo] = await Promise.all([
+      FileSystem.getInfoAsync(paths.onnxPath),
+      FileSystem.getInfoAsync(paths.dataPath),
+      FileSystem.getInfoAsync(paths.tokenizerPath),
+    ]);
+
+    if (!onnxInfo.exists || !dataInfo.exists || !tokInfo.exists) {
+      return false;
+    }
+
+    const loadedTok = await loadTokenizerFromJson(paths.tokenizerPath, 512);
+    if (!loadedTok) return false;
+
     const ort = await import('onnxruntime-react-native');
-
-    // In a full production build the model file path would be resolved
-    // from the asset bundle or the downloaded package directory. For
-    // now we construct the path from the model id convention.
-    const modelPath = `models/${modelId}/model.onnx`;
-
-    // Attempt to create the session. If the model file doesn't exist or
-    // the native module isn't linked, this throws — we catch and return
-    // false so the caller can degrade gracefully.
-    session = await ort.InferenceSession.create(modelPath);
+    const cleanPath = paths.onnxPath.replace(/^file:\/\//, '');
+    session = await ort.InferenceSession.create(cleanPath);
+    tokenizer = loadedTok;
     activeModelId = modelId;
     return true;
   } catch {
-    session = null;
-    activeModelId = null;
+    await disposeEmbeddingModel();
     return false;
   }
 }
 
-// ── Tokenizer (simplified word-piece for GTE-small / BERT-family) ──────────
-//
-// A production build ships a proper tokenizer vocabulary file. The
-// interface here is the contract: `tokenize` splits text into input_ids
-// and attention_mask tensors that the ONNX model expects.
+// ── Embed text (Voyage-4-Nano INT8 → 512d MRL → L2 normalize) ──────────────
 
-interface TokenizerResult {
-  inputIds: number[];
-  attentionMask: number[];
-}
-
-/**
- * Placeholder tokenizer that produces empty tensors. The real tokenizer
- * is loaded from the model's vocab.txt alongside the ONNX file. This
- * keeps the interface clean for tsc while the native bridge is wired.
- */
-async function tokenize(text: string): Promise<TokenizerResult> {
-  // In production: load vocab, do word-piece tokenization, truncate/pad
-  // to max_seq_len (128 for GTE-small), produce input_ids + attention_mask.
-  // For now, return empty — the embedding function will return zeros,
-  // which means cosine similarity returns 0 (no match) gracefully.
-  const _text = text;
-  return {
-    inputIds: [],
-    attentionMask: [],
-  };
-}
-
-// ── Embed text ──────────────────────────────────────────────────────────────
-
-/**
- * Embed a single text string into a Float32Array of dimension EMBEDDING_DIM.
- *
- * Returns null if the model isn't loaded or embedding fails. Callers should
- * check for null and skip resonance for that segment (graceful degradation).
- *
- * The pipeline: tokenize → ONNX run → mean-pool over tokens (with attention
- * mask) → L2 normalize → Float32Array.
- */
-export async function embedText(text: string): Promise<Float32Array | null> {
-  if (!session || !activeModelId) return null;
+async function embedRawText(text: string): Promise<Float32Array | null> {
+  if (!session || !activeModelId || !tokenizer) return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
 
   try {
-    const { inputIds, attentionMask } = await tokenize(text);
+    const { inputIds, attentionMask } = encodeWithTokenizer(tokenizer, trimmed, 512);
     if (inputIds.length === 0) return null;
 
     const ort = await import('onnxruntime-react-native');
+    const inputTensor = new ort.Tensor(
+      'int64',
+      BigInt64Array.from(inputIds.map(BigInt)),
+      [1, inputIds.length]
+    );
+    const maskTensor = new ort.Tensor(
+      'int64',
+      BigInt64Array.from(attentionMask.map(BigInt)),
+      [1, attentionMask.length]
+    );
 
-    // Create input tensors.
-    const inputTensor = new ort.Tensor('int64', BigInt64Array.from(inputIds.map(BigInt)), [1, inputIds.length]);
-    const maskTensor = new ort.Tensor('int64', BigInt64Array.from(attentionMask.map(BigInt)), [1, attentionMask.length]);
+    const sess = session as {
+      inputNames: string[];
+      outputNames: string[];
+      run: (
+        feeds: Record<string, unknown>,
+        outputs: string[]
+      ) => Promise<Record<string, { data: Float32Array; dims: number[] }>>;
+    };
 
-    // Run inference.
     const feeds: Record<string, unknown> = {};
-    const inputNames = (session as { inputNames: string[] }).inputNames;
-    feeds[inputNames[0]] = inputTensor;
-    if (inputNames.length > 1) {
-      feeds[inputNames[1]] = maskTensor;
+    for (const name of sess.inputNames) {
+      if (name.includes('attention_mask')) {
+        feeds[name] = maskTensor;
+      } else if (name.includes('position_ids')) {
+        const posIds = BigInt64Array.from(inputIds.map((_, i) => BigInt(i)));
+        feeds[name] = new ort.Tensor('int64', posIds, [1, inputIds.length]);
+      } else {
+        feeds[name] = inputTensor;
+      }
     }
 
-    const outputNamesList = (session as { outputNames: string[] }).outputNames;
-    const results = await (session as { run: (feeds: Record<string, unknown>, outputs: string[]) => Promise<Record<string, unknown>> }).run(feeds, outputNamesList);
+    const results = await sess.run(feeds, sess.outputNames);
+    const outName =
+      sess.outputNames.find((n) => n.includes('sentence_embedding')) ??
+      sess.outputNames[0];
+    const outputTensor = results[outName];
+    if (!outputTensor) return null;
 
-    // Output is [1, seq_len, dim] — mean-pool + L2 normalize.
-    const outputTensor = results[outputNamesList[0]] as { data: Float32Array; dims: number[] };
     const dims = outputTensor.dims;
-    const seqLen = dims[1];
-    const dim = dims[2] ?? EMBEDDING_DIM;
+    let pooled: Float32Array;
 
-    // Mean pooling with attention mask.
-    const pooled = new Float32Array(dim);
-    let count = 0;
-    for (let t = 0; t < seqLen; t++) {
-      if (attentionMask[t] === 1) {
-        for (let d = 0; d < dim; d++) {
-          pooled[d] += outputTensor.data[t * dim + d];
+    if (dims.length === 2) {
+      // Already pooled [1, hidden_dim]
+      const hiddenDim = dims[1];
+      const outDim = Math.min(hiddenDim, EMBEDDING_DIM);
+      pooled = new Float32Array(outDim);
+      for (let d = 0; d < outDim; d++) {
+        pooled[d] = outputTensor.data[d];
+      }
+    } else {
+      // Token-level [1, seq_len, hidden_dim] -> masked mean pool + MRL slice to 512d
+      const seqLen = dims[1];
+      const hiddenDim = dims[2] ?? EMBEDDING_DIM;
+      const outDim = Math.min(hiddenDim, EMBEDDING_DIM);
+      pooled = new Float32Array(outDim);
+      let count = 0;
+      for (let t = 0; t < seqLen; t++) {
+        if (attentionMask[t] === 1) {
+          const base = t * hiddenDim;
+          for (let d = 0; d < outDim; d++) {
+            pooled[d] += outputTensor.data[base + d];
+          }
+          count++;
         }
-        count++;
       }
-    }
-    if (count === 0) return null;
-    for (let d = 0; d < dim; d++) {
-      pooled[d] /= count;
-    }
-
-    // L2 normalize.
-    let norm = 0;
-    for (let d = 0; d < dim; d++) {
-      norm += pooled[d] * pooled[d];
-    }
-    norm = Math.sqrt(norm);
-    if (norm > 0) {
-      for (let d = 0; d < dim; d++) {
-        pooled[d] /= norm;
+      if (count === 0) return null;
+      for (let d = 0; d < outDim; d++) {
+        pooled[d] /= count;
       }
     }
 
-    return pooled;
+    return l2Normalize(pooled);
   } catch {
     return null;
   }
 }
 
-// ── Cosine similarity ──────────────────────────────────────────────────────
-
-/**
- * Cosine similarity between two L2-normalized vectors. If the vectors aren't
- * pre-normalized, this still computes the correct cosine (dot product / norms).
- */
-export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
-  const len = Math.min(a.length, b.length);
-  for (let i = 0; i < len; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  if (normA === 0 || normB === 0) return 0;
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+/** Embed a user journal query (applies Voyage-4-Nano query instruction prefix). */
+export async function embedQuery(text: string): Promise<Float32Array | null> {
+  return embedRawText(`${VOYAGE_QUERY_PREFIX}${text.trim()}`);
 }
 
-// ── Vector blob ↔ Float32Array ─────────────────────────────────────────────
-
-/** Serialize a Float32Array into a BLOB for SQLite storage. */
-export function vectorToBlob(vec: Float32Array): ArrayBuffer {
-  return vec.buffer.slice(0, vec.byteLength) as ArrayBuffer;
+/** Embed a Library or Personal Library passage (no query prefix, matches pack build). */
+export async function embedPassage(
+  text: string,
+  titleContext?: string | null
+): Promise<Float32Array | null> {
+  const payload =
+    titleContext && titleContext.trim().length > 0
+      ? `${titleContext.trim()}\n\n${text.trim()}`
+      : text.trim();
+  return embedRawText(payload);
 }
 
-/** Deserialize a BLOB from SQLite back into a Float32Array. */
-export function blobToVector(blob: Uint8Array | ArrayBuffer): Float32Array {
-  const buf = blob instanceof ArrayBuffer ? blob : blob.buffer.slice(blob.byteOffset, blob.byteOffset + blob.byteLength);
-  return new Float32Array(buf);
+/** Backward-compatible alias used by existing journal callers. */
+export async function embedText(text: string): Promise<Float32Array | null> {
+  return embedQuery(text);
 }

@@ -50,9 +50,9 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  embeddingModel: 'gte-small',
+  embeddingModel: 'voyage-4-nano',
   llmEnabled: false,
-  llmModel: 'qwen-2.5-1.5b',
+  llmModel: 'none',
   readingFontSize: 'medium',
   readingTranslation: 'WEB',
   theme: 'auto',

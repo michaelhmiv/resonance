@@ -15,7 +15,15 @@ import type {
   EmbeddingModelId,
 } from '@resonance/core';
 import { getBooks, getChapters, getVerses, searchPassages } from '../db/queries/bibleQueries';
-import { getLibraryPackages, getLibraryBook, getLibraryPassages } from '../db/queries/libraryQueries';
+import {
+  getLibraryPackages,
+  getLibraryBook,
+  getLibraryPassages,
+  getPersonalWorks,
+  updatePersonalWorkMetadata,
+  deletePersonalWork,
+} from '../db/queries/libraryQueries';
+import type { PersonalWorkMetadataPatch } from '@resonance/core';
 import {
   getHighlightsForRefs as _getHighlightsForRefsMobile,
   saveHighlight as _saveHighlightMobile,
@@ -134,6 +142,18 @@ export class MobileDataLayer implements DataLayer {
 
   async getLibraryPassages(bookId: string) {
     return getLibraryPassages(bookId);
+  }
+
+  async getPersonalWorks() {
+    return getPersonalWorks();
+  }
+
+  async updatePersonalWorkMetadata(bookId: string, patch: PersonalWorkMetadataPatch) {
+    return updatePersonalWorkMetadata(bookId, patch);
+  }
+
+  async deletePersonalWork(bookId: string) {
+    return deletePersonalWork(bookId);
   }
 
   async loadSegments(): Promise<JournalSegment[]> {
@@ -280,7 +300,7 @@ export class MobileDataLayer implements DataLayer {
   }
 
   async getActiveEmbeddingModel(): Promise<EmbeddingModelId> {
-    return 'gte-small';
+    return 'voyage-4-nano';
   }
 
   async setActiveEmbeddingModel(_id: EmbeddingModelId): Promise<void> {}

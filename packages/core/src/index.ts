@@ -25,3 +25,7 @@ export * from './schema';
 // ── HTTP cache (web-only; no-op on mobile and server) ───────────────────────
 export * from './http-cache';
 
+// ── Personal library document parsers & chunking pipeline (pure TS) ────────
+export * from './document-parsers';
+export * from './corpus-pipeline';
+

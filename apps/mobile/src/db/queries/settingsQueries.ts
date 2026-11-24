@@ -107,18 +107,47 @@ export async function getStorageInfo(): Promise<StorageInfo> {
       });
       estimatedTotal += vBytes;
 
-      // ── Resonance vectors ────────────────────────────────────────────
+      // ── Resonance vectors (journal + personal library 512d int8) ─────
       const vec = await db.getFirstAsync<CountRow>(
         `SELECT COUNT(*) AS n, 0 AS chars FROM journal_segment_vectors;`
       );
       const vecCount = vec?.n ?? 0;
       const vecBytes = vecCount * EMBEDDING_DIM * 4;
       packages.push({
-        label: 'Resonance vectors',
+        label: 'Journal vectors',
         count: vecCount,
         bytes: vecBytes,
       });
       estimatedTotal += vecBytes;
+
+      const pv = await db.getFirstAsync<CountRow>(
+        `SELECT COUNT(*) AS n, COALESCE(SUM(LENGTH(vector_int8)), 0) AS chars
+         FROM passage_vectors;`
+      );
+      if (pv && pv.n > 0) {
+        const pvBytes = (pv.chars ?? pv.n * EMBEDDING_DIM) + pv.n * 4;
+        packages.push({
+          label: 'Personal Library vectors (512d int8)',
+          count: pv.n,
+          bytes: pvBytes,
+        });
+        estimatedTotal += pvBytes;
+      }
+
+      const dl = await db.getFirstAsync<CountRow>(
+        `SELECT COUNT(*) AS n, COALESCE(SUM(downloaded_bytes), 0) AS chars
+         FROM offline_downloads
+         WHERE status = 'complete';`
+      );
+      if (dl && (dl.chars ?? 0) > 0) {
+        const dlBytes = dl.chars ?? 0;
+        packages.push({
+          label: 'Offline Resonance Engine & packs',
+          count: dl.n,
+          bytes: dlBytes,
+        });
+        estimatedTotal += dlBytes;
+      }
     } catch {
       // ignore — fall through with whatever we gathered
     }

@@ -280,6 +280,67 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 3,
+    description: 'personal library corpora, int8 passage vectors, and offline engine downloads',
+    sql: `
+      ALTER TABLE passages ADD COLUMN division TEXT;
+
+      CREATE TABLE IF NOT EXISTS personal_books (
+        book_id              TEXT PRIMARY KEY,
+        source_format        TEXT NOT NULL,
+        source_filename      TEXT NOT NULL,
+        local_file_path      TEXT,
+        file_size_bytes      INTEGER NOT NULL DEFAULT 0,
+        file_hash            TEXT NOT NULL,
+        collection           TEXT NOT NULL DEFAULT 'Personal Library',
+        tags_json            TEXT NOT NULL DEFAULT '[]',
+        notes                TEXT NOT NULL DEFAULT '',
+        include_in_resonance INTEGER NOT NULL DEFAULT 1,
+        embedding_status     TEXT NOT NULL DEFAULT 'pending',
+        embedded_chunks      INTEGER NOT NULL DEFAULT 0,
+        total_chunks         INTEGER NOT NULL DEFAULT 0,
+        embedding_model      TEXT,
+        last_error           TEXT,
+        ocr_required         INTEGER NOT NULL DEFAULT 0,
+        warnings_json        TEXT NOT NULL DEFAULT '[]',
+        imported_at          INTEGER NOT NULL,
+        updated_at           INTEGER NOT NULL,
+        FOREIGN KEY (book_id) REFERENCES books (id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_personal_books_hash
+        ON personal_books (file_hash);
+      CREATE INDEX IF NOT EXISTS idx_personal_books_status
+        ON personal_books (embedding_status);
+
+      CREATE TABLE IF NOT EXISTS passage_vectors (
+        passage_id   INTEGER PRIMARY KEY,
+        book_id      TEXT NOT NULL,
+        model_id     TEXT NOT NULL,
+        dim          INTEGER NOT NULL,
+        scale        REAL NOT NULL,
+        vector_int8  BLOB NOT NULL,
+        updated_at   INTEGER NOT NULL,
+        FOREIGN KEY (passage_id) REFERENCES passages (id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_passage_vectors_book
+        ON passage_vectors (book_id, model_id);
+
+      CREATE TABLE IF NOT EXISTS offline_downloads (
+        artifact_id      TEXT PRIMARY KEY,
+        group_name       TEXT NOT NULL,
+        url              TEXT NOT NULL,
+        local_path       TEXT NOT NULL,
+        expected_bytes   INTEGER NOT NULL DEFAULT 0,
+        downloaded_bytes INTEGER NOT NULL DEFAULT 0,
+        expected_sha256  TEXT,
+        status           TEXT NOT NULL DEFAULT 'pending',
+        resume_data      TEXT,
+        error            TEXT,
+        updated_at       INTEGER NOT NULL
+      );
+    `,
+  },
 ];
 
 /** The current target schema version (max across migrations). */
