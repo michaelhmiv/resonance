@@ -72,4 +72,4 @@ supabase/
 
 # Re-embed scratch state (huge vectors.bin, resumable state.json)
 scripts/library/.reembed/
-corpus/chunks_v1.jsonl
+corpus/chunks_*.jsonl
