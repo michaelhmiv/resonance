@@ -1,5 +1,6 @@
 /**
- * Personal Library Service — user-owned device folder scanning, multi-format
+ * Personal Library Service — individual file picking, user-owned folder
+ * scanning (device storage, Google Drive, iCloud Drive, etc.), multi-format
  * extraction (EPUB, PDF, DOCX, HTML, MD, TXT), metadata editing, Library
  * persistence, and on-device 512d int8 embedding queue.
  *
@@ -8,7 +9,7 @@
  * built-in Library.
  */
 
-import { Platform } from 'react-native';
+import { Directory as ExpoDirectory, File as ExpoFile } from 'expo-file-system';
 import * as FileSystem from 'expo-file-system/legacy';
 import { create } from 'zustand';
 import {
@@ -18,6 +19,8 @@ import {
   bytesToBase64,
   computeContentFingerprint,
   detectPersonalFormat,
+  detectPersonalFormatFromBytes,
+  detectPersonalFormatFromMime,
   extractDocumentFromBytes,
   processPersonalDocument,
   quantizeVectorInt8,
@@ -62,7 +65,7 @@ export interface DiscoveredFolderFile {
   uri: string;
   filename: string;
   format: PersonalSourceFormat;
-  source: 'device_folder' | 'inbox';
+  source: 'picked' | 'device_folder' | 'inbox';
   sizeBytes: number;
   alreadyImportedBookId: string | null;
 }
@@ -89,6 +92,7 @@ export interface PersonalLibraryState {
   initialized: boolean;
   connectedFolderUri: string | null;
   connectedFolderLabel: string | null;
+  pickedFiles: DiscoveredFolderFile[];
   discoveredFiles: DiscoveredFolderFile[];
   scanning: boolean;
   scanError: string | null;
@@ -100,6 +104,8 @@ export interface PersonalLibraryState {
 
   initialize: () => Promise<void>;
   refreshWorks: () => Promise<void>;
+  pickFiles: () => Promise<DiscoveredFolderFile[]>;
+  clearPickedFiles: () => void;
   connectDeviceFolder: () => Promise<boolean>;
   disconnectDeviceFolder: () => Promise<void>;
   scanFolders: () => Promise<DiscoveredFolderFile[]>;
@@ -174,6 +180,37 @@ async function writeSetting(key: string, value: string | null): Promise<void> {
   }
 }
 
+function isPickerCancelledError(err: unknown): boolean {
+  if (!err) return false;
+  const msg = err instanceof Error ? err.message : String(err);
+  return /cancel/i.test(msg);
+}
+
+function isOpaqueProviderName(name: string): boolean {
+  const trimmed = name.trim();
+  if (!trimmed) return true;
+  if (/acc=\d+;doc=/i.test(trimmed) || /doc=encoded=/i.test(trimmed)) return true;
+  if (/^encoded=/i.test(trimmed)) return true;
+  // Pure opaque token without an extension (e.g. Drive / MediaStore IDs)
+  if (!trimmed.includes('.') && /^[a-z0-9_-]{20,}$/i.test(trimmed)) return true;
+  if (/^\d+$/.test(trimmed)) return true;
+  return false;
+}
+
+function isGenericPlaceholderName(name: string): boolean {
+  return /^(Google Drive|Cloud|Selected) (EPUB|PDF|DOCX|HTML|MD|TXT)\b/i.test(name);
+}
+
+function providerLabelFromUri(uri: string): string | null {
+  const lower = uri.toLowerCase();
+  if (lower.includes('com.google.android.apps.docs.storage')) return 'Google Drive';
+  if (lower.includes('com.microsoft.skydrive') || lower.includes('onedrive')) {
+    return 'OneDrive';
+  }
+  if (lower.includes('com.dropbox')) return 'Dropbox';
+  return null;
+}
+
 function extractFilenameFromUri(uri: string): string {
   let decoded = uri;
   try {
@@ -181,25 +218,46 @@ function extractFilenameFromUri(uri: string): string {
   } catch {
     // keep raw
   }
-  // Android SAF URIs often encode tree paths with `:` and `/`
-  const tail = decoded.split('/').pop() ?? decoded;
+  const withoutTrailingSlash = decoded.replace(/\/+$/, '');
+  const tail = withoutTrailingSlash.split('/').pop() ?? withoutTrailingSlash;
+  // Android external storage SAF URIs encode paths like `primary:Documents/book.epub`
   const afterColon = tail.includes(':') ? tail.split(':').pop() ?? tail : tail;
-  return afterColon.trim() || 'document.txt';
+  const leaf = afterColon.split('/').pop() ?? afterColon;
+  return leaf.trim();
 }
 
 function friendlyFolderLabel(uri: string): string {
+  const provider = providerLabelFromUri(uri);
   let decoded = uri;
   try {
     decoded = decodeURIComponent(uri);
   } catch {
     // keep raw
   }
-  const idx = decoded.lastIndexOf(':');
-  if (idx >= 0 && idx < decoded.length - 1) {
-    return decoded.slice(idx + 1);
+  const withoutScheme = decoded.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/\/+$/, '');
+  const colonIdx = withoutScheme.lastIndexOf(':');
+  if (colonIdx >= 0 && colonIdx < withoutScheme.length - 1) {
+    const candidate = withoutScheme.slice(colonIdx + 1).replace(/^\/+/, '');
+    if (candidate && !isOpaqueProviderName(candidate)) {
+      return provider ? `${provider} · ${candidate}` : candidate;
+    }
   }
-  const parts = decoded.split('/').filter(Boolean);
-  return parts.slice(-2).join('/') || 'Device Folder';
+  if (provider) {
+    return `${provider} Folder`;
+  }
+  const parts = withoutScheme.split('/').filter((p) => p && !isOpaqueProviderName(p));
+  const tail = parts.slice(-2).join('/');
+  return tail || 'Connected Folder';
+}
+
+function makeFallbackFilename(
+  uri: string,
+  format: PersonalSourceFormat,
+  index?: number
+): string {
+  const provider = providerLabelFromUri(uri) ?? 'Selected';
+  const suffix = typeof index === 'number' ? ` #${index}` : '';
+  return `${provider} ${format.toUpperCase()}${suffix}`;
 }
 
 function makePersonalBookId(titleOrFilename: string): string {
@@ -214,10 +272,33 @@ function makePersonalBookId(titleOrFilename: string): string {
 }
 
 async function readUriBytes(uri: string): Promise<Uint8Array> {
-  const b64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.Base64,
+  try {
+    const file = new ExpoFile(uri);
+    const raw = await file.bytes();
+    return raw instanceof Uint8Array ? raw : new Uint8Array(raw);
+  } catch (modernErr) {
+    // Fallback for any legacy file:// URI if ExpoFile fails
+    try {
+      const b64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      return base64ToBytes(b64);
+    } catch {
+      throw modernErr;
+    }
+  }
+}
+
+function sortDiscoveredFiles(files: DiscoveredFolderFile[]): DiscoveredFolderFile[] {
+  return [...files].sort((a, b) => {
+    const aPicked = a.source === 'picked' ? 0 : 1;
+    const bPicked = b.source === 'picked' ? 0 : 1;
+    if (aPicked !== bPicked) return aPicked - bPicked;
+    const aNew = a.alreadyImportedBookId === null ? 0 : 1;
+    const bNew = b.alreadyImportedBookId === null ? 0 : 1;
+    if (aNew !== bNew) return aNew - bNew;
+    return a.filename.localeCompare(b.filename);
   });
-  return base64ToBytes(b64);
 }
 
 // ── Zustand Store ───────────────────────────────────────────────────────────
@@ -226,6 +307,7 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
   initialized: false,
   connectedFolderUri: null,
   connectedFolderLabel: null,
+  pickedFiles: [],
   discoveredFiles: [],
   scanning: false,
   scanError: null,
@@ -237,16 +319,27 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
   async initialize() {
     if (get().initialized) return;
     await ensurePersonalDirs();
-    const [folderUri, folderLabel, works] = await Promise.all([
+    const [folderUri, savedFolderLabel, works] = await Promise.all([
       readSetting(KEY_FOLDER_URI),
       readSetting(KEY_FOLDER_LABEL),
       getPersonalWorks(),
     ]);
 
+    // Repair any ugly opaque label persisted by earlier versions (e.g. `//com.google...`)
+    const folderLabel = folderUri
+      ? savedFolderLabel && !savedFolderLabel.startsWith('//') && !isOpaqueProviderName(savedFolderLabel)
+        ? savedFolderLabel
+        : friendlyFolderLabel(folderUri)
+      : null;
+
+    if (folderUri && folderLabel && folderLabel !== savedFolderLabel) {
+      void writeSetting(KEY_FOLDER_LABEL, folderLabel);
+    }
+
     set({
       initialized: true,
       connectedFolderUri: folderUri,
-      connectedFolderLabel: folderLabel ?? (folderUri ? friendlyFolderLabel(folderUri) : null),
+      connectedFolderLabel: folderLabel,
       works,
     });
 
@@ -261,35 +354,151 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
     set((s) => ({ works, libraryRevision: s.libraryRevision + 1 }));
   },
 
-  async connectDeviceFolder() {
-    if (Platform.OS !== 'android' || !FileSystem.StorageAccessFramework) {
+  async pickFiles() {
+    set({ scanError: null });
+    try {
+      const picked = await ExpoFile.pickFileAsync({ multipleFiles: true });
+      if (picked.canceled || !picked.result || picked.result.length === 0) {
+        return [];
+      }
+
+      const works = await getPersonalWorks();
+      const importedByName = new Map<string, string>();
+      for (const w of works) {
+        importedByName.set(w.sourceFilename.toLowerCase(), w.bookId);
+      }
+
+      const added: DiscoveredFolderFile[] = [];
+      const unsupported: string[] = [];
+      let genericIdx = 1;
+
+      for (const entry of picked.result) {
+        const uri = entry.uri;
+        const rawName = extractFilenameFromUri(uri);
+        const opaque = isOpaqueProviderName(rawName);
+
+        let mimeType: string | null = null;
+        try {
+          mimeType = entry.type ?? null;
+        } catch {
+          mimeType = null;
+        }
+
+        let format: PersonalSourceFormat | null =
+          (!opaque ? detectPersonalFormat(rawName) : null) ??
+          detectPersonalFormatFromMime(mimeType);
+
+        let sizeBytes = 0;
+        try {
+          if (typeof entry.size === 'number' && entry.size > 0) {
+            sizeBytes = entry.size;
+          }
+        } catch {
+          // ignore
+        }
+
+        // Fallback: inspect file bytes when URI and MIME don't reveal format
+        if (!format) {
+          try {
+            const bytes = await readUriBytes(uri);
+            sizeBytes = bytes.byteLength;
+            format = detectPersonalFormatFromBytes(bytes);
+          } catch {
+            // unreadable or unsupported
+          }
+        }
+
+        if (!format) {
+          unsupported.push(opaque ? 'selected file' : rawName);
+          continue;
+        }
+
+        const filename = opaque
+          ? makeFallbackFilename(uri, format, picked.result.length > 1 ? genericIdx++ : undefined)
+          : rawName;
+
+        added.push({
+          uri,
+          filename,
+          format,
+          source: 'picked',
+          sizeBytes,
+          alreadyImportedBookId: opaque
+            ? null
+            : importedByName.get(filename.toLowerCase()) ?? null,
+        });
+      }
+
+      if (added.length > 0) {
+        const existingPicked = get().pickedFiles;
+        const mergedPickedMap = new Map<string, DiscoveredFolderFile>();
+        for (const f of existingPicked) mergedPickedMap.set(f.uri, f);
+        for (const f of added) mergedPickedMap.set(f.uri, f);
+        const nextPicked = Array.from(mergedPickedMap.values());
+
+        const mergedDiscoveredMap = new Map<string, DiscoveredFolderFile>();
+        for (const f of get().discoveredFiles) mergedDiscoveredMap.set(f.uri, f);
+        for (const f of nextPicked) mergedDiscoveredMap.set(f.uri, f);
+
+        set({
+          pickedFiles: nextPicked,
+          discoveredFiles: sortDiscoveredFiles(Array.from(mergedDiscoveredMap.values())),
+        });
+      }
+
+      if (unsupported.length > 0) {
+        set({
+          scanError:
+            unsupported.length === 1
+              ? `Unsupported file (${unsupported[0]}). Choose EPUB, PDF, DOCX, HTML, Markdown, or TXT.`
+              : `${unsupported.length} selected files are not supported. Choose EPUB, PDF, DOCX, HTML, Markdown, or TXT.`,
+        });
+      }
+
+      return added;
+    } catch (err) {
+      if (isPickerCancelledError(err)) {
+        return [];
+      }
       set({
         scanError:
-          'Direct folder access uses Android Storage Access Framework. On other platforms, place files in the Resonance Inbox folder or paste text.',
+          err instanceof Error ? err.message : 'Could not open file picker.',
       });
-      return false;
+      return [];
     }
+  },
 
+  clearPickedFiles() {
+    set((s) => ({
+      pickedFiles: [],
+      discoveredFiles: s.discoveredFiles.filter((f) => f.source !== 'picked'),
+    }));
+  },
+
+  async connectDeviceFolder() {
+    set({ scanError: null });
     try {
-      const perms =
-        await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-      if (!perms.granted || !perms.directoryUri) {
+      const directory = await ExpoDirectory.pickDirectoryAsync();
+      if (!directory || !directory.uri) {
         return false;
       }
-      const label = friendlyFolderLabel(perms.directoryUri);
-      await writeSetting(KEY_FOLDER_URI, perms.directoryUri);
+      const label = friendlyFolderLabel(directory.uri);
+      await writeSetting(KEY_FOLDER_URI, directory.uri);
       await writeSetting(KEY_FOLDER_LABEL, label);
       set({
-        connectedFolderUri: perms.directoryUri,
+        connectedFolderUri: directory.uri,
         connectedFolderLabel: label,
         scanError: null,
       });
       await get().scanFolders();
       return true;
     } catch (err) {
+      if (isPickerCancelledError(err)) {
+        return false;
+      }
       set({
         scanError:
-          err instanceof Error ? err.message : 'Could not open folder permissions.',
+          err instanceof Error ? err.message : 'Could not open folder picker.',
       });
       return false;
     }
@@ -318,44 +527,103 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
     const discovered: DiscoveredFolderFile[] = [];
     const seenUris = new Set<string>();
 
-    // 1. Scan connected Android SAF device folder (if configured)
+    // 0. Include any individually picked files from the current session
+    for (const picked of get().pickedFiles) {
+      if (seenUris.has(picked.uri)) continue;
+      seenUris.add(picked.uri);
+      discovered.push({
+        ...picked,
+        alreadyImportedBookId: isGenericPlaceholderName(picked.filename)
+          ? picked.alreadyImportedBookId
+          : importedByName.get(picked.filename.toLowerCase()) ?? picked.alreadyImportedBookId,
+      });
+    }
+
+    // 1. Scan connected folder (device storage, Google Drive, iCloud, etc.)
     const folderUri = get().connectedFolderUri;
-    if (
-      folderUri &&
-      Platform.OS === 'android' &&
-      FileSystem.StorageAccessFramework
-    ) {
+    if (folderUri) {
       try {
-        const entries =
-          await FileSystem.StorageAccessFramework.readDirectoryAsync(folderUri);
-        for (const uri of entries) {
+        const dir = new ExpoDirectory(folderUri);
+        const entries = dir.list();
+        const hasSubdirs = entries.some((e) => e instanceof ExpoDirectory);
+        const hasOpaqueEntry = entries.some(
+          (e) => e instanceof ExpoFile && isOpaqueProviderName(extractFilenameFromUri(e.uri))
+        );
+
+        // On cloud providers like Google Drive, entry URIs are opaque IDs, while
+        // `dir.info().files` queries Android DocumentFile.name for real display names.
+        // Only call `dir.info()` when flat (no subdirs) so its size calc never recurses.
+        let resolvedNames: string[] | null = null;
+        if (hasOpaqueEntry && !hasSubdirs && entries.length > 0 && entries.length <= 100) {
+          try {
+            const info = dir.info();
+            if (Array.isArray(info.files) && info.files.length === entries.length) {
+              resolvedNames = info.files;
+            }
+          } catch {
+            // Fall back to MIME detection + clean placeholder names
+          }
+        }
+
+        let fallbackIdx = 1;
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i];
+          if (!(entry instanceof ExpoFile)) continue;
+          const uri = entry.uri;
           if (seenUris.has(uri)) continue;
-          const filename = extractFilenameFromUri(uri);
-          const format = detectPersonalFormat(filename);
+
+          const resolvedName = resolvedNames?.[i]?.trim() || '';
+          const uriLeaf = extractFilenameFromUri(uri);
+          const candidateName =
+            resolvedName && !isOpaqueProviderName(resolvedName)
+              ? resolvedName
+              : !isOpaqueProviderName(uriLeaf)
+                ? uriLeaf
+                : '';
+
+          let mimeType: string | null = null;
+          try {
+            mimeType = entry.type ?? null;
+          } catch {
+            mimeType = null;
+          }
+
+          const format =
+            (candidateName ? detectPersonalFormat(candidateName) : null) ??
+            detectPersonalFormatFromMime(mimeType);
           if (!format) continue;
+
           seenUris.add(uri);
+          const filename = candidateName || makeFallbackFilename(uri, format, fallbackIdx++);
+
           let sizeBytes = 0;
           try {
-            const info = await FileSystem.getInfoAsync(uri);
-            const sz = (info as { size?: number }).size;
-            if (typeof sz === 'number') sizeBytes = sz;
+            if (typeof entry.size === 'number' && entry.size > 0) {
+              sizeBytes = entry.size;
+            }
           } catch {
-            // SAF content:// URIs may omit size until read
+            // Cloud SAF URIs may omit size until read
           }
+
           discovered.push({
             uri,
             filename,
             format,
             source: 'device_folder',
             sizeBytes,
-            alreadyImportedBookId: importedByName.get(filename.toLowerCase()) ?? null,
+            alreadyImportedBookId: candidateName
+              ? importedByName.get(filename.toLowerCase()) ?? null
+              : null,
           });
         }
       } catch (err) {
+        const rawMsg = err instanceof Error ? err.message : '';
+        const provider = providerLabelFromUri(folderUri);
         set({
-          scanError:
-            err instanceof Error
-              ? `Could not read connected folder: ${err.message}`
+          scanError: provider
+            ? `Could not read ${provider} folder (${rawMsg || 'permission or connection error'}). Try tapping "Change folder" to re-link it, or use "Choose files" above to import books directly.`
+            : rawMsg
+              ? `Could not read connected folder: ${rawMsg}`
               : 'Could not read connected folder. Try reconnecting it.',
         });
       }
@@ -391,16 +659,9 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
       // non-fatal
     }
 
-    // Sort: newly discovered first, then alphabetical
-    discovered.sort((a, b) => {
-      const aNew = a.alreadyImportedBookId === null ? 0 : 1;
-      const bNew = b.alreadyImportedBookId === null ? 0 : 1;
-      if (aNew !== bNew) return aNew - bNew;
-      return a.filename.localeCompare(b.filename);
-    });
-
-    set({ discoveredFiles: discovered, works, scanning: false });
-    return discovered;
+    const sorted = sortDiscoveredFiles(discovered);
+    set({ discoveredFiles: sorted, works, scanning: false });
+    return sorted;
   },
 
   async inspectFile(file) {
@@ -409,8 +670,24 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
     const duplicateWork = await findPersonalWorkByHash(fileHash);
     const extraction = extractDocumentFromBytes(rawBytes, file.filename, file.format);
     const processed = processPersonalDocument(extraction);
+
+    // If the source provider gave an opaque URI with a generic placeholder name,
+    // upgrade the displayed/saved filename from extracted document metadata.
+    let resolvedFilename = file.filename;
+    if (
+      isGenericPlaceholderName(file.filename) &&
+      extraction.detectedMetadata.title?.trim()
+    ) {
+      resolvedFilename = `${extraction.detectedMetadata.title.trim()}.${extraction.format}`;
+    }
+
     return {
-      file: { ...file, sizeBytes: rawBytes.byteLength },
+      file: {
+        ...file,
+        filename: resolvedFilename,
+        format: extraction.format,
+        sizeBytes: rawBytes.byteLength,
+      },
       rawBytes,
       fileHash,
       processed,
@@ -455,6 +732,19 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
       warnings: inspected.processed.warnings,
       chunks: inspected.processed.chunks,
     });
+
+    // Mark the picked file as imported so it flips from "New" to "In Library"
+    set((s) => ({
+      pickedFiles: s.pickedFiles.map((f) =>
+        f.uri === inspected.file.uri
+          ? {
+              ...f,
+              filename: inspected.file.filename,
+              alreadyImportedBookId: saved.bookId,
+            }
+          : f
+      ),
+    }));
 
     clearLibraryVectors();
     await get().refreshWorks();

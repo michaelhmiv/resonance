@@ -78,6 +78,7 @@ export function PersonalLibraryImportModal({
     scanError,
     embeddingActiveBookId,
     initialize,
+    pickFiles,
     connectDeviceFolder,
     disconnectDeviceFolder,
     scanFolders,
@@ -94,6 +95,7 @@ export function PersonalLibraryImportModal({
   const setEngineSheetVisible = useOfflineEngineStore((s) => s.setSheetVisible);
 
   const [step, setStep] = useState<ModalStep>(editingWork ? 'edit' : 'folder');
+  const [pickingFiles, setPickingFiles] = useState(false);
   const [inspectingFile, setInspectingFile] = useState<string | null>(null);
   const [inspected, setInspected] = useState<InspectedDocument | null>(null);
   const [batchImporting, setBatchImporting] = useState(false);
@@ -189,6 +191,19 @@ export function PersonalLibraryImportModal({
       );
     } finally {
       setInspectingFile(null);
+    }
+  };
+
+  const handlePickFiles = async () => {
+    setPickingFiles(true);
+    setLocalError(null);
+    try {
+      const added = await pickFiles();
+      if (added.length === 1) {
+        await handleInspectFile(added[0]);
+      }
+    } finally {
+      setPickingFiles(false);
     }
   };
 
@@ -344,7 +359,7 @@ export function PersonalLibraryImportModal({
             </Pressable>
           </View>
 
-          {/* Source Switcher (Folder vs Paste Text) */}
+          {/* Source Switcher (Files & Folder vs Paste Text) */}
           {step === 'folder' || step === 'paste' ? (
             <View style={styles.modeTabs}>
               <Pressable
@@ -357,7 +372,7 @@ export function PersonalLibraryImportModal({
                     step === 'folder' && styles.modeTabTextActive,
                   ]}
                 >
-                  Device Folder
+                  Files &amp; Folder
                 </Text>
               </Pressable>
               <Pressable
@@ -387,17 +402,49 @@ export function PersonalLibraryImportModal({
               </View>
             ) : null}
 
-            {/* ── STEP 1: DEVICE FOLDER & INBOX SCANNER ─────────────────── */}
+            {/* ── STEP 1: INDIVIDUAL FILES, CONNECTED FOLDER & INBOX ─────── */}
             {step === 'folder' ? (
               <>
                 <View style={styles.card}>
                   <View style={styles.cardRowBetween}>
                     <View style={styles.flexOne}>
-                      <Text style={styles.cardTitle}>Connected Device Folder</Text>
+                      <Text style={styles.cardTitle}>Import Individual Files</Text>
+                      <Text style={styles.cardMeta}>
+                        Pick one or more books from your phone, Google Drive, iCloud, or
+                        Downloads. Copied and embedded locally on your device.
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.inlineBtnRow}>
+                    <Pressable
+                      onPress={() => void handlePickFiles()}
+                      disabled={pickingFiles || inspectingFile !== null}
+                      style={[
+                        styles.accentFilledBtn,
+                        (pickingFiles || inspectingFile !== null) && styles.disabledBtn,
+                      ]}
+                    >
+                      {pickingFiles ? (
+                        <ActivityIndicator size="small" color={colors.surface} />
+                      ) : (
+                        <Feather name="file-plus" size={14} color={colors.surface} />
+                      )}
+                      <Text style={styles.accentFilledText}>
+                        {pickingFiles ? 'Opening files…' : 'Choose files'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                <View style={styles.card}>
+                  <View style={styles.cardRowBetween}>
+                    <View style={styles.flexOne}>
+                      <Text style={styles.cardTitle}>Connected Folder</Text>
                       <Text style={styles.cardMeta}>
                         {connectedFolderLabel
                           ? connectedFolderLabel
-                          : 'No external folder linked yet. Choose any folder on your phone (e.g. Documents/Books).'}
+                          : 'Optional — link a folder on your device, Google Drive, or iCloud to scan all books inside it.'}
                       </Text>
                     </View>
                   </View>
@@ -456,7 +503,7 @@ export function PersonalLibraryImportModal({
                 {/* Discovered Files */}
                 <View style={styles.sectionHeaderRow}>
                   <Text style={styles.sectionLabel}>
-                    DISCOVERED FILES ({discoveredFiles.length})
+                    READY TO IMPORT ({discoveredFiles.length})
                   </Text>
                   {newFilesCount > 1 ? (
                     <Pressable
@@ -478,17 +525,23 @@ export function PersonalLibraryImportModal({
                   </View>
                 ) : discoveredFiles.length === 0 ? (
                   <View style={styles.emptyCard}>
-                    <Text style={styles.emptyCardTitle}>No books found yet</Text>
+                    <Text style={styles.emptyCardTitle}>No books selected yet</Text>
                     <Text style={styles.emptyCardBody}>
-                      Tap &ldquo;Choose folder&rdquo; to connect a folder containing
-                      EPUB, PDF, DOCX, Markdown, HTML, or TXT files — or drop files
-                      into your connected folder and tap &ldquo;Scan now&rdquo;.
+                      Tap &ldquo;Choose files&rdquo; above to pick individual EPUB, PDF,
+                      DOCX, Markdown, HTML, or TXT files — or link a folder to scan all
+                      books inside it.
                     </Text>
                   </View>
                 ) : (
                   <View style={styles.card}>
                     {discoveredFiles.map((file, idx) => {
                       const isInspecting = inspectingFile === file.uri;
+                      const sourceLabel =
+                        file.source === 'picked'
+                          ? 'Selected file'
+                          : file.source === 'inbox'
+                            ? 'Inbox'
+                            : 'Connected folder';
                       return (
                         <View key={file.uri}>
                           {idx > 0 ? <View style={styles.divider} /> : null}
@@ -508,7 +561,7 @@ export function PersonalLibraryImportModal({
                               </Text>
                               <Text style={styles.fileSub}>
                                 {file.sizeBytes > 0 ? `${formatBytes(file.sizeBytes)} · ` : ''}
-                                {file.source === 'inbox' ? 'Inbox' : 'Device folder'}
+                                {sourceLabel}
                                 {file.alreadyImportedBookId ? ' · In Library' : ' · New'}
                               </Text>
                             </View>
@@ -1120,6 +1173,20 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
     marginTop: spacing.xs,
+  },
+  accentFilledBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: radii.sm,
+    backgroundColor: colors.accent,
+  },
+  accentFilledText: {
+    fontFamily: fontFamilies.sansSemibold,
+    fontSize: 13.5,
+    color: colors.surface,
   },
   accentOutlineBtn: {
     flexDirection: 'row',
