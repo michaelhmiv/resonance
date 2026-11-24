@@ -1,10 +1,5 @@
 name: bakeoff-retrievers-v2
 on:
-  push:
-    branches: [bakeoff/models-optimization]
-    paths:
-      - 'scripts/bakeoff/run_retriever.py'
-      - '.github/workflows/bakeoff-retrievers-v2.yml'
   workflow_dispatch:
 
 jobs:

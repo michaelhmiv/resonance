@@ -47,7 +47,7 @@ MODELS = {
         "pooling": "last_token",
         "output_pref": None,
         "max_len": 512,
-        "batch": 16,
+        "batch": 1,
         "mrl_dim": 512,
         "append_eos": True,
         "license": "apache-2.0",
