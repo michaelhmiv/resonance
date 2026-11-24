@@ -1,0 +1,32 @@
+name: bakeoff-512d-confirm
+on:
+  push:
+    branches: [bakeoff/models-optimization]
+    paths:
+      - '.github/workflows/bakeoff-512d-confirm.yml'
+  workflow_dispatch:
+
+jobs:
+  rerank-512d:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4]
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet onnxruntime transformers numpy huggingface_hub
+      - name: Download Phase 2 stratified 512d int8 candidates
+        run: gh run download 45400640723 --name phase2-candidates --dir /tmp/cand
+      - name: Rerank shard ${{ matrix.shard }}/5 (Voyage-4-Nano 512d int8 x Qwen3-Reranker-0.6B INT8)
+        run: python3 scripts/bakeoff/rerank_qwen3.py ${{ matrix.shard }} 5 /tmp/cand/candidates-voyage4-512d-stratified.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: confirm-512d-qwen3rr-shard-${{ matrix.shard }}
+          path: rerank-qwen3-shard-${{ matrix.shard }}.json
