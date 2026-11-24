@@ -23,7 +23,9 @@ jobs:
       - name: Embed shard
         run: python scripts/bakeoff/run_bakeoff.py shard ${{ matrix.shard }} 6
       - uses: actions/upload-artifact@v4
-        with: {name: emb-${{ matrix.shard }}, path: shard_${{ matrix.shard }}.npy}
+        with:
+          name: emb-${{ matrix.shard }}
+          path: shard_${{ matrix.shard }}.npy
   combine:
     needs: embed
     runs-on: ubuntu-latest
