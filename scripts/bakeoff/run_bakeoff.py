@@ -110,8 +110,45 @@ def full(tok, sess, prompts):
     Path("bakeoff-results.json").write_text(json.dumps(results, indent=1))
     print("wrote bakeoff-results.json", flush=True)
 
+def shard(tok, sess, prompts, k, n):
+    pool = [json.loads(l) for l in (ROOT / "corpus/chunks_v2.jsonl").open()]
+    lo, hi = k * len(pool) // n, (k + 1) * len(pool) // n
+    part = pool[lo:hi]
+    print(f"shard {k}/{n}: passages {lo:,}-{hi:,} ({len(part):,})", flush=True)
+    order = sorted(range(len(part)), key=lambda i: len(part[i]["text"]))
+    sorted_emb = embed(tok, sess, [part[i]["text"] for i in order],
+                       prompts.get("document", ""), batch=64)
+    emb = np.empty_like(sorted_emb)
+    for pos, idx in enumerate(order): emb[idx] = sorted_emb[pos]
+    np.save(f"shard_{k}.npy", emb)
+    print(f"shard {k} saved {emb.shape}", flush=True)
+
+def combine(tok, sess, prompts, n):
+    pool = [json.loads(l) for l in (ROOT / "corpus/chunks_v2.jsonl").open()]
+    emb = np.concatenate([np.load(f"shard_{k}.npy") for k in range(n)])
+    assert emb.shape[0] == len(pool), (emb.shape, len(pool))
+    print(f"combined pool embeddings {emb.shape}", flush=True)
+    queries = golden_queries()
+    q = embed(tok, sess, [x["journal"] for x in queries], prompts.get("query", ""))
+    sims = q @ emb.T
+    results = []
+    for i, query in enumerate(queries):
+        top = np.argsort(-sims[i])[:5]
+        results.append({**query, "results": [
+            {"rank": r + 1, "score": round(float(sims[i][j]), 4),
+             "work_id": pool[j]["work_id"], "source": pool[j]["source"],
+             "ref": pool[j]["chunk_id"] if pool[j]["source"] == "bible" else None,
+             "text": pool[j]["text"][:600]} for r, j in enumerate(top)]})
+    Path("bakeoff-results.json").write_text(json.dumps(results, indent=1))
+    print("wrote bakeoff-results.json", flush=True)
+
 if __name__ == "__main__":
     tok, sess, prompts = load()
     if MODE == "spike":
         sys.exit(0 if spike(tok, sess, prompts) else 1)
-    full(tok, sess, prompts)
+    elif MODE == "shard":
+        shard(tok, sess, prompts, int(sys.argv[2]), int(sys.argv[3]))
+    elif MODE == "combine":
+        combine(tok, sess, prompts, int(sys.argv[2]))
+    else:
+        full(tok, sess, prompts)

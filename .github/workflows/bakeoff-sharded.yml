@@ -1,0 +1,45 @@
+name: bakeoff-sharded
+on:
+  push:
+    branches: [phase1-bootable-apk]
+    paths: ['scripts/bakeoff/**', '.github/workflows/bakeoff-sharded.yml']
+jobs:
+  embed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --quiet onnxruntime transformers numpy huggingface_hub
+      - name: Build pool
+        run: |
+          python scripts/corpus/chunk_corpus.py
+          python scripts/corpus/append_bible.py
+      - name: Embed shard
+        run: python scripts/bakeoff/run_bakeoff.py shard ${{ matrix.shard }} 6
+      - uses: actions/upload-artifact@v4
+        with: {name: emb-${{ matrix.shard }}, path: shard_${{ matrix.shard }}.npy}
+  combine:
+    needs: embed
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install --quiet onnxruntime transformers numpy huggingface_hub
+      - name: Build pool
+        run: |
+          python scripts/corpus/chunk_corpus.py
+          python scripts/corpus/append_bible.py
+      - uses: actions/download-artifact@v4
+        with: {pattern: emb-*, merge-multiple: true}
+      - name: Combine + query
+        run: python scripts/bakeoff/run_bakeoff.py combine 6
+      - uses: actions/upload-artifact@v4
+        with: {name: bakeoff-results, path: bakeoff-results.json}
