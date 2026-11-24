@@ -34,6 +34,7 @@ import { useSettingsStore } from '../settings/settingsStore';
 import { useOfflineEngineStore } from '../packages/offlineEngineManager';
 import { usePersonalLibraryStore } from '../personal/personalLibraryService';
 import { PersonalLibraryImportModal } from '../components/PersonalLibraryImportModal';
+import { LibraryCatalogModal } from '../components/LibraryCatalogModal';
 import {
   getStorageInfo,
   clearAllJournalData,
@@ -106,13 +107,12 @@ function OfflineEngineSection(): ReactNode {
     totalBytes,
     groups,
     corpusManifest,
-    installedPackIds,
+    installedWorkIds,
     setSheetVisible,
     setWifiOnly,
     startDownload,
     pauseDownload,
     syncCorpusManifest,
-    downloadCorpusPack,
     removeOfflineEngine,
     refreshStatus,
   } = useOfflineEngineStore();
@@ -120,6 +120,7 @@ function OfflineEngineSection(): ReactNode {
   const [checkingUpdates, setCheckingUpdates] = useState(false);
   const [statusNote, setStatusNote] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [catalogVisible, setCatalogVisible] = useState(false);
 
   useEffect(() => {
     void refreshStatus();
@@ -133,21 +134,24 @@ function OfflineEngineSection(): ReactNode {
       ? 'Ready offline'
       : phase === 'downloading'
         ? `Downloading (${pct}%)`
-        : phase === 'installing_packs'
-          ? 'Indexing Library…'
-          : phase === 'paused'
-            ? `Paused (${pct}%)`
-            : phase === 'error'
-              ? 'Interrupted — tap to retry'
-              : 'Not downloaded (~1.08 GB)';
+        : phase === 'paused'
+          ? `Paused (${pct}%)`
+          : phase === 'error'
+            ? 'Interrupted — tap to retry'
+            : 'Not downloaded (~998 MB)';
+
+  const totalCatalogWorks = corpusManifest.works?.length || 79;
 
   const handleCheckUpdates = useCallback(async () => {
     setCheckingUpdates(true);
     setStatusNote(null);
     try {
       const m = await syncCorpusManifest();
+      const count = m.works?.length ?? 0;
       setStatusNote(
-        `Synced ${m.packs.length} pack(s) from GitHub Releases (${m.releaseTag}).`
+        count > 0
+          ? `Synced ${count} catalog works across ${m.collections?.length ?? 4} collections.`
+          : 'Catalog manifest checked — packs are still publishing on GitHub Releases.'
       );
     } finally {
       setCheckingUpdates(false);
@@ -162,7 +166,7 @@ function OfflineEngineSection(): ReactNode {
         'prayers, or advice — only surfaces real passages from Scripture and your Library.'
       }
     >
-      <InfoRow label="Status" value={phaseLabel} />
+      <InfoRow label="Core engine" value={phaseLabel} />
       <RowDivider />
       <InfoRow
         label="Embedder"
@@ -183,77 +187,67 @@ function OfflineEngineSection(): ReactNode {
       />
       <RowDivider />
       <InfoRow
+        label="Church Library"
+        value={`${installedWorkIds.length} / ${totalCatalogWorks} books downloaded`}
+      />
+      <RowDivider />
+      <InfoRow
         label="Fusion & Silence"
         value={`α=${OFFLINE_ENGINE_MANIFEST.fusionAlpha.toFixed(2)} · τ=${OFFLINE_ENGINE_MANIFEST.silenceThreshold.toFixed(2)}`}
       />
       <RowDivider />
       <ToggleRow
         label="Prefer Wi-Fi for downloads"
-        hint="Recommended for the ~1.08 GB one-time download."
+        hint="Recommended for the ~998 MB one-time core engine download."
         value={wifiOnly}
         onToggle={(v) => void setWifiOnly(v)}
       />
       <RowDivider />
 
-      {phase === 'downloading' || phase === 'installing_packs' ? (
+      {phase === 'downloading' ? (
         <>
           <ActionRow
-            label={`View download progress (${pct}%)`}
+            label={`View engine download progress (${pct}%)`}
             onPress={() => setSheetVisible(true)}
           />
           <RowDivider />
           <ActionRow label="Pause download" onPress={() => void pauseDownload()} />
         </>
       ) : phase === 'paused' ? (
-        <>
-          <ActionRow
-            label={`Resume download (${pct}%)`}
-            onPress={() => {
-              setSheetVisible(true);
-              void startDownload({ includeCorpusPacks: true });
-            }}
-          />
-        </>
+        <ActionRow
+          label={`Resume core engine download (${pct}%)`}
+          onPress={() => {
+            setSheetVisible(true);
+            void startDownload();
+          }}
+        />
       ) : phase !== 'ready' ? (
         <ActionRow
-          label="Download offline engine (~1.08 GB)"
+          label="Download core engine (~998 MB)"
           onPress={() => setSheetVisible(true)}
         />
       ) : null}
 
       <RowDivider />
       <ActionRow
+        label="Browse Library Catalog (choose books or collections)"
+        onPress={() => setCatalogVisible(true)}
+      />
+      <RowDivider />
+      <ActionRow
         label={
           checkingUpdates
             ? 'Checking GitHub Releases…'
-            : 'Check for Library pack updates'
+            : 'Refresh catalog from GitHub Releases'
         }
         onPress={() => void handleCheckUpdates()}
       />
 
-      {corpusManifest.packs.map((pack) => {
-        const installed = installedPackIds.includes(pack.id);
-        const packBytes = pack.passagesBytes + pack.vectorsBytes;
-        return (
-          <View key={pack.id}>
-            <RowDivider />
-            <ActionRow
-              label={
-                installed
-                  ? `${pack.label} · Installed`
-                  : `Download ${pack.label} (${formatBytes(packBytes)})`
-              }
-              onPress={() => void downloadCorpusPack(pack.id)}
-            />
-          </View>
-        );
-      })}
-
-      {downloadedBytes > 0 ? (
+      {downloadedBytes > 0 || installedWorkIds.length > 0 ? (
         <>
           <RowDivider />
           <ActionRow
-            label={`Remove offline engine (${formatBytes(downloadedBytes)})`}
+            label={`Remove offline engine & downloaded packs`}
             destructive
             onPress={() => setConfirmRemove(true)}
           />
@@ -262,10 +256,15 @@ function OfflineEngineSection(): ReactNode {
 
       {statusNote ? <QuietNote>{statusNote}</QuietNote> : null}
 
+      <LibraryCatalogModal
+        visible={catalogVisible}
+        onClose={() => setCatalogVisible(false)}
+      />
+
       <ConfirmModal
         visible={confirmRemove}
         title="Remove offline engine?"
-        body="Deletes the downloaded ONNX models and pre-embedded pack vectors to reclaim storage. Your journal entries, Scripture, and imported Personal Library texts stay intact."
+        body="Deletes the downloaded ONNX models and optional Church Library packs to reclaim storage. Your journal entries, Scripture, and Personal Library imports stay intact."
         confirmLabel="Remove"
         destructive
         onConfirm={() => {

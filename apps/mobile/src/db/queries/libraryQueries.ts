@@ -83,9 +83,13 @@ function packageLabel(packageId: string, collectionName?: string | null): string
   const map: Record<string, string> = {
     seeded: 'Seed Library',
     fathers: 'The Fathers',
+    'church-fathers': 'The Church Fathers',
     medieval: 'Medieval Voices',
+    'medieval-mystics': 'Medieval & Contemplative Voices',
     reformation: 'Reformation',
+    'reformation-puritans': 'Reformation & Devotional Classics',
     modern: 'Modern Voices',
+    'modern-witnesses': 'Modern Witnesses',
     'witnesses-all': 'Voices of the Church',
     personal_library: 'Personal Library',
   };

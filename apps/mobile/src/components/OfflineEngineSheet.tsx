@@ -1,13 +1,13 @@
 /**
  * Offline Engine Sheet — calm, non-blocking bottom sheet for downloading
- * Resonance's locked on-device stack (~1.08 GB):
+ * Resonance's core on-device engine (~998 MB, one-time):
  *   - Voyage-4-Nano INT8 ONNX (411 MB · Hugging Face pinned SHA)
  *   - Qwen3-Reranker-0.6B INT8 Yes/No ONNX (583 MB · Hugging Face pinned SHA)
- *   - 80-Work Library & 512d int8 vectors (~82 MB · GitHub Releases)
+ *   - World English Bible 512d int8 vectors (~4 MB · GitHub Releases)
  *
- * Never blocks reading or writing: "Not now" dismisses immediately and
- * "Journal while downloading" hides the sheet while downloads continue
- * cleanly in the background.
+ * Voices of the Church (Church Fathers, Mystics, Reformers, Modern Witnesses)
+ * are NOT part of this initial download — users can browse and download
+ * individual books or collections anytime in Word → Library → Browse Catalog.
  */
 
 import { type ReactNode } from 'react';
@@ -46,7 +46,7 @@ export function OfflineEngineSheet(): ReactNode {
   const pct =
     totalBytes > 0 ? Math.min(100, Math.round((downloadedBytes / totalBytes) * 100)) : 0;
 
-  const isBusy = phase === 'downloading' || phase === 'installing_packs';
+  const isBusy = phase === 'downloading';
 
   return (
     <Modal
@@ -95,8 +95,9 @@ export function OfflineEngineSheet(): ReactNode {
               <>
                 <Text style={styles.title}>Ready for private, offline echoes</Text>
                 <Text style={styles.subtitle}>
-                  Everything is stored on this device. Your writing and your
-                  Library never leave your phone.
+                  The core engine is installed on this device. Optional Church
+                  Library books and collections can be browsed and downloaded
+                  individually anytime in Word → Library.
                 </Text>
 
                 <View style={styles.card}>
@@ -115,8 +116,8 @@ export function OfflineEngineSheet(): ReactNode {
                   />
                   <View style={styles.divider} />
                   <ComponentRow
-                    label="80-Work Library & 512d Vectors"
-                    detail="GitHub Releases · Updatable packs"
+                    label="World English Bible vectors"
+                    detail="512d int8 · Optional Library packs in Word → Library"
                     done={groups.corpus.ready}
                     sizeText={formatBytes(groups.corpus.totalBytes)}
                   />
@@ -135,16 +136,13 @@ export function OfflineEngineSheet(): ReactNode {
                 <Text style={styles.title}>
                   {phase === 'paused'
                     ? 'Download paused'
-                    : phase === 'installing_packs'
-                      ? 'Preparing your Library…'
-                      : 'Downloading offline engine'}
+                    : 'Downloading offline engine'}
                 </Text>
                 <Text style={styles.subtitle}>
                   You can write or read Scripture right now while this finishes
                   quietly in the background.
                 </Text>
 
-                {/* Overall progress card */}
                 <View style={styles.card}>
                   <View style={styles.progressHeader}>
                     <Text style={styles.progressPct}>{pct}%</Text>
@@ -182,7 +180,7 @@ export function OfflineEngineSheet(): ReactNode {
                   />
                   <View style={styles.divider} />
                   <ComponentRow
-                    label="Library Packs (512d int8)"
+                    label="Bible Scripture vectors"
                     detail={`${formatBytes(groups.corpus.downloadedBytes)} / ${formatBytes(groups.corpus.totalBytes)}`}
                     done={groups.corpus.ready}
                     sizeText={groups.corpus.ready ? 'Done' : ''}
@@ -216,14 +214,14 @@ export function OfflineEngineSheet(): ReactNode {
                 <Text style={styles.title}>Download the offline engine once</Text>
                 <Text style={styles.subtitle}>
                   Resonance runs 100% on your phone with zero cloud calls. Download
-                  the local models and 80-work Library once ({formatBytes(totalBytes)}),
-                  or keep reading Scripture now and set it up later in Settings.
+                  the core engine once (~{formatBytes(totalBytes)}), or keep reading
+                  Scripture now and set it up later in Settings.
                 </Text>
 
                 <View style={styles.card}>
                   <ComponentRow
                     label="Voyage-4-Nano (512d INT8)"
-                    detail="Finds echoes across Scripture & Library · Apache 2.0"
+                    detail="Finds echoes across Scripture & your books · Apache 2.0"
                     done={groups.embedder.ready}
                     sizeText="411 MB"
                   />
@@ -236,20 +234,26 @@ export function OfflineEngineSheet(): ReactNode {
                   />
                   <View style={styles.divider} />
                   <ComponentRow
-                    label="80-Work Church Library"
-                    detail="Pre-embedded 512d int8 vectors · GitHub Releases"
+                    label="World English Bible vectors"
+                    detail="512d int8 index for Scripture echoes"
                     done={groups.corpus.ready}
-                    sizeText="~82 MB"
+                    sizeText="~4 MB"
                   />
                 </View>
+
+                <Text style={styles.libraryNote}>
+                  Church Fathers, Mystics, Reformers, and other Library packs are
+                  optional — browse and pick individual books or collections anytime
+                  in Word → Library → Browse Catalog.
+                </Text>
 
                 <View style={styles.wifiRow}>
                   <View style={styles.wifiTextWrap}>
                     <Text style={styles.wifiLabel}>Prefer Wi-Fi</Text>
                     <Text style={styles.wifiHint}>
                       {wifiOnly
-                        ? 'Recommended for the 1.08 GB one-time download.'
-                        : 'Downloading over cellular data may use ~1.08 GB of your plan.'}
+                        ? 'Recommended for the one-time ~998 MB engine download.'
+                        : 'Downloading over cellular data may use ~998 MB of your plan.'}
                     </Text>
                   </View>
                   <Switch
@@ -268,12 +272,12 @@ export function OfflineEngineSheet(): ReactNode {
 
                 <View style={styles.actionStack}>
                   <Pressable
-                    onPress={() => void startDownload({ includeCorpusPacks: true })}
+                    onPress={() => void startDownload()}
                     style={styles.primaryBtn}
                     accessibilityRole="button"
                   >
                     <Text style={styles.primaryBtnText}>
-                      Download now (~1.08 GB)
+                      Download core engine (~998 MB)
                     </Text>
                   </Pressable>
                   <Pressable
@@ -381,6 +385,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: colors.textSecondary,
+  },
+  libraryNote: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: colors.textTertiary,
   },
   card: {
     backgroundColor: colors.surface,

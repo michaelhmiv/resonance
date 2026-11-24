@@ -106,10 +106,7 @@ export function JournalScreen(): ReactNode {
 
   // ── Wire settings gear + background download pill into header ──────────
   useEffect(() => {
-    const showPill =
-      enginePhase === 'downloading' ||
-      enginePhase === 'installing_packs' ||
-      enginePhase === 'paused';
+    const showPill = enginePhase === 'downloading' || enginePhase === 'paused';
     const pct =
       totalBytes > 0 ? Math.min(100, Math.round((downloadedBytes / totalBytes) * 100)) : 0;
 

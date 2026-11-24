@@ -363,6 +363,38 @@ export interface CorpusPackManifestEntry {
   vectorsSha256: string | null;
 }
 
+export type CatalogCollectionId =
+  | 'church-fathers'
+  | 'medieval-mystics'
+  | 'reformation-puritans'
+  | 'modern-witnesses';
+
+export interface CatalogCollectionEntry {
+  id: CatalogCollectionId;
+  label: string;
+  era: string;
+  description: string;
+  workIds: string[];
+  passageCount: number;
+  totalBytes: number;
+}
+
+export interface CatalogWorkEntry {
+  id: string;
+  slug: string;
+  title: string;
+  author: string;
+  era: string;
+  collectionId: CatalogCollectionId;
+  passageCount: number;
+  passagesUrl: string;
+  passagesBytes: number;
+  passagesSha256: string | null;
+  vectorsUrl: string;
+  vectorsBytes: number;
+  vectorsSha256: string | null;
+}
+
 export interface CorpusPacksManifest {
   schemaVersion: number;
   releaseTag: string;
@@ -371,6 +403,8 @@ export interface CorpusPacksManifest {
   dim: number;
   quantization: 'int8';
   packs: CorpusPackManifestEntry[];
+  collections?: CatalogCollectionEntry[];
+  works?: CatalogWorkEntry[];
 }
 
 export interface OfflineEngineManifest {

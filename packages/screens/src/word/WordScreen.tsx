@@ -37,6 +37,8 @@ type ScreenView =
 
 interface WordScreenProps {
   onOpenSettings?: () => void;
+  /** Optional mobile callback to browse & download optional Church Library books/collections. */
+  onOpenCatalog?: () => void;
   /** Optional mobile callback to open Personal Library device-folder import flow. */
   onOpenImport?: () => void;
   /** Optional mobile callback to edit metadata on a personal imported book. */
@@ -53,6 +55,7 @@ interface WordScreenProps {
 
 export function WordScreen({
   onOpenSettings,
+  onOpenCatalog,
   onOpenImport,
   onEditBookMetadata,
   libraryRevision = 0,
@@ -301,6 +304,7 @@ export function WordScreen({
       ) : (
         <LibraryBrowser
           onOpenBook={openLibraryBook}
+          onOpenCatalog={onOpenCatalog}
           onOpenImport={onOpenImport}
           onEditBookMetadata={onEditBookMetadata}
           libraryRevision={libraryRevision}

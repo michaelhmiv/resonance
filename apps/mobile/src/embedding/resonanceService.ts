@@ -38,6 +38,7 @@ import {
 } from './rerankerService';
 import {
   getPackLocalPaths,
+  getWorkLocalPaths,
   useOfflineEngineStore,
 } from '../packages/offlineEngineManager';
 
@@ -64,8 +65,9 @@ interface PackedVectorMatrix {
 let loadedMatrices: PackedVectorMatrix[] | null = null;
 
 /**
- * Load all installed 512d int8 `.rvec` corpus packs + embedded Personal Library
- * works (`include_in_resonance = 1`) from SQLite into memory.
+ * Load all installed 512d int8 `.rvec` files (core Bible pack + individually
+ * downloaded Church Library works) AND embedded Personal Library works
+ * (`include_in_resonance = 1`) from SQLite into memory.
  */
 export async function loadLibraryVectors(): Promise<void> {
   if (loadedMatrices !== null) return;
@@ -79,9 +81,11 @@ export async function loadLibraryVectors(): Promise<void> {
   const matrices: PackedVectorMatrix[] = [];
 
   try {
-    // 1. Load installed GitHub Releases `.rvec` corpus packs (if downloaded)
     const manifest = useOfflineEngineStore.getState().corpusManifest;
+
+    // 1. Load core Bible `.rvec` pack (if downloaded)
     for (const pack of manifest.packs) {
+      if (pack.kind !== 'bible') continue;
       const { vectorsPath } = getPackLocalPaths(pack.id);
       const info = await FileSystem.getInfoAsync(vectorsPath);
       if (!info.exists) continue;
@@ -90,51 +94,29 @@ export async function loadLibraryVectors(): Promise<void> {
           encoding: FileSystem.EncodingType.Base64,
         });
         const rvec = parseRvec(base64ToBytes(b64));
-        const rows =
-          pack.kind === 'bible'
-            ? await db.getAllAsync<{
-                id: number;
-                book_id: string;
-                chapter: number | null;
-                verse_start: number | null;
-                text: string;
-                translation: string | null;
-                title: string | null;
-                author: string | null;
-              }>(
-                `SELECT p.id, p.book_id, p.chapter, p.verse_start, p.text, p.translation,
-                        b.title, b.author
-                 FROM passages p
-                 LEFT JOIN books b ON b.id = p.book_id
-                 WHERE p.translation = 'WEB'
-                 ORDER BY p.id
-                 LIMIT ?;`,
-                [rvec.count]
-              )
-            : await db.getAllAsync<{
-                id: number;
-                book_id: string;
-                chapter: number | null;
-                verse_start: number | null;
-                text: string;
-                translation: string | null;
-                title: string | null;
-                author: string | null;
-              }>(
-                `SELECT p.id, p.book_id, p.chapter, p.verse_start, p.text, p.translation,
-                        b.title, b.author
-                 FROM passages p
-                 JOIN books b ON b.id = p.book_id
-                 WHERE b.package_id = ? AND b.source != 'personal'
-                 ORDER BY p.id
-                 LIMIT ?;`,
-                [pack.id, rvec.count]
-              );
-
+        const rows = await db.getAllAsync<{
+          id: number;
+          book_id: string;
+          chapter: number | null;
+          verse_start: number | null;
+          text: string;
+          translation: string | null;
+          title: string | null;
+          author: string | null;
+        }>(
+          `SELECT p.id, p.book_id, p.chapter, p.verse_start, p.text, p.translation,
+                  b.title, b.author
+           FROM passages p
+           LEFT JOIN books b ON b.id = p.book_id
+           WHERE p.translation = 'WEB'
+           ORDER BY p.id
+           LIMIT ?;`,
+          [rvec.count]
+        );
         const usable = Math.min(rvec.count, rows.length);
         if (usable > 0) {
           matrices.push({
-            library: pack.kind === 'bible' ? 'scripture' : 'witness',
+            library: 'scripture',
             dim: rvec.dim,
             count: usable,
             scales: rvec.scales.subarray(0, usable),
@@ -142,7 +124,7 @@ export async function loadLibraryVectors(): Promise<void> {
             meta: rows.slice(0, usable).map((r) => ({
               passageId: r.id,
               bookId: r.book_id,
-              workId: pack.kind === 'bible' ? 'web' : r.book_id,
+              workId: 'web',
               source: formatPassageSource(r),
               text: r.text,
               translation: r.translation,
@@ -151,6 +133,58 @@ export async function loadLibraryVectors(): Promise<void> {
         }
       } catch {
         // Skip corrupt/incomplete pack gracefully
+      }
+    }
+
+    // 2. Load individually installed Church Library works (`offline_engine/works/<slug>.vectors.rvec`)
+    for (const work of manifest.works ?? []) {
+      const { vectorsPath } = getWorkLocalPaths(work.slug);
+      const info = await FileSystem.getInfoAsync(vectorsPath);
+      if (!info.exists) continue;
+      try {
+        const b64 = await FileSystem.readAsStringAsync(vectorsPath, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const rvec = parseRvec(base64ToBytes(b64));
+        const rows = await db.getAllAsync<{
+          id: number;
+          book_id: string;
+          chapter: number | null;
+          verse_start: number | null;
+          text: string;
+          translation: string | null;
+          title: string | null;
+          author: string | null;
+        }>(
+          `SELECT p.id, p.book_id, p.chapter, p.verse_start, p.text, p.translation,
+                  b.title, b.author
+           FROM passages p
+           JOIN books b ON b.id = p.book_id
+           WHERE p.book_id = ?
+           ORDER BY p.id
+           LIMIT ?;`,
+          [work.id, rvec.count]
+        );
+        const usable = Math.min(rvec.count, rows.length);
+        if (usable > 0) {
+          matrices.push({
+            library: 'witness',
+            dim: rvec.dim,
+            count: usable,
+            scales: rvec.scales.subarray(0, usable),
+            vectors: rvec.vectors.subarray(0, usable * rvec.dim),
+            meta: rows.slice(0, usable).map((r) => ({
+              passageId: r.id,
+              bookId: r.book_id,
+              workId: r.book_id,
+              source: formatPassageSource(r),
+              text: r.text,
+              translation: null,
+            })),
+          });
+        }
+      } catch {
+        // Skip corrupt work file gracefully
       }
     }
 

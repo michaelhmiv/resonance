@@ -35,6 +35,8 @@ import { useDataLayer } from '@resonance/core/data-layer-context';
 
 interface LibraryBrowserProps {
   onOpenBook: (bookId: string) => void;
+  /** Optional mobile callback to browse & download optional Church Library books/collections. */
+  onOpenCatalog?: () => void;
   /** Optional mobile callback to open the device folder / file import modal. */
   onOpenImport?: () => void;
   /** Optional mobile callback to edit metadata for a personal imported work. */
@@ -63,6 +65,7 @@ function personalStatusLabel(book: LibraryBook): string | null {
 
 export function LibraryBrowser({
   onOpenBook,
+  onOpenCatalog,
   onOpenImport,
   onEditBookMetadata,
   libraryRevision = 0,
@@ -92,10 +95,6 @@ export function LibraryBrowser({
         setPackages([]);
       }
     });
-    // Check whether the onboarding prompt has been dismissed in the past.
-    // The /api/settings endpoint returns defaults for missing keys, so we
-    // check the raw key. If 'library_seen_at' is set, the user has seen
-    // (and dismissed) the prompt before.
     fetch('/api/settings')
       .then((r) => (r.ok ? r.json() : null))
       .then((settings) => {
@@ -137,44 +136,64 @@ export function LibraryBrowser({
     return (
       <View style={[styles.container, styles.center]}>
         <Text style={styles.emptyTitle}>
-          {loadError ? 'Unable to load Library.' : 'The Library is empty.'}
+          {loadError ? 'Unable to load Library.' : 'Build your Library.'}
         </Text>
         <Text style={styles.emptyDescription}>
           {loadError ??
-            (onOpenImport
-              ? 'Download the 80-work Library in Settings, or add your own EPUB, PDF, DOCX, Markdown, and text files from a folder on your device.'
+            (onOpenCatalog || onOpenImport
+              ? 'Browse 79 public-domain Church classics to download individual books or collections, or add your own EPUB, PDF, and text files from your device.'
               : 'You can opt back in to any package from Settings → Library Contents.')}
         </Text>
-        {onOpenImport ? (
-          <Pressable
-            onPress={onOpenImport}
-            style={styles.importEmptyBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Add books from device folder"
-          >
-            <Text style={styles.importEmptyBtnText}>+ Add Books or Folder</Text>
-          </Pressable>
-        ) : null}
+        <View style={styles.emptyActionsRow}>
+          {onOpenCatalog ? (
+            <Pressable
+              onPress={onOpenCatalog}
+              style={styles.importEmptyBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Browse Library catalog"
+            >
+              <Text style={styles.importEmptyBtnText}>Browse Catalog</Text>
+            </Pressable>
+          ) : null}
+          {onOpenImport ? (
+            <Pressable
+              onPress={onOpenImport}
+              style={styles.importEmptySecondaryBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Add books from device folder"
+            >
+              <Text style={styles.importEmptySecondaryBtnText}>+ Your Files</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {onOpenImport ? (
+      {onOpenCatalog || onOpenImport ? (
         <View style={styles.importBar}>
-          <View style={styles.importBarTextWrap}>
-            <Text style={styles.importBarTitle}>Your Books &amp; Device Folder</Text>
-            <Text style={styles.importBarMeta}>EPUB, PDF, DOCX, MD, HTML, TXT</Text>
-          </View>
-          <Pressable
-            onPress={onOpenImport}
-            style={styles.importBarBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Add books from device folder"
-          >
-            <Text style={styles.importBarBtnText}>+ Add</Text>
-          </Pressable>
+          {onOpenCatalog ? (
+            <Pressable
+              onPress={onOpenCatalog}
+              style={styles.importBarBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Browse Library catalog"
+            >
+              <Text style={styles.importBarBtnText}>Browse Catalog</Text>
+            </Pressable>
+          ) : null}
+          {onOpenImport ? (
+            <Pressable
+              onPress={onOpenImport}
+              style={styles.importBarSecondaryBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Add books from device folder"
+            >
+              <Text style={styles.importBarSecondaryBtnText}>+ Your Files</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -383,8 +402,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.accent,
   },
-  importEmptyBtn: {
+  emptyActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
     marginTop: spacing.lg,
+    flexWrap: 'wrap',
+  },
+  importEmptyBtn: {
     paddingHorizontal: spacing.xl,
     paddingVertical: 11,
     borderRadius: radii.md,
@@ -395,44 +421,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.surface,
   },
+  importEmptySecondaryBtn: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: 11,
+    borderRadius: radii.md,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  importEmptySecondaryBtnText: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 14,
+    color: colors.accent,
+  },
   importBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginHorizontal: layout.screenPaddingX,
     marginTop: spacing.md,
-    paddingHorizontal: layout.cardPadding,
-    paddingVertical: spacing.md,
+    gap: spacing.sm,
+  },
+  importBarBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radii.md,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+  },
+  importBarBtnText: {
+    fontFamily: fontFamilies.sansSemibold,
+    fontSize: 13.5,
+    color: colors.surface,
+  },
+  importBarSecondaryBtn: {
+    flex: 1,
+    paddingVertical: 10,
     borderRadius: radii.md,
     backgroundColor: colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
-    gap: spacing.md,
+    alignItems: 'center',
   },
-  importBarTextWrap: {
-    flex: 1,
-  },
-  importBarTitle: {
-    fontFamily: fontFamilies.serifSemibold,
-    fontSize: 16,
-    color: colors.textPrimary,
-  },
-  importBarMeta: {
-    fontFamily: fontFamilies.sans,
-    fontSize: 11.5,
-    color: colors.textTertiary,
-    marginTop: 2,
-  },
-  importBarBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: radii.sm,
-    backgroundColor: colors.accent,
-  },
-  importBarBtnText: {
-    fontFamily: fontFamilies.sansSemibold,
-    fontSize: 13,
-    color: colors.surface,
+  importBarSecondaryBtnText: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 13.5,
+    color: colors.accent,
   },
   bookRowWrap: {
     width: '100%',
