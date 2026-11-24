@@ -1,0 +1,110 @@
+name: bakeoff-deciders-v2
+on:
+  push:
+    branches: [bakeoff/models-optimization]
+    paths:
+      - 'scripts/bakeoff/rerank_qwen3.py'
+      - 'scripts/bakeoff/rerank_decider_v2.py'
+      - '.github/workflows/bakeoff-deciders-v2.yml'
+  workflow_dispatch:
+    inputs:
+      candidates_run:
+        description: 'Run ID holding candidates artifact'
+        required: false
+        default: '45384646621'
+      artifact_name:
+        description: 'Artifact name containing candidates JSON'
+        required: false
+        default: 'bakeoff-candidates'
+      candidates_file:
+        description: 'JSON filename inside artifact'
+        required: false
+        default: 'bakeoff-candidates.json'
+
+env:
+  CANDIDATES_RUN: ${{ inputs.candidates_run || '45384646621' }}
+  ARTIFACT_NAME: ${{ inputs.artifact_name || 'bakeoff-candidates' }}
+  CANDIDATES_FILE: ${{ inputs.candidates_file || 'bakeoff-candidates.json' }}
+
+jobs:
+  qwen3-reranker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4]
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet onnxruntime transformers numpy huggingface_hub
+      - name: Fetch candidates
+        run: gh run download "$CANDIDATES_RUN" --name "$ARTIFACT_NAME" --dir /tmp/cand
+      - name: Rerank shard ${{ matrix.shard }}/5 (Qwen3-Reranker-0.6B INT8 ONNX)
+        run: python3 scripts/bakeoff/rerank_qwen3.py ${{ matrix.shard }} 5 "/tmp/cand/$CANDIDATES_FILE"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: decider-qwen3-reranker-shard-${{ matrix.shard }}
+          path: rerank-qwen3-shard-${{ matrix.shard }}.json
+
+  bge-reranker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --quiet onnxruntime transformers numpy huggingface_hub
+      - name: Fetch candidates
+        run: gh run download "$CANDIDATES_RUN" --name "$ARTIFACT_NAME" --dir /tmp/cand
+      - name: Score pairs (BGE reranker v2-m3, INT8 ONNX)
+        run: python3 scripts/bakeoff/rerank_crossencoder.py "/tmp/cand/$CANDIDATES_FILE"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: decider-bge-reranker
+          path: rerank-crossencoder.json
+
+  llm-deciders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [gemma4-e2b-q4km, lfm3-1.7b-q4km]
+        shard: [0, 1, 2, 3, 4]
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install llama.cpp (b12675)
+        run: |
+          mkdir -p /tmp/llama
+          curl -L --fail -o /tmp/llama/llama.tar.gz \
+            "https://github.com/ggml-org/llama.cpp/releases/download/b12675/llama-b12675-bin-ubuntu-x64.tar.gz"
+          tar -xzf /tmp/llama/llama.tar.gz -C /tmp/llama
+          BIN=$(find /tmp/llama -name llama-server -type f | head -1)
+          echo "$(dirname "$BIN")" >> "$GITHUB_PATH"
+          "$BIN" --version || true
+      - name: Download quantized decider model
+        run: |
+          case '${{ matrix.model }}' in
+            gemma4-e2b-q4km) URL='https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf' ;;
+            lfm3-1.7b-q4km)  URL='https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF/resolve/main/LFM3-1.7B-Q4_K_M.gguf' ;;
+          esac
+          curl -L --fail -o /tmp/model.gguf "$URL"
+          ls -lh /tmp/model.gguf
+      - name: Fetch candidates
+        run: gh run download "$CANDIDATES_RUN" --name "$ARTIFACT_NAME" --dir /tmp/cand
+      - name: Rerank shard ${{ matrix.shard }}/5 (${{ matrix.model }})
+        run: python3 scripts/bakeoff/rerank_decider_v2.py ${{ matrix.shard }} 5 "/tmp/cand/$CANDIDATES_FILE" /tmp/model.gguf 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: decider-${{ matrix.model }}-shard-${{ matrix.shard }}
+          path: rerank-shard-${{ matrix.shard }}.json
