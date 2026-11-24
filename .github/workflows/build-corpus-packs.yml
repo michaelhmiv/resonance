@@ -1,13 +1,13 @@
 name: Build & Publish Corpus Packs (512d int8)
 
-# Builds pre-embedded 512d int8 RVEC + gzipped passage packs for the full
-# 110,893-chunk corpus using pinned Voyage-4-Nano INT8 ONNX weights.
+# Builds pre-embedded 512d int8 RVEC + gzipped passage assets for:
+#   - Core `bible-web` pack (~4.2 MB)
+#   - All 79 individual Church Library works (50 KB–2 MB each) grouped into
+#     4 curated collections in `packs-manifest.json` (schema v2).
 #
-# Editable GitHub Releases:
-#   Setting `publish_release: true` creates or updates the specified GitHub
-#   Release (`--clobber`) and refreshes `packs-manifest.json` with SHA-256
-#   checksums. You can also edit release notes or replace individual pack
-#   assets directly in the GitHub Releases UI without shipping a new APK.
+# Fast re-assembly mode:
+#   Pass `existing_shards_run_id` to skip the 16 embedding jobs and reuse
+#   already-computed shard artifacts from a previous run (~2 min total).
 
 on:
   workflow_dispatch:
@@ -24,12 +24,18 @@ on:
         description: "Upload packs + manifest directly to GitHub Releases"
         type: boolean
         default: false
+      existing_shards_run_id:
+        description: "Optional: reuse corpus-pack-shard-* artifacts from a previous run ID (skips embedding)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   embed-shards:
+    if: ${{ inputs.existing_shards_run_id == '' }}
     name: Embed shard ${{ matrix.shard }}/16
     runs-on: ubuntu-latest
     timeout-minutes: 120
@@ -64,8 +70,9 @@ jobs:
           retention-days: 7
 
   assemble-and-publish:
-    name: Assemble RVEC packs & manifest
+    name: Assemble per-work RVEC catalog & publish release
     needs: embed-shards
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -78,13 +85,21 @@ jobs:
         run: |
           python3 scripts/corpus/build_units.py
           python3 scripts/corpus/chunk_v3.py
-      - name: Download all 16 shards
+      - name: Download 16 shards from current run
+        if: ${{ inputs.existing_shards_run_id == '' }}
         uses: actions/download-artifact@v4
         with:
           pattern: corpus-pack-shard-*
           path: out/shards
           merge-multiple: true
-      - name: Assemble RVEC v1 packs + packs-manifest.json
+      - name: Download 16 shards from existing run ${{ inputs.existing_shards_run_id }}
+        if: ${{ inputs.existing_shards_run_id != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p out/shards
+          gh run download "${{ inputs.existing_shards_run_id }}" --pattern "corpus-pack-shard-*" --dir out/shards
+      - name: Assemble bible-web + 79 per-work RVEC packs + packs-manifest.json
         run: |
           python3 scripts/corpus/build_packs.py assemble \
             --chunks corpus/chunks_v3.jsonl \
@@ -93,8 +108,8 @@ jobs:
             --repo "${{ github.repository }}" \
             --release-tag "${{ inputs.release_tag }}" \
             --version "${{ inputs.pack_version }}"
-          ls -lh out/packs/
-          cat out/packs/packs-manifest.json
+          echo "Total asset files: $(ls out/packs | wc -l)"
+          ls -lh out/packs/packs-manifest.json out/packs/bible-web.*
       - uses: actions/upload-artifact@v4
         with:
           name: resonance-corpus-packs-${{ inputs.pack_version }}
@@ -106,10 +121,30 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ inputs.release_tag }}"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" out/packs/* --clobber
-          else
-            gh release create "$TAG" out/packs/* \
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
               --title "Resonance Corpus Packs (${{ inputs.pack_version }})" \
-              --notes "Pre-embedded 512d int8 Voyage-4-Nano corpus packs and packs-manifest.json. Editable anytime via workflow re-run or GitHub Releases UI."
+              --notes "Pre-embedded 512d int8 Voyage-4-Nano core Bible pack + 79 individually downloadable Church Library works across 4 curated collections (packs-manifest.json schema v2). Editable anytime via workflow re-run or GitHub Releases UI."
+          else
+            gh release edit "$TAG" \
+              --title "Resonance Corpus Packs (${{ inputs.pack_version }})" \
+              --notes "Pre-embedded 512d int8 Voyage-4-Nano core Bible pack + 79 individually downloadable Church Library works across 4 curated collections (packs-manifest.json schema v2). Editable anytime via workflow re-run or GitHub Releases UI."
           fi
+
+          # Upload data assets in resilient batches of 15, then upload packs-manifest.json LAST
+          # so clients never fetch a manifest pointing to an asset still mid-upload.
+          mapfile -t ASSETS < <(find out/packs -maxdepth 1 -type f ! -name 'packs-manifest.json' | sort)
+          TOTAL=${#ASSETS[@]}
+          echo "Uploading $TOTAL pack assets in batches of 15..."
+          for ((i=0; i<TOTAL; i+=15)); do
+            BATCH=("${ASSETS[@]:i:15}")
+            for attempt in 1 2 3; do
+              if gh release upload "$TAG" "${BATCH[@]}" --clobber; then
+                break
+              fi
+              echo "Retry $attempt for batch starting at $i..."
+              sleep 5
+            done
+          done
+          gh release upload "$TAG" out/packs/packs-manifest.json --clobber
+          echo "Release $TAG updated cleanly with $((TOTAL + 1)) assets."

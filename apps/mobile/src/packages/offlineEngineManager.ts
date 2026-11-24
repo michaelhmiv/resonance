@@ -1,18 +1,19 @@
 /**
- * Offline Engine Manager — resumable post-install downloader & verifier for
- * Resonance's locked local stack:
- *   1. Voyage-4-Nano INT8 ONNX (411 MB, pinned HF commit SHA + SHA-256)
- *   2. Qwen3-Reranker-0.6B INT8 Yes/No ONNX (583 MB, pinned HF commit SHA + SHA-256)
- *   3. Editable GitHub Releases Corpus Packs (~82 MB, 512d int8 .rvec + .jsonl.gz)
+ * Offline Engine & Library Catalog Manager — resumable post-install downloader
+ * for Resonance's locked local stack:
  *
- * Downloads run via `expo-file-system/legacy` `createDownloadResumable` with
- * resume state persisted in SQLite `offline_downloads`. The user can pause,
- * resume, or keep journaling while downloads run in the background.
+ *   Initial Core Engine (~998 MB, one-time):
+ *     1. Voyage-4-Nano INT8 ONNX (411 MB, pinned HF commit SHA + SHA-256)
+ *     2. Qwen3-Reranker-0.6B INT8 Yes/No ONNX (583 MB, pinned HF commit SHA + SHA-256)
+ *     3. World English Bible 512d int8 vectors (~4.2 MB, GitHub Releases)
  *
- * Editable Releases:
- *   `syncCorpusManifest()` fetches `packs-manifest.json` from the editable
- *   `corpus-packs-latest` GitHub Release. Updating or adding packs on GitHub
- *   Releases surfaces immediately in Settings without shipping a new APK.
+ *   Optional Church Library Catalog (browsable & downloadable per-book or per-collection):
+ *     - Individual per-work `.passages.jsonl.gz` + `.vectors.rvec` files (50 KB–2 MB each)
+ *       grouped into curated collections (`church-fathers`, `medieval-mystics`,
+ *       `reformation-puritans`, `modern-witnesses`) in `packs-manifest.json`.
+ *     - Uses batched 400-row SQLite inserts so each book installs in ~100 ms.
+ *     - Editing or adding books on the `corpus-packs-latest` GitHub Release
+ *       appears immediately via `syncCorpusManifest()` without shipping a new APK.
  */
 
 import * as FileSystem from 'expo-file-system/legacy';
@@ -24,6 +25,8 @@ import {
   gunzipBytes,
   decodeUtf8,
   OFFLINE_ENGINE_MANIFEST,
+  type CatalogCollectionId,
+  type CatalogWorkEntry,
   type CorpusPackManifestEntry,
   type CorpusPacksManifest,
   type DownloadArtifactSpec,
@@ -62,13 +65,19 @@ export function getPackLocalPaths(packId: string) {
   };
 }
 
+export function getWorkLocalPaths(slug: string) {
+  return {
+    passagesPath: localPathForArtifact(`works/${slug}.passages.jsonl.gz`),
+    vectorsPath: localPathForArtifact(`works/${slug}.vectors.rvec`),
+  };
+}
+
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export type EnginePhase =
   | 'not_installed'
   | 'downloading'
   | 'paused'
-  | 'installing_packs'
   | 'ready'
   | 'error';
 
@@ -76,6 +85,15 @@ export interface GroupProgress {
   downloadedBytes: number;
   totalBytes: number;
   ready: boolean;
+}
+
+export interface ActiveCatalogDownload {
+  label: string;
+  workId: string;
+  currentIndex: number;
+  totalWorks: number;
+  bytesWritten: number;
+  totalBytes: number;
 }
 
 export interface OfflineEngineState {
@@ -86,6 +104,7 @@ export interface OfflineEngineState {
   wifiOnly: boolean;
   corpusManifest: CorpusPacksManifest;
   manifestSyncedAt: number | null;
+  manifestSyncing: boolean;
   activeArtifactLabel: string | null;
   downloadedBytes: number;
   totalBytes: number;
@@ -95,6 +114,11 @@ export interface OfflineEngineState {
     corpus: GroupProgress;
   };
   installedPackIds: string[];
+  installedWorkIds: string[];
+  activeCatalogDownload: ActiveCatalogDownload | null;
+  catalogError: string | null;
+  /** Monotonic revision bumped whenever catalog works are installed/removed. */
+  catalogRevision: number;
   errorMessage: string | null;
   onReadyListeners: Array<() => void>;
 
@@ -104,10 +128,15 @@ export interface OfflineEngineState {
   setSheetVisible: (visible: boolean) => void;
   dismissFirstLaunchPrompt: () => Promise<void>;
   setWifiOnly: (wifiOnly: boolean) => Promise<void>;
-  startDownload: (options?: { includeCorpusPacks?: boolean }) => Promise<boolean>;
+  /** Downloads core models + lightweight Bible vectors ONLY (not the 80-work Library). */
+  startDownload: () => Promise<boolean>;
   pauseDownload: () => Promise<void>;
   cancelDownload: () => Promise<void>;
-  downloadCorpusPack: (packId: string) => Promise<boolean>;
+  downloadCatalogWork: (workId: string) => Promise<boolean>;
+  downloadCatalogCollection: (collectionId: CatalogCollectionId) => Promise<boolean>;
+  cancelCatalogDownload: () => Promise<void>;
+  removeCatalogWork: (workId: string) => Promise<boolean>;
+  removeCatalogCollection: (collectionId: CatalogCollectionId) => Promise<void>;
   removeOfflineEngine: () => Promise<void>;
   registerOnReady: (cb: () => void) => () => void;
 }
@@ -117,6 +146,13 @@ export interface OfflineEngineState {
 let activeDownloadResumable: FileSystem.DownloadResumable | null = null;
 let pauseRequested = false;
 let cancelRequested = false;
+
+let activeCatalogResumable: FileSystem.DownloadResumable | null = null;
+let catalogCancelRequested = false;
+
+function sqlString(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
 
 async function ensureParentDir(filePath: string): Promise<void> {
   const idx = filePath.lastIndexOf('/');
@@ -209,25 +245,22 @@ async function getSavedResumeData(artifactId: string): Promise<string | null> {
   }
 }
 
-function buildPackArtifacts(pack: CorpusPackManifestEntry): DownloadArtifactSpec[] {
+function getCoreBiblePack(manifest: CorpusPacksManifest): CorpusPackManifestEntry | null {
+  return manifest.packs.find((p) => p.kind === 'bible' || p.id === 'bible-web') ?? null;
+}
+
+function buildBibleCoreArtifacts(manifest: CorpusPacksManifest): DownloadArtifactSpec[] {
+  const bible = getCoreBiblePack(manifest);
+  if (!bible) return [];
   return [
     {
-      id: `pack-${pack.id}-passages`,
+      id: `pack-${bible.id}-vectors`,
       group: 'corpus',
-      label: `${pack.label} (text)`,
-      url: pack.passagesUrl,
-      relativePath: `packs/${pack.id}.passages.jsonl.gz`,
-      sizeBytes: pack.passagesBytes,
-      sha256: pack.passagesSha256,
-    },
-    {
-      id: `pack-${pack.id}-vectors`,
-      group: 'corpus',
-      label: `${pack.label} (512d vectors)`,
-      url: pack.vectorsUrl,
-      relativePath: `packs/${pack.id}.vectors.rvec`,
-      sizeBytes: pack.vectorsBytes,
-      sha256: pack.vectorsSha256,
+      label: 'World English Bible (512d vectors)',
+      url: bible.vectorsUrl,
+      relativePath: `packs/${bible.id}.vectors.rvec`,
+      sizeBytes: bible.vectorsBytes,
+      sha256: bible.vectorsSha256,
     },
   ];
 }
@@ -244,16 +277,14 @@ async function getFileSize(path: string): Promise<number> {
 }
 
 /**
- * Ingest a downloaded `.passages.jsonl.gz` corpus pack into SQLite `books` +
- * `passages` + `installed_packages` so the texts are immediately browsable in
- * the Library and mapped to their `.vectors.rvec` rows.
+ * Fast batched SQLite ingestion for a single downloaded catalog work.
+ * Uses 400-row multi-value INSERTs (matching `libraryLoader.ts`) so a typical
+ * book installs in ~100 ms without stalling the UI thread.
  */
-async function ingestDownloadedPackIntoSqlite(
-  pack: CorpusPackManifestEntry
-): Promise<boolean> {
+async function ingestCatalogWorkIntoSqlite(work: CatalogWorkEntry): Promise<boolean> {
   const db = getDatabase();
   if (!db) return false;
-  const { passagesPath } = getPackLocalPaths(pack.id);
+  const { passagesPath } = getWorkLocalPaths(work.slug);
   const info = await FileSystem.getInfoAsync(passagesPath);
   if (!info.exists) return false;
 
@@ -265,71 +296,91 @@ async function ingestDownloadedPackIntoSqlite(
     const jsonl = decodeUtf8(gunzipBytes(compressed));
     const lines = jsonl.split('\n');
 
-    interface PackPassageLine {
-      work_id: string;
-      title?: string;
-      author?: string;
-      era?: string;
-      package_id?: string;
+    interface WorkPassageLine {
       division?: string | null;
       chapter?: number | null;
       chunk_index?: number;
       text: string;
-      source?: string;
     }
 
-    const seenBooks = new Set<string>();
-    const parsedRows: PackPassageLine[] = [];
+    const parsedRows: WorkPassageLine[] = [];
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed) continue;
       try {
-        parsedRows.push(JSON.parse(trimmed) as PackPassageLine);
+        parsedRows.push(JSON.parse(trimmed) as WorkPassageLine);
       } catch {
         // skip malformed line
       }
     }
 
-    // Only write non-Bible voice works to SQLite `books`/`passages` (Bible is
-    // already bundled in `seedBundledScripture`; its `.rvec` stays on disk).
-    if (pack.kind !== 'bible' && parsedRows.length > 0) {
-      await db.withTransactionAsync(async () => {
-        for (const r of parsedRows) {
-          if (!seenBooks.has(r.work_id)) {
-            seenBooks.add(r.work_id);
-            await db.runAsync(
-              `INSERT OR IGNORE INTO books (id, title, author, era, package_id, type, translation, source)
-               VALUES (?, ?, ?, ?, ?, 'voice', NULL, ?);`,
-              [
-                r.work_id,
-                r.title ?? r.work_id.replace(/[_-]+/g, ' '),
-                r.author ?? null,
-                r.era ?? null,
-                r.package_id ?? pack.id,
-                r.source ?? 'release_pack',
-              ]
-            );
-          }
-          await db.runAsync(
-            `INSERT INTO passages (book_id, chapter, verse_start, verse_end, text, translation, chunk_id, division)
-             VALUES (?, ?, NULL, NULL, ?, NULL, ?, ?);`,
-            [
-              r.work_id,
-              r.chapter ?? 1,
-              r.text,
-              r.chunk_index ?? 0,
-              r.division ?? null,
-            ]
-          );
-        }
-      });
-    }
+    if (parsedRows.length === 0) return false;
 
-    await db.runAsync(
-      `INSERT OR REPLACE INTO installed_packages (package_id, version, model_id, installed_at)
-       VALUES (?, ?, ?, ?);`,
-      [pack.id, pack.version, pack.modelId, Date.now()]
-    );
+    const BATCH = 400;
+    await db.withTransactionAsync(async () => {
+      await db.runAsync(
+        `INSERT OR REPLACE INTO books (id, title, author, era, package_id, type, translation, source)
+         VALUES (?, ?, ?, ?, ?, 'voice', NULL, 'release_pack');`,
+        [
+          work.id,
+          work.title,
+          work.author || null,
+          work.era || null,
+          work.collectionId,
+        ]
+      );
+
+      await db.runAsync(`DELETE FROM passages WHERE book_id = ?;`, [work.id]);
+
+      const bookIdSql = sqlString(work.id);
+      for (let start = 0; start < parsedRows.length; start += BATCH) {
+        const slice = parsedRows.slice(start, start + BATCH);
+        const values = slice
+          .map((r, offset) => {
+            const chapter = r.chapter ?? 1;
+            const chunkIdx = r.chunk_index ?? start + offset;
+            const divSql = r.division ? sqlString(r.division) : 'NULL';
+            return `(${bookIdSql}, ${chapter}, NULL, NULL, ${sqlString(r.text)}, NULL, ${chunkIdx}, ${divSql})`;
+          })
+          .join(', ');
+        await db.execAsync(
+          `INSERT INTO passages (book_id, chapter, verse_start, verse_end, text, translation, chunk_id, division) VALUES ${values};`
+        );
+      }
+
+      await db.runAsync(
+        `INSERT OR REPLACE INTO installed_packages (package_id, version, model_id, installed_at)
+         VALUES (?, ?, ?, ?);`,
+        [`work:${work.id}`, '1.0.0', 'voyage-4-nano', Date.now()]
+      );
+    });
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function deleteCatalogWorkFromSqliteAndDisk(work: CatalogWorkEntry): Promise<boolean> {
+  const db = getDatabase();
+  if (!db) return false;
+  try {
+    await db.withTransactionAsync(async () => {
+      await db.runAsync(`DELETE FROM passages WHERE book_id = ?;`, [work.id]);
+      await db.runAsync(`DELETE FROM books WHERE id = ?;`, [work.id]);
+      await db.runAsync(`DELETE FROM installed_packages WHERE package_id = ?;`, [
+        `work:${work.id}`,
+      ]);
+    });
+    const { passagesPath, vectorsPath } = getWorkLocalPaths(work.slug);
+    for (const p of [passagesPath, vectorsPath]) {
+      try {
+        const info = await FileSystem.getInfoAsync(p);
+        if (info.exists) await FileSystem.deleteAsync(p, { idempotent: true });
+      } catch {
+        // non-fatal
+      }
+    }
     return true;
   } catch {
     return false;
@@ -338,15 +389,15 @@ async function ingestDownloadedPackIntoSqlite(
 
 // ── Zustand Store ───────────────────────────────────────────────────────────
 
-function computeEmptyGroups() {
+function computeCoreGroups(manifest: CorpusPacksManifest) {
   const embedderTotal = OFFLINE_ENGINE_MANIFEST.modelArtifacts
     .filter((a) => a.group === 'embedder')
     .reduce((acc, a) => acc + a.sizeBytes, 0);
   const rerankerTotal = OFFLINE_ENGINE_MANIFEST.modelArtifacts
     .filter((a) => a.group === 'reranker')
     .reduce((acc, a) => acc + a.sizeBytes, 0);
-  const corpusTotal = FALLBACK_CORPUS_MANIFEST.packs.reduce(
-    (acc, p) => acc + p.passagesBytes + p.vectorsBytes,
+  const corpusTotal = buildBibleCoreArtifacts(manifest).reduce(
+    (acc, a) => acc + a.sizeBytes,
     0
   );
   return {
@@ -357,7 +408,7 @@ function computeEmptyGroups() {
 }
 
 export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
-  const initialGroups = computeEmptyGroups();
+  const initialGroups = computeCoreGroups(FALLBACK_CORPUS_MANIFEST);
   const initialTotal =
     initialGroups.embedder.totalBytes +
     initialGroups.reranker.totalBytes +
@@ -371,11 +422,16 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
     wifiOnly: true,
     corpusManifest: FALLBACK_CORPUS_MANIFEST,
     manifestSyncedAt: null,
+    manifestSyncing: false,
     activeArtifactLabel: null,
     downloadedBytes: 0,
     totalBytes: initialTotal,
     groups: initialGroups,
     installedPackIds: [],
+    installedWorkIds: [],
+    activeCatalogDownload: null,
+    catalogError: null,
+    catalogRevision: 0,
     errorMessage: null,
     onReadyListeners: [],
 
@@ -414,7 +470,7 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
       if (cachedManifestRaw) {
         try {
           const parsed = JSON.parse(cachedManifestRaw) as CorpusPacksManifest;
-          if (parsed && Array.isArray(parsed.packs) && parsed.packs.length > 0) {
+          if (parsed && Array.isArray(parsed.packs)) {
             corpusManifest = parsed;
           }
         } catch {
@@ -431,7 +487,7 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
 
       await get().refreshStatus();
 
-      // Non-blocking first-launch sheet: show once if models aren't downloaded yet
+      // Non-blocking first-launch sheet: invites core engine download once
       const state = get();
       if (state.phase === 'not_installed' && !state.promptDismissed) {
         set({ sheetVisible: true });
@@ -439,20 +495,38 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
     },
 
     async syncCorpusManifest() {
+      set({ manifestSyncing: true, catalogError: null });
       try {
         const res = await fetch(CORPUS_PACKS_MANIFEST_URL, {
           headers: { Accept: 'application/json' },
         });
-        if (!res.ok) return get().corpusManifest;
+        if (!res.ok) {
+          if (res.status === 404) {
+            set({
+              catalogError:
+                'Library packs are still publishing on GitHub Releases — check back in a few minutes and tap Refresh.',
+            });
+          }
+          return get().corpusManifest;
+        }
         const remote = (await res.json()) as CorpusPacksManifest;
-        if (remote && Array.isArray(remote.packs) && remote.packs.length > 0) {
-          set({ corpusManifest: remote, manifestSyncedAt: Date.now() });
+        if (remote && Array.isArray(remote.packs)) {
+          set({
+            corpusManifest: remote,
+            manifestSyncedAt: Date.now(),
+            catalogError: null,
+          });
           await setSetting('corpus_manifest_cache', JSON.stringify(remote));
           await get().refreshStatus();
           return remote;
         }
       } catch {
-        // Offline or release not published yet — fallback manifest remains active
+        set({
+          catalogError:
+            'Could not reach GitHub Releases right now. Showing last known catalog.',
+        });
+      } finally {
+        set({ manifestSyncing: false });
       }
       return get().corpusManifest;
     },
@@ -460,15 +534,15 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
     async refreshStatus() {
       const manifest = get().corpusManifest;
       const modelArtifacts = OFFLINE_ENGINE_MANIFEST.modelArtifacts;
-      const corpusArtifacts = manifest.packs.flatMap(buildPackArtifacts);
+      const bibleArtifacts = buildBibleCoreArtifacts(manifest);
 
       const groupStats = {
         embedder: { downloadedBytes: 0, totalBytes: 0, ready: true },
         reranker: { downloadedBytes: 0, totalBytes: 0, ready: true },
-        corpus: { downloadedBytes: 0, totalBytes: 0, ready: true },
+        corpus: { downloadedBytes: 0, totalBytes: 0, ready: bibleArtifacts.length === 0 },
       };
 
-      for (const art of [...modelArtifacts, ...corpusArtifacts]) {
+      for (const art of [...modelArtifacts, ...bibleArtifacts]) {
         const localPath = localPathForArtifact(art.relativePath);
         const size = await getFileSize(localPath);
         const g = groupStats[art.group];
@@ -481,13 +555,30 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
 
       const installedPackIds: string[] = [];
       for (const pack of manifest.packs) {
-        const { passagesPath, vectorsPath } = getPackLocalPaths(pack.id);
-        const [pSize, vSize] = await Promise.all([
-          getFileSize(passagesPath),
-          getFileSize(vectorsPath),
-        ]);
-        if (pSize > 0 && vSize > 0) {
-          installedPackIds.push(pack.id);
+        const { vectorsPath } = getPackLocalPaths(pack.id);
+        const vSize = await getFileSize(vectorsPath);
+        if (vSize > 0) installedPackIds.push(pack.id);
+      }
+
+      const installedWorkIds: string[] = [];
+      for (const work of manifest.works ?? []) {
+        const { vectorsPath } = getWorkLocalPaths(work.slug);
+        const vSize = await getFileSize(vectorsPath);
+        if (vSize > 0) installedWorkIds.push(work.id);
+      }
+
+      // Also check SQLite `books` for installed release_pack works
+      const db = getDatabase();
+      if (db) {
+        try {
+          const rows = await db.getAllAsync<{ id: string }>(
+            `SELECT id FROM books WHERE source = 'release_pack';`
+          );
+          for (const r of rows) {
+            if (!installedWorkIds.includes(r.id)) installedWorkIds.push(r.id);
+          }
+        } catch {
+          // ignore
         }
       }
 
@@ -503,7 +594,7 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
       const modelsReady = groupStats.embedder.ready && groupStats.reranker.ready;
       const curPhase = get().phase;
       const nextPhase: EnginePhase =
-        curPhase === 'downloading' || curPhase === 'installing_packs'
+        curPhase === 'downloading'
           ? curPhase
           : modelsReady
             ? 'ready'
@@ -516,35 +607,40 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
         downloadedBytes,
         totalBytes,
         installedPackIds,
+        installedWorkIds,
         phase: nextPhase,
       });
     },
 
-    async startDownload(options = {}) {
-      const includeCorpusPacks = options.includeCorpusPacks ?? true;
+    /**
+     * Core Offline Engine download: downloads ONLY Voyage-4-Nano (411 MB) +
+     * Qwen3-Reranker-0.6B (583 MB) + lightweight Bible vectors (~4.2 MB).
+     * Never downloads the optional 80-work Church Library here.
+     */
+    async startDownload() {
       if (get().phase === 'downloading') return true;
 
       pauseRequested = false;
       cancelRequested = false;
       set({ phase: 'downloading', errorMessage: null });
 
-      // Best-effort refresh of the editable GitHub Releases corpus manifest
-      if (includeCorpusPacks) {
-        await get().syncCorpusManifest();
-      }
+      // Best-effort refresh so bible-web URL/SHA is current if published
+      await get().syncCorpusManifest();
 
       const manifest = get().corpusManifest;
       const artifacts: DownloadArtifactSpec[] = [
         ...OFFLINE_ENGINE_MANIFEST.modelArtifacts,
-        ...(includeCorpusPacks ? manifest.packs.flatMap(buildPackArtifacts) : []),
+        ...buildBibleCoreArtifacts(manifest),
       ];
 
-      // Pre-compute baseline downloaded bytes across artifacts
       const perArtifactBytes = new Map<string, number>();
       for (const art of artifacts) {
         const localPath = localPathForArtifact(art.relativePath);
         const existing = await getFileSize(localPath);
-        perArtifactBytes.set(art.id, art.sizeBytes > 0 ? Math.min(existing, art.sizeBytes) : existing);
+        perArtifactBytes.set(
+          art.id,
+          art.sizeBytes > 0 ? Math.min(existing, art.sizeBytes) : existing
+        );
       }
 
       const emitProgress = (activeLabel: string | null) => {
@@ -625,13 +721,10 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
             : await resumable.downloadAsync();
           activeDownloadResumable = null;
 
-          if (pauseRequested || cancelRequested) {
-            break;
-          }
+          if (pauseRequested || cancelRequested) break;
 
           if (!result || (result.status !== 200 && result.status !== 206)) {
-            // Corpus packs might not be published to GitHub Releases yet on a
-            // fresh branch — keep model download succeeding and record note.
+            // If bible-web release isn't published yet, don't fail the core models!
             if (art.group === 'corpus') {
               await upsertDownloadRow({
                 artifactId: art.id,
@@ -650,7 +743,10 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
           }
 
           const finalSize = await getFileSize(localPath);
-          perArtifactBytes.set(art.id, art.sizeBytes > 0 ? Math.min(finalSize, art.sizeBytes) : finalSize);
+          perArtifactBytes.set(
+            art.id,
+            art.sizeBytes > 0 ? Math.min(finalSize, art.sizeBytes) : finalSize
+          );
           await upsertDownloadRow({
             artifactId: art.id,
             groupName: art.group,
@@ -699,16 +795,9 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
         return false;
       }
 
-      // Ingest any downloaded corpus packs into SQLite
-      if (includeCorpusPacks) {
-        set({ phase: 'installing_packs', activeArtifactLabel: 'Indexing Library passages…' });
-        for (const pack of manifest.packs) {
-          await ingestDownloadedPackIntoSqlite(pack);
-        }
-      }
-
+      // Mark models ready once embedder + reranker are verified on disk
+      set({ phase: 'ready', activeArtifactLabel: null, promptDismissed: true });
       await get().refreshStatus();
-      set({ activeArtifactLabel: null, promptDismissed: true });
       await setSetting('offline_engine_prompt_dismissed', 'true');
 
       if (get().phase === 'ready') {
@@ -739,7 +828,7 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
             );
           }
         } catch {
-          // ignore pause errors
+          // ignore
         }
         activeDownloadResumable = null;
       }
@@ -759,34 +848,96 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
       set({ phase: 'not_installed', activeArtifactLabel: null });
     },
 
-    async downloadCorpusPack(packId: string) {
-      const manifest = await get().syncCorpusManifest();
-      const pack = manifest.packs.find((p) => p.id === packId);
-      if (!pack) return false;
-      set({ phase: 'downloading', errorMessage: null, activeArtifactLabel: pack.label });
-      for (const art of buildPackArtifacts(pack)) {
-        const localPath = localPathForArtifact(art.relativePath);
-        await ensureParentDir(localPath);
-        const dl = FileSystem.createDownloadResumable(art.url, localPath, {});
-        const res = await dl.downloadAsync();
-        if (!res || (res.status !== 200 && res.status !== 206)) {
-          set({
-            phase: 'error',
-            errorMessage: `Could not download ${pack.label} (HTTP ${res?.status ?? 'error'}).`,
-            activeArtifactLabel: null,
-          });
-          return false;
+    // ── Optional Per-Book & Per-Collection Catalog Downloads ────────────────
+
+    async downloadCatalogWork(workId: string) {
+      const works = get().corpusManifest.works ?? [];
+      const work = works.find((w) => w.id === workId);
+      if (!work) {
+        set({ catalogError: 'Book not found in catalog. Tap Refresh to sync.' });
+        return false;
+      }
+
+      catalogCancelRequested = false;
+      set({ catalogError: null });
+      const ok = await downloadSingleWorkInternal(work, 1, 1, set);
+      await get().refreshStatus();
+      set((s) => ({
+        activeCatalogDownload: null,
+        catalogRevision: ok ? s.catalogRevision + 1 : s.catalogRevision,
+      }));
+      return ok;
+    },
+
+    async downloadCatalogCollection(collectionId: CatalogCollectionId) {
+      const works = (get().corpusManifest.works ?? []).filter(
+        (w) => w.collectionId === collectionId
+      );
+      const installed = new Set(get().installedWorkIds);
+      const remaining = works.filter((w) => !installed.has(w.id));
+      if (remaining.length === 0) return true;
+
+      catalogCancelRequested = false;
+      set({ catalogError: null });
+      let anyInstalled = false;
+
+      for (let i = 0; i < remaining.length; i++) {
+        if (catalogCancelRequested) break;
+        const ok = await downloadSingleWorkInternal(
+          remaining[i],
+          i + 1,
+          remaining.length,
+          set
+        );
+        if (ok) {
+          anyInstalled = true;
+          await get().refreshStatus();
+          set((s) => ({ catalogRevision: s.catalogRevision + 1 }));
+        } else if (catalogCancelRequested) {
+          break;
         }
       }
-      set({ phase: 'installing_packs', activeArtifactLabel: `Installing ${pack.label}…` });
-      await ingestDownloadedPackIntoSqlite(pack);
+
+      set({ activeCatalogDownload: null });
+      return anyInstalled;
+    },
+
+    async cancelCatalogDownload() {
+      catalogCancelRequested = true;
+      if (activeCatalogResumable) {
+        try {
+          await activeCatalogResumable.pauseAsync();
+        } catch {
+          // ignore
+        }
+        activeCatalogResumable = null;
+      }
+      set({ activeCatalogDownload: null });
+    },
+
+    async removeCatalogWork(workId: string) {
+      const work = (get().corpusManifest.works ?? []).find((w) => w.id === workId);
+      if (!work) return false;
+      const ok = await deleteCatalogWorkFromSqliteAndDisk(work);
       await get().refreshStatus();
-      set({ activeArtifactLabel: null });
-      return true;
+      set((s) => ({ catalogRevision: s.catalogRevision + 1 }));
+      return ok;
+    },
+
+    async removeCatalogCollection(collectionId: CatalogCollectionId) {
+      const works = (get().corpusManifest.works ?? []).filter(
+        (w) => w.collectionId === collectionId
+      );
+      for (const w of works) {
+        await deleteCatalogWorkFromSqliteAndDisk(w);
+      }
+      await get().refreshStatus();
+      set((s) => ({ catalogRevision: s.catalogRevision + 1 }));
     },
 
     async removeOfflineEngine() {
       await get().cancelDownload();
+      await get().cancelCatalogDownload();
       try {
         const info = await FileSystem.getInfoAsync(OFFLINE_ENGINE_ROOT);
         if (info.exists) {
@@ -799,11 +950,96 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
       if (db) {
         try {
           await db.runAsync(`DELETE FROM offline_downloads;`);
+          await db.runAsync(
+            `DELETE FROM passages WHERE book_id IN (SELECT id FROM books WHERE source = 'release_pack');`
+          );
+          await db.runAsync(`DELETE FROM books WHERE source = 'release_pack';`);
         } catch {
           // ignore
         }
       }
       await get().refreshStatus();
+      set((s) => ({ catalogRevision: s.catalogRevision + 1 }));
     },
   };
 });
+
+async function downloadSingleWorkInternal(
+  work: CatalogWorkEntry,
+  currentIndex: number,
+  totalWorks: number,
+  set: (partial: Partial<OfflineEngineState>) => void
+): Promise<boolean> {
+  const { passagesPath, vectorsPath } = getWorkLocalPaths(work.slug);
+  const totalBytes = work.passagesBytes + work.vectorsBytes;
+  let baseBytes = 0;
+
+  const files: Array<{ url: string; dest: string; size: number }> = [
+    { url: work.passagesUrl, dest: passagesPath, size: work.passagesBytes },
+    { url: work.vectorsUrl, dest: vectorsPath, size: work.vectorsBytes },
+  ];
+
+  set({
+    activeCatalogDownload: {
+      label: work.title,
+      workId: work.id,
+      currentIndex,
+      totalWorks,
+      bytesWritten: 0,
+      totalBytes,
+    },
+  });
+
+  for (const f of files) {
+    if (catalogCancelRequested) return false;
+    await ensureParentDir(f.dest);
+    try {
+      const dl = FileSystem.createDownloadResumable(
+        f.url,
+        f.dest,
+        {},
+        (p) => {
+          set({
+            activeCatalogDownload: {
+              label: work.title,
+              workId: work.id,
+              currentIndex,
+              totalWorks,
+              bytesWritten: Math.min(totalBytes, baseBytes + p.totalBytesWritten),
+              totalBytes,
+            },
+          });
+        }
+      );
+      activeCatalogResumable = dl;
+      const res = await dl.downloadAsync();
+      activeCatalogResumable = null;
+
+      if (catalogCancelRequested) return false;
+      if (!res || (res.status !== 200 && res.status !== 206)) {
+        const hint =
+          res?.status === 404
+            ? `"${work.title}" is still publishing on GitHub Releases — tap Refresh in a few minutes.`
+            : `Could not download "${work.title}" (HTTP ${res?.status ?? 'network error'}).`;
+        set({ catalogError: hint });
+        return false;
+      }
+      baseBytes += f.size;
+    } catch (err) {
+      activeCatalogResumable = null;
+      if (!catalogCancelRequested) {
+        set({
+          catalogError:
+            err instanceof Error ? err.message : `Download failed for "${work.title}".`,
+        });
+      }
+      return false;
+    }
+  }
+
+  const ok = await ingestCatalogWorkIntoSqlite(work);
+  if (!ok) {
+    set({ catalogError: `Downloaded "${work.title}" but could not index its passages.` });
+  }
+  return ok;
+}

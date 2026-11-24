@@ -1,8 +1,8 @@
-Resonance — Offline Engine & Personal Library build.
+Resonance — Core Engine Prompt & Browsable Library Catalog build.
 
 What's in this build:
-• Locked 100% local Offline Resonance Engine (Voyage-4-Nano 512d INT8 + Qwen3-Reranker-0.6B INT8 Yes/No + Per-Library Z-Score Fusion & Calibrated Silence — zero cloud calls, zero generated prose)
-• Non-blocking first-launch download sheet (~1.08 GB total from pinned Hugging Face commits + editable GitHub Releases corpus packs), with Wi-Fi preference, pause/resume, and "Journal while downloading"
-• Personal Library & Device Folder import: connect a folder on your phone (or Resonance Inbox) to import EPUB, PDF, DOCX, HTML, Markdown, and TXT works — with extraction diagnostics, scanned-PDF detection, full metadata editing (title, author, era, shelf, tags, notes, echo toggle), chapter rendering in Word → Library, and automatic on-device 512d int8 embedding
-• Updated Settings with Offline Engine status, GitHub Releases pack update sync, and Personal Library folder controls
-• New app icon: gold open book on cream (home screen, splash, and browser favicon)
+• Initial Offline Engine download prompt now downloads ONLY the core engine (Voyage-4-Nano 512d INT8 + Qwen3-Reranker-0.6B INT8 + ~4 MB Bible vectors = ~998 MB) — never forces the 80-work Church Library up front
+• New Library Catalog Browser (Word → Library → Browse Catalog, and Settings → Browse Library Catalog): search & filter 79 classic works across 4 collections (The Church Fathers, Medieval & Contemplative Voices, Reformation & Devotional Classics, Modern Witnesses), see exact per-book sizes, and download individual books (50 KB–2 MB each) or whole collections on demand — or remove any book anytime
+• Fast batched SQLite ingestion (400-row batches) so downloaded books install in milliseconds instead of stalling the app
+• Personal Library & Device Folder import (EPUB, PDF, DOCX, HTML, Markdown, TXT) with extraction diagnostics, metadata editor, and on-device 512d int8 embedding
+• Living Concordance Patterns tab & Study Bookshelf, plus the new gold open-book app icon on cream
