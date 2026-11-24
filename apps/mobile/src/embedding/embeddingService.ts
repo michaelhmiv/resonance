@@ -14,6 +14,7 @@ import {
   DEFAULT_LOCAL_EMBEDDING_MODEL,
   EMBEDDING_DIM,
   EMBEDDING_MODELS,
+  VOYAGE_DOC_PREFIX,
   VOYAGE_QUERY_PREFIX,
   blobToVector,
   cosineSimilarity,
@@ -325,15 +326,15 @@ export async function embedQuery(text: string): Promise<Float32Array | null> {
   return embedRawText(`${VOYAGE_QUERY_PREFIX}${text.trim()}`);
 }
 
-/** Embed a Library or Personal Library passage (no query prefix, matches pack build). */
+/** Embed a Library or Personal Library passage (exact bake-off v2 document prefix). */
 export async function embedPassage(
   text: string,
   titleContext?: string | null
 ): Promise<Float32Array | null> {
   const payload =
     titleContext && titleContext.trim().length > 0
-      ? `${titleContext.trim()}\n\n${text.trim()}`
-      : text.trim();
+      ? `${VOYAGE_DOC_PREFIX}[${titleContext.trim()}]\n${text.trim()}`
+      : `${VOYAGE_DOC_PREFIX}${text.trim()}`;
   return embedRawText(payload);
 }
 
