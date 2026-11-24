@@ -4,7 +4,7 @@ import json, random
 from collections import defaultdict
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
-pool = [json.loads(l) for l in (ROOT / "corpus/chunks_v2.jsonl").open()]
+pool = [json.loads(l) for l in (ROOT / "corpus/chunks_v3.jsonl").open()]
 rng = random.Random(42)
 def spaced(items, k):
     if len(items) <= k: return items
@@ -16,7 +16,8 @@ subset = []
 for wid, items in sorted(by_work.items()):
     if wid == "web":
         by_book = defaultdict(list)
-        for p in items: by_book[p["chunk_id"].rsplit(" ", 1)[0]].append(p)
+        import re as _re
+        for p in items: by_book[_re.match(r"(.+?) \d+:\d+", p["chunk_id"]).group(1)].append(p)
         for book, verses in sorted(by_book.items()):
             subset += spaced(verses, max(10, round(2400 * len(verses) / len(items))))
     else:

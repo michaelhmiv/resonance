@@ -2,7 +2,7 @@ name: bakeoff-subset
 on:
   push:
     branches: [phase1-bootable-apk]
-    paths: ['scripts/bakeoff/**', '.github/workflows/bakeoff-subset.yml']
+    paths: ['scripts/bakeoff/**', 'scripts/corpus/**', '.github/workflows/bakeoff-subset.yml']
 jobs:
   subset:
     runs-on: ubuntu-latest
@@ -15,8 +15,8 @@ jobs:
       - run: pip install --quiet onnxruntime transformers numpy huggingface_hub
       - name: Build pool + subset
         run: |
-          python scripts/corpus/chunk_corpus.py
-          python scripts/corpus/append_bible.py
+          python scripts/corpus/build_units.py
+          python scripts/corpus/chunk_v3.py
           python scripts/bakeoff/make_subset.py
       - name: Embed subset + query
         run: python scripts/bakeoff/run_bakeoff.py subset

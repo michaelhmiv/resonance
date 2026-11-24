@@ -100,9 +100,23 @@ def full(tok, sess, prompts):
     queries = golden_queries()
     q = embed(tok, sess, [x["journal"] for x in queries], prompts.get("query", ""))
     sims = q @ emb.T
+    def select(i):
+        ranked = np.argsort(-sims[i])
+        picked, per_work = [], {}
+        def dup(j):
+            ws = set(pool[j]["text"].lower().split())
+            return any(len(ws & set(pool[k]["text"].lower().split())) / max(len(ws), 1) > 0.7 for k in picked)
+        for j in ranked[:60]:
+            if len(picked) >= 5: break
+            if per_work.get(pool[j]["work_id"], 0) >= 2 or dup(int(j)): continue
+            picked.append(int(j)); per_work[pool[j]["work_id"]] = per_work.get(pool[j]["work_id"], 0) + 1
+        if not any(pool[j]["source"] == "bible" for j in picked):  # Scripture slot (spec SS6)
+            bible = [int(j) for j in ranked[:15] if pool[j]["source"] == "bible"]
+            if bible: picked[-1] = bible[0]
+        return picked
     results = []
     for i, query in enumerate(queries):
-        top = np.argsort(-sims[i])[:5]
+        top = select(i)
         results.append({**query, "results": [
             {"rank": r + 1, "score": round(float(sims[i][j]), 4),
              "work_id": pool[j]["work_id"], "source": pool[j]["source"],
@@ -132,9 +146,23 @@ def combine(tok, sess, prompts, n):
     queries = golden_queries()
     q = embed(tok, sess, [x["journal"] for x in queries], prompts.get("query", ""))
     sims = q @ emb.T
+    def select(i):
+        ranked = np.argsort(-sims[i])
+        picked, per_work = [], {}
+        def dup(j):
+            ws = set(pool[j]["text"].lower().split())
+            return any(len(ws & set(pool[k]["text"].lower().split())) / max(len(ws), 1) > 0.7 for k in picked)
+        for j in ranked[:60]:
+            if len(picked) >= 5: break
+            if per_work.get(pool[j]["work_id"], 0) >= 2 or dup(int(j)): continue
+            picked.append(int(j)); per_work[pool[j]["work_id"]] = per_work.get(pool[j]["work_id"], 0) + 1
+        if not any(pool[j]["source"] == "bible" for j in picked):  # Scripture slot (spec SS6)
+            bible = [int(j) for j in ranked[:15] if pool[j]["source"] == "bible"]
+            if bible: picked[-1] = bible[0]
+        return picked
     results = []
     for i, query in enumerate(queries):
-        top = np.argsort(-sims[i])[:5]
+        top = select(i)
         results.append({**query, "results": [
             {"rank": r + 1, "score": round(float(sims[i][j]), 4),
              "work_id": pool[j]["work_id"], "source": pool[j]["source"],
