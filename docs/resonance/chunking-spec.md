@@ -101,25 +101,44 @@ Scripture units are **verse groups**:
 - The chunk set is versioned (`chunks_v3` is the first under this spec);
   bumping assembly rules produces a new version without touching units.
 
-## 6. Query-time presentation guards
+## 6. Retrieval, reranking & presentation guards (ruled 2026-11-24)
 
-Embedding spaces have "hubs" — passages that score high against almost any
-query. The bake-off showed them (one Teresa passage topped two unrelated
-entries). Presentation therefore applies, in order:
+**Adopted local-only stack (Apache 2.0, quantized INT8 ONNX, zero generated prose):**
 
-1. Rank by cosine similarity as usual.
-2. **Per-work cap:** at most **2 passages per work** in a presented list.
-3. **Scripture slot:** if no Scripture passage is in the top 5 but one
-   ranks in the top 15, the best Scripture passage takes the 5th slot.
-4. **Near-duplicate demotion:** a candidate whose text is a near-duplicate
-   of an already-selected passage is skipped.
-5. **Reader rerank (added 2026-11-24, Michael's ruling):** guards 1–4 order
-   a shortlist; they cannot judge fit. A local reader model (see
-   `principles.md` §1) reranks the embedding top-50 and selects the final
-   list, judging the writer's situation and direction, not vocabulary
-   overlap. The Scripture slot (guard 3) applies only when no fitting
-   Scripture passage survives the reader's selection, and only within a
-   small score margin of the passage it displaces.
+- **Retriever:** `onnx-community/voyage-4-nano-ONNX` (`onnx/model_quantized.onnx`,
+  346M total / 180M backbone, ~411 MB) with `512d` MRL truncation and per-vector
+  symmetric **`int8` scalar quantization** (~54.2 MB for the full 111k corpus;
+  `0.9952` top-50 overlap vs. float32). Document embedding input prepends a
+  structural header `Represent the document for retrieval: [{title}]\n{text}`
+  (display text stays untouched); query input prepends
+  `Represent the query for retrieving supporting documents: {journal}`.
+- **Decider / Reranker:** `n24q02m/Qwen3-Reranker-0.6B-ONNX`
+  (`onnx/model_yesno_quantized.onnx`, 572 MB INT8, stripped 2-dim yes/no output)
+  evaluating each `(instruction, journal, candidate)` pair under Resonance's
+  posture/direction rubric and emitting calibrated `P(yes)` scores.
+
+Query-time ranking applies, in order:
+
+1. **Stratified per-library retrieval:** fetch **top-20 Scripture + top-30
+   Witnesses** (+ up to top-10 Past Self / personal imports) independently so
+   shorter ~75-word Scripture verse groups are never crowded out by ~160-word
+   prose chunks.
+2. **Instruction-aware pointwise reranking:** score the candidate pool with
+   `Qwen3-Reranker-0.6B` (INT8 ONNX) to judge the writer's actual situation,
+   posture, and spiritual direction rather than surface keyword overlap.
+3. **Per-library z-score fusion (`scripts/bakeoff/fuse_perlib.py`):** normalize
+   dense cosine scores within each library separately (removing register/length
+   bias) and blend with z-normalized reranker logits (`α = 0.60` dense / `0.40`
+   reranker at 512d; `α = 0.70` at 1024d).
+4. **Calibrated silence:** apply a per-library confidence floor on
+   `Qwen3-Reranker-0.6B`'s `P(yes)` (recommended starting floor `τ = 0.05–0.08`);
+   a library with no candidate clearing its floor renders nothing rather than a
+   forced weak pick.
+5. **Presentation guards:** at most **2 passages per work** (and prefer at most
+   1 per Bible book/chapter), plus **near-duplicate demotion**. With stratified
+   per-library retrieval + fusion, Scripture lands naturally in top-5 on 50/50
+   golden entries; the legacy blunt Scripture slot is retired (at most a tight
+   `Δ = 0.05` fallback margin if ever enabled).
 
 ## 7. Personal library imports
 

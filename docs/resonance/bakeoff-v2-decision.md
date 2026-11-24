@@ -38,6 +38,7 @@ Replace the incumbent `EmbeddingGemma 2` retriever and listwise LLM decider cand
 | [`45394734822`](https://github.com/michaelhmiv/resonance/actions/runs/45394734822) | `bakeoff-qwen3-emb` | `qwen3-emb-0.6b` INT8 (`n24q02m/Qwen3-Embedding-0.6B-ONNX`) |
 | [`45394165966`](https://github.com/michaelhmiv/resonance/actions/runs/45394165966) | `bakeoff-deciders-v2` | `Gemma 4 E2B-it` Q4_K_M, `LFM3-1.7B` Q4_K_M, `BGE-reranker-v2-m3` INT8, `Qwen3-Reranker-0.6B` INT8 on EG2 baseline |
 | [`45400640723`](https://github.com/michaelhmiv/resonance/actions/runs/45400640723) | `bakeoff-phase2-end2end` | Stratified per-library `int8` retrieval (`Voyage-4-Nano` 512d/1024d & `Qwen3-Emb` 1024d) × `BGE-v2-m3` & `Qwen3-Reranker-0.6B` + EG2 `Qwen3-Reranker` shard 0 |
+| [`45405920295`](https://github.com/michaelhmiv/resonance/actions/runs/45405920295) | `bakeoff-512d-confirm` | End-to-end confirmation of shipping spec: `Voyage-4-Nano` 512d `int8` (54.2 MB pack) × `Qwen3-Reranker-0.6B` INT8 (5/5 shards) |
 
 ---
 
@@ -73,16 +74,19 @@ Replace the incumbent `EmbeddingGemma 2` retriever and listwise LLM decider cand
 | `BGE-reranker-v2-m3` INT8 ONNX | MIT | ~570 MB | **10 (1 / 8)** | 26 (7) | 9× | **No** |
 | `Qwen3-Reranker-0.6B` INT8 ONNX | **Apache 2.0** | **572 MB** | 7 (2 / 5) | 38 (16) | **6×** | **No** *(Job 9 crushed to P=0.015)* |
 
-### B. On Upgraded Stratified Per-Library Retrievers (Phase 2, Run `45400640723`)
+### B. On Upgraded Stratified Per-Library Retrievers (Phase 2 Runs `45400640723` & `45405920295`)
 
-| End-to-End Pipeline (All `int8` Vectors, All Apache 2.0 / MIT) | Top-5 Echoes (Ref / Auth) | Scripture Top-5 (Top-1) | Max Hub (Unique/250) | G09 Job? |
-|---|---:|---:|---:|---|
-| `Voyage-4-Nano (512d)` + `BGE-v2-m3` | 7 (0 / 6) | 32 (9) | 6× (211) | No |
-| `Voyage-4-Nano (1024d)` + `BGE-v2-m3` | 4 (0 / 4) | 30 (9) | 7× (207) | No |
-| `Qwen3-Emb (1024d)` + `BGE-v2-m3` | 4 (1 / 3) | 30 (5) | 6× (165) | No |
-| `Voyage-4-Nano (1024d)` + `Qwen3-Reranker-0.6B` (reranker only, `α=0`) | 9 (3 / 6) | 47 (21) | 7× (191) | No |
-| `Qwen3-Emb (1024d)` + `Qwen3-Reranker-0.6B` (`PerLib α=0.65`) | 9 (6 / 4) | 50 (18) | 19× (131) | **No (Eph 4:26-32!)** |
-| **🏆 `Voyage-4-Nano (1024d)` + `Qwen3-Reranker-0.6B` (`PerLib α=0.70`)** | **14 (11 / 3)** | **50 (16)** | **5× (205)** | **No** |
+| End-to-End Pipeline (All `int8` Vectors, All Apache 2.0 / MIT) | Total Download | Top-5 Echoes (Ref / Auth) | Scripture Top-5 (Top-1) | Max Hub (Unique/250) | G09 Job? |
+|---|---:|---:|---:|---:|---|
+| `Voyage-4-Nano (512d)` + `BGE-v2-m3` | ~1.06 GB | 7 (0 / 6) | 32 (9) | 6× (211) | No |
+| `Voyage-4-Nano (1024d)` + `BGE-v2-m3` | ~1.12 GB | 4 (0 / 4) | 30 (9) | 7× (207) | No |
+| `Qwen3-Emb (1024d)` + `BGE-v2-m3` | ~1.28 GB | 4 (1 / 3) | 30 (5) | 6× (165) | No |
+| `Voyage-4-Nano (1024d)` + `Qwen3-Reranker-0.6B` (reranker only, `α=0`) | ~1.13 GB | 9 (3 / 6) | 47 (21) | 7× (191) | No |
+| `Qwen3-Emb (1024d)` + `Qwen3-Reranker-0.6B` (`PerLib α=0.65`) | ~1.30 GB | 9 (6 / 4) | 50 (18) | 19× (131) | **No (Eph 4:26-32!)** |
+| **✅ Confirmed 512d (`45405920295`): `Voyage-4-Nano (512d)` + `Qwen3-Reranker` (`PerLib α=0.60`)** | **~1.08 GB** | **11 (8 / 3)** | **50 (18)** | **7× (200)** | **No** |
+| **🏆 Peak 1024d (`45400640723`): `Voyage-4-Nano (1024d)` + `Qwen3-Reranker` (`PerLib α=0.70`)** | **~1.13 GB** | **14 (11 / 3)** | **50 (16)** | **5× (205)** | **No** |
+
+> **512d vs. 1024d note (confirmed by Run `45405920295`):** Both dimensions hit `50/50` Scripture coverage naturally and eliminate Job bitterness on G09. **512d (`α=0.60`)** delivers `11/50` echoes (`8×` EG2 Bible hits) at a **54.2 MB** vector pack (`~1.08 GB` total); **1024d (`α=0.70`)** delivers `14/50` echoes (`11×` EG2 Bible hits, lower hubness `5×`) for just **+54 MB** (`~1.13 GB` total). Because `Voyage-4-Nano` is MRL-trained, the exact same model weights support either dimension with a 1-line pack-generation switch.
 
 ### Why Listwise 2B–3B LLMs and Uninstructed BGE Lost
 1. **Listwise LLMs (`Gemma 4 E2B`, `LFM3-1.7B`):** Slow on phones (~4.5K-token prefill + KV cache), 2–5× larger download (1.0–3.1 GB), suffered lost-in-the-middle on 30 passages, still left Job passages in G09 top-5, and `LFM3-1.7B` carries a non-standard license (`LFM Open License v1.0`).

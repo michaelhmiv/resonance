@@ -18,7 +18,10 @@ Allowed LLM uses:
   Scripture, the author library, or the user's own writings. Embeddings
   retrieve by resemblance and cannot discern posture or direction (who
   wronged whom, which way the writer is moving); the reader step exists
-  to exercise exactly that judgment, locally and privately.
+  to exercise exactly that judgment, locally and privately. *(Adopted
+  2026-11-24 via bake-off v2: `Voyage-4-Nano` INT8 ONNX @ 512d `int8`
+  packs + `Qwen3-Reranker-0.6B` INT8 ONNX yes/no scorer, both Apache 2.0,
+  generating zero user-facing prose; see `bakeoff-v2-decision.md`.)*
 
 Disallowed posture:
 

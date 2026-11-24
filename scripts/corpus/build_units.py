@@ -63,10 +63,14 @@ def is_heading(p: str) -> bool:
     if p == p.title() and words(p) >= 2: return True
     return False
 
+INDEX_LINE_RE = re.compile(r"(?:,\s*|\s+)\d{1,4}\.?$")
 def is_furniture(p: str) -> bool:
     s = p.strip()
     if re.fullmatch(r"(page\s+)?\d{1,4}", s, re.I): return True
     if s and sum(c.isdigit() or not c.isalnum() for c in s) / len(s) > 0.6 and words(s) < 6: return True
+    lines = [l.strip() for l in s.split("\n") if l.strip()]
+    if len(lines) >= 4 and sum(1 for l in lines if INDEX_LINE_RE.search(l)) / len(lines) >= 0.6:
+        return True
     return False
 
 def split_units(text: str):

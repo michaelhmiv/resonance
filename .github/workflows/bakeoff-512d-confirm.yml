@@ -1,9 +1,5 @@
 name: bakeoff-512d-confirm
 on:
-  push:
-    branches: [bakeoff/models-optimization]
-    paths:
-      - '.github/workflows/bakeoff-512d-confirm.yml'
   workflow_dispatch:
 
 jobs:
