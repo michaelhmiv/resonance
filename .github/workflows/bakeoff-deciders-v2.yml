@@ -1,11 +1,5 @@
 name: bakeoff-deciders-v2
 on:
-  push:
-    branches: [bakeoff/models-optimization]
-    paths:
-      - 'scripts/bakeoff/rerank_qwen3.py'
-      - 'scripts/bakeoff/rerank_decider_v2.py'
-      - '.github/workflows/bakeoff-deciders-v2.yml'
   workflow_dispatch:
     inputs:
       candidates_run:

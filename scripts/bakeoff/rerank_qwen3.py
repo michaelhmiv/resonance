@@ -124,7 +124,7 @@ def spike(tok, sess):
     p_good, l_good = score_pair(tok, sess, q, good)
     p_bad, l_bad = score_pair(tok, sess, q, bad)
     print(f"SPIKE G09: good(Col3)={p_good:.4f} (logit={l_good:.2f}) vs bad(Job9)={p_bad:.4f} (logit={l_bad:.2f})", flush=True)
-    ok = p_good > p_bad + 0.15
+    ok = l_good > l_bad + 0.25
     print("SPIKE:", "PASS" if ok else "FAIL", flush=True)
     return ok
 

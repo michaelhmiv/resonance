@@ -13,11 +13,11 @@ Usage: rerank_decider_v2.py <shard_k> <num_shards> <candidates.json> <model.gguf
 import json, re, subprocess, sys, time, urllib.request
 from pathlib import Path
 
-SYSTEM = """You are a librarian for a Christian devotional journaling app. Given a user's journal entry and numbered candidate passages from Scripture and classic Christian writers, choose the 5 passages that best speak to the writer — ordered best first.
+SYSTEM = """You are a librarian for a Christian devotional journaling app. Given a user's journal entry and numbered candidate passages from Scripture and classic Christian writers, choose the 8 passages that best speak to the writer — ordered best first.
 
-Judge the writer's actual situation and direction — who wronged whom, what they are moving toward, what they need — not shared vocabulary. Reject passages that merely reuse the entry's words while misunderstanding its posture (for example, a passage about nursing bitterness for a writer who wants to forgive, or condemning doubt for an honest questioner). Prefer passages whose stance fits where the writer is heading. Include a Scripture passage when one genuinely fits; never force one. Choose at most 2 passages from the same work.
+Judge the writer's actual situation and direction — who wronged whom, what they are moving toward, what they need — not shared vocabulary. Reject passages that merely reuse the entry's words while misunderstanding its posture (for example, a passage about nursing bitterness for a writer who wants to forgive, or condemning doubt for an honest questioner). Prefer passages whose stance fits where the writer is heading. Include Scripture passages when they genuinely fit; never force one. Choose at most 2 passages from the same work.
 
-Reply with JSON only: {"picks": [five candidate numbers, best first]}"""
+Reply with JSON only: {"picks": [eight candidate numbers, best first]}"""
 
 
 def build_prompt(entry, top_k):

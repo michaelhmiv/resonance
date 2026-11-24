@@ -1,10 +1,6 @@
 name: bakeoff-qwen3-emb
 on:
-  push:
-    branches: [bakeoff/models-optimization]
-    paths:
-      - '.github/workflows/bakeoff-qwen3-emb.yml'
-      - 'scripts/bakeoff/run_retriever.py'
+  workflow_dispatch:
 
 jobs:
   embed:
