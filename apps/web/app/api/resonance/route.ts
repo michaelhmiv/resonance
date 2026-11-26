@@ -576,30 +576,55 @@ export async function POST(req: NextRequest) {
         }
 
         // ── Zone A: HNSW search over static corpus ────────────────────
-        // Search each query vector and take the best similarity per passage key.
-        // We request more candidates than MAX_PER_CATEGORY because we need
-        // enough scripture AND voice results after filtering.
+        // Search the primary journal query vector, plus ONLY highlight-note
+        // vectors that actually sit near this entry (gated affinity >= 0.45)
+        // so unrelated past notes never hijack future entries.
         const SEARCH_K = Math.max(200, MAX_PER_CATEGORY * 100);
-        const queryVecs = [vector, ...highlightNoteVecs.filter((noteVec) => noteVec.length === corpus.dim)];
-        const bestSim = new Map<string, number>(); // passageKey → best sim across queries
+        const vecCosine = (a: number[], b: number[]): number => {
+          let dot = 0;
+          let na = 0;
+          let nb = 0;
+          const n = Math.min(a.length, b.length);
+          for (let i = 0; i < n; i++) {
+            dot += a[i] * b[i];
+            na += a[i] * a[i];
+            nb += b[i] * b[i];
+          }
+          const denom = Math.sqrt(na) * Math.sqrt(nb);
+          return denom > 0 ? dot / denom : 0;
+        };
 
-        for (const qVec of queryVecs) {
-          const hits = corpus.search(qVec, SEARCH_K, 200);
-          for (const hit of hits) {
+        const bestSim = new Map<string, number>();
+        for (const hit of corpus.search(vector, SEARCH_K, 200)) {
+          bestSim.set(hit.key, hit.similarity);
+        }
+
+        let usedRelevantNotes = 0;
+        for (const noteVec of highlightNoteVecs) {
+          if (noteVec.length !== corpus.dim) continue;
+          const relevance = vecCosine(vector, noteVec);
+          if (relevance < 0.45) continue;
+          usedRelevantNotes++;
+          for (const hit of corpus.search(noteVec, 40, 120)) {
+            const weighted = hit.similarity * relevance * 0.92;
             const existing = bestSim.get(hit.key) ?? Number.NEGATIVE_INFINITY;
-            if (hit.similarity > existing) {
-              bestSim.set(hit.key, hit.similarity);
+            if (weighted > existing) {
+              bestSim.set(hit.key, weighted);
             }
           }
         }
 
-        // Apply highlight boost and sort
+        // Apply gated highlight boost (for BOTH Scripture refs and Library passage IDs)
         const scored: { key: string; sim: number }[] = [];
         for (const [rowKey, sim] of Array.from(bestSim)) {
           const m = keyToMeta.get(rowKey);
           if (m === undefined) continue;
           let finalSim = sim;
-          if (highlightRefs.has(normalizeVerseRef(verseRefFromMeta(meta[m])))) {
+          if (
+            sim >= 0.25 &&
+            (highlightRefs.has(normalizeVerseRef(verseRefFromMeta(meta[m]))) ||
+              highlightRefs.has(normalizeVerseRef(String(meta[m].id))))
+          ) {
             finalSim = sim * HIGHLIGHT_BOOST;
           }
           scored.push({ key: rowKey, sim: finalSim });
@@ -639,7 +664,7 @@ export async function POST(req: NextRequest) {
           scripture: topScripture,
           voices: topVoices,
           pastEntries: [],
-          method: highlightNoteVecs.length > 0 ? 'semantic-vector+highlight-notes' : 'semantic-vector',
+          method: usedRelevantNotes > 0 ? 'semantic-vector+highlight-notes' : 'semantic-vector',
           model: ONLINE_MODEL,
           dim: corpus.dim,
           passageCount: corpus.passageCount,
@@ -661,17 +686,14 @@ export async function POST(req: NextRequest) {
         await ensureMetadata();
         const meta = passageMetadata || [];
 
-        let highlightNoteVecs: number[][] = [];
         let highlightRefs = new Set<string>();
-        const devUserId = await getDevUserId();
         try {
-          [highlightNoteVecs, highlightRefs] = await Promise.all([
-            getCachedUserEmbeddings(devUserId).catch(() => [] as number[][]),
-            getHighlights().then(
+          highlightRefs = await getHighlights()
+            .then(
               (rows: { verse_ref: string }[]) =>
                 new Set(rows.map((r) => normalizeVerseRef(r.verse_ref))),
-            ).catch(() => new Set<string>()),
-          ]);
+            )
+            .catch(() => new Set<string>());
         } catch {
           // personalization is additive, not critical
         }
@@ -681,15 +703,18 @@ export async function POST(req: NextRequest) {
           keyToMeta.set(passageKey(meta[m]), m);
         }
 
-        const queryVecs = [vector, ...highlightNoteVecs.filter((noteVec) => noteVec.length === loaded.dim)];
-        const simMap = await scoreAllRows(loaded, queryVecs);
+        const simMap = await scoreAllRows(loaded, [vector]);
 
         const scored: { key: string; sim: number }[] = [];
         for (const [rowKey, sim] of Array.from(simMap.entries())) {
           const m = keyToMeta.get(rowKey);
           if (m === undefined) continue;
           let finalSim = sim;
-          if (highlightRefs.has(normalizeVerseRef(verseRefFromMeta(meta[m])))) {
+          if (
+            sim >= 0.25 &&
+            (highlightRefs.has(normalizeVerseRef(verseRefFromMeta(meta[m]))) ||
+              highlightRefs.has(normalizeVerseRef(String(meta[m].id))))
+          ) {
             finalSim = sim * HIGHLIGHT_BOOST;
           }
           scored.push({ key: rowKey, sim: finalSim });
@@ -729,7 +754,7 @@ export async function POST(req: NextRequest) {
           scripture: topScripture,
           voices: topVoices,
           pastEntries: [],
-          method: highlightNoteVecs.length > 0 ? 'semantic-int8+highlight-notes' : 'semantic-int8',
+          method: 'semantic-int8',
           model: ONLINE_MODEL,
           dim: loaded.dim,
           passageCount: loaded.passageCount,

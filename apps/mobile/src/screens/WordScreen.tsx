@@ -42,12 +42,14 @@ export function WordScreen(): ReactNode {
     bookId: string;
     chapter?: number;
     verse?: number;
+    passageId?: number;
   } | null>(null);
 
-  // Sync incoming route params (e.g. from Patterns -> Explore Bookshelf)
+  // Sync incoming route params (e.g. from Patterns -> Explore Bookshelf or Journal -> Word)
   const routeBookId = route.params?.bookId;
   const routeChapter = route.params?.chapter;
   const routeVerse = route.params?.verse;
+  const routePassageId = route.params?.passageId;
 
   useEffect(() => {
     if (routeBookId) {
@@ -55,9 +57,10 @@ export function WordScreen(): ReactNode {
         bookId: routeBookId,
         chapter: routeChapter,
         verse: routeVerse,
+        passageId: routePassageId,
       });
     }
-  }, [routeBookId, routeChapter, routeVerse]);
+  }, [routeBookId, routeChapter, routeVerse, routePassageId]);
 
   // Tapping the active Word tab resets ReadingView/Search back to browse
   useEffect(() => {
@@ -230,6 +233,7 @@ export function WordScreen(): ReactNode {
         initialBook={localDeepLink?.bookId}
         initialChapter={localDeepLink?.chapter}
         initialVerse={localDeepLink?.verse}
+        initialPassageId={localDeepLink?.passageId}
       />
       <LibraryCatalogModal
         visible={catalogVisible}

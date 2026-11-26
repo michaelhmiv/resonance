@@ -311,13 +311,20 @@ function ResonanceCardGroup({ result, onNavigateToBook }: { result: ResonanceRes
   const scripture = result.scripture ?? [];
   const voices = result.voices ?? [];
   const pastEntries = result.pastEntries ?? [];
+  const highlights = result.highlights ?? [];
 
-  if (scripture.length === 0 && voices.length === 0 && pastEntries.length === 0) {
+  if (
+    scripture.length === 0 &&
+    voices.length === 0 &&
+    pastEntries.length === 0 &&
+    highlights.length === 0
+  ) {
     return <Text style={styles.resonanceText}>No matching passages found.</Text>;
   }
 
   return (
     <View style={styles.cardGroup}>
+      <CardSection label="Your highlights & notes" cards={highlights.slice(0, 1)} onNavigateToBook={onNavigateToBook} />
       <CardSection label="Scripture" cards={scripture.slice(0, 1)} onNavigateToBook={onNavigateToBook} />
       <CardSection label="Voices" cards={voices.slice(0, 1)} onNavigateToBook={onNavigateToBook} />
       <CardSection label="Where you were" cards={pastEntries.slice(0, 1)} onNavigateToBook={onNavigateToBook} />
@@ -344,9 +351,15 @@ function CardSection({ label, cards, onNavigateToBook }: { label: string; cards:
         const { chapter, verse } = parseSource(card.source ?? '');
         return (
           <View key={i} style={styles.resonanceCard}>
+            {card.provenance ? (
+              <Text style={styles.resonanceProvenance}>{card.provenance}</Text>
+            ) : null}
             <Text style={styles.resonanceQuote}>"{card.text}"</Text>
+            {card.noteText ? (
+              <Text style={styles.resonanceNote}>Note: {card.noteText}</Text>
+            ) : null}
             <Text style={styles.resonanceSource}>{card.source}</Text>
-            {onNavigateToBook && card.bookId ? (
+            {onNavigateToBook && card.bookId && card.kind !== 'past_entry' ? (
               <Pressable onPress={() => onNavigateToBook(card.bookId, chapter, verse)} style={styles.readMoreBtn}>
                 <Text style={styles.readMoreText}>Read in Word →</Text>
               </Pressable>
@@ -394,7 +407,9 @@ const styles = StyleSheet.create({
   cardSection: { gap: 4 },
   cardSectionLabel: { fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase', color: '#b8b0a4' },
   resonanceCard: { borderWidth: 1, borderColor: '#e8e5e0', backgroundColor: '#ffffff', borderRadius: 8, padding: 12, gap: 4 },
+  resonanceProvenance: { fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: '500', color: '#8b7355' },
   resonanceQuote: { fontFamily: 'Cormorant Garamond, Georgia, serif', fontStyle: 'italic', fontSize: 14, lineHeight: 20, color: '#3a3530' },
+  resonanceNote: { fontFamily: 'Inter, sans-serif', fontSize: 11.5, lineHeight: 16, color: '#7a7368' },
   resonanceSource: { fontFamily: 'Inter, sans-serif', fontSize: 10, color: '#9a9388' },
   readMoreBtn: { alignSelf: 'flex-end', paddingTop: 4 },
   readMoreText: { fontFamily: 'Inter, sans-serif', fontSize: 11, color: '#8b7355', fontWeight: '500' },

@@ -14,7 +14,13 @@ import {
   type ReactNode,
 } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { SearchIcon, SettingsIcon, TranslationSelector, XIcon } from '@resonance/ui';
+import {
+  BookOpenIcon,
+  SearchIcon,
+  SettingsIcon,
+  TranslationSelector,
+  XIcon,
+} from '@resonance/ui';
 
 import { colors, fontFamilies, layout, radii, screenContainer, spacing } from '@resonance/theme';
 import {
@@ -28,11 +34,13 @@ import { ScriptureBrowser } from './ScriptureBrowser';
 import { LibraryBrowser } from './LibraryBrowser';
 import { ReadingView, type ReadingMode } from './ReadingView';
 import { SearchScreen } from './SearchScreen';
+import { HighlightsHub } from './HighlightsHub';
 
 type ScreenView =
   | { name: 'browse' }
-  | { name: 'reading'; mode: ReadingMode; targetVerse?: number }
-  | { name: 'search' };
+  | { name: 'reading'; mode: ReadingMode; targetVerse?: number; targetPassageId?: number }
+  | { name: 'search' }
+  | { name: 'notebook' };
 
 export interface WordBackgroundStatus {
   label: string;
@@ -63,6 +71,8 @@ interface WordScreenProps {
   initialChapter?: number;
   /** Deep-link: scroll to this verse */
   initialVerse?: number;
+  /** Deep-link: scroll to this Library passage ID */
+  initialPassageId?: number;
 }
 
 export function WordScreen({
@@ -77,6 +87,7 @@ export function WordScreen({
   initialBook,
   initialChapter,
   initialVerse,
+  initialPassageId,
 }: WordScreenProps): ReactNode {
   const [surface, setSurface] = useState<'scripture' | 'library'>('scripture');
   const [translation, setTranslation] = useState<Translation>(() => {
@@ -159,7 +170,7 @@ export function WordScreen({
   // Apply deep-link on mount or whenever deep-link props change
   useEffect(() => {
     if (!initialBook) return;
-    const key = `${initialBook}|${initialChapter ?? ''}|${initialVerse ?? ''}`;
+    const key = `${initialBook}|${initialChapter ?? ''}|${initialVerse ?? ''}|${initialPassageId ?? ''}`;
     if (appliedDeepLinkKeyRef.current === key) return;
     appliedDeepLinkKeyRef.current = key;
 
@@ -186,9 +197,10 @@ export function WordScreen({
       setView({
         name: 'reading',
         mode: { kind: 'library', bookId: initialBook },
+        targetPassageId: initialPassageId,
       });
     }
-  }, [initialBook, initialChapter, initialVerse, translation, resolveTotalChapters]);
+  }, [initialBook, initialChapter, initialVerse, initialPassageId, translation, resolveTotalChapters]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -241,11 +253,12 @@ export function WordScreen({
     [openScriptureChapter]
   );
 
-  const openLibraryBook = useCallback((bookId: string) => {
+  const openLibraryBook = useCallback((bookId: string, passageId?: number) => {
     setSurface('library');
     setView({
       name: 'reading',
       mode: { kind: 'library', bookId },
+      targetPassageId: passageId,
     });
   }, []);
 
@@ -328,14 +341,26 @@ export function WordScreen({
     );
   }
 
+  if (view.name === 'notebook') {
+    return (
+      <HighlightsHub
+        onBack={() => setView({ name: 'browse' })}
+        onOpenScripture={openScriptureFromSearch}
+        onOpenLibrary={openLibraryBook}
+      />
+    );
+  }
+
   if (view.name === 'reading') {
     return (
       <ReadingView
         mode={view.mode}
         onNavigateChapter={navigateChapter}
         onChangeTranslation={handleChangeTranslation}
+        onOpenLibraryBook={openLibraryBook}
         onBack={handleExitReading}
         initialVerse={view.targetVerse}
+        initialPassageId={view.targetPassageId}
       />
     );
   }
@@ -457,6 +482,15 @@ export function WordScreen({
               placement="top"
             />
           ) : null}
+          <Pressable
+            onPress={() => setView({ name: 'notebook' })}
+            hitSlop={8}
+            style={styles.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Commonplace Book (Highlights and Notes)"
+          >
+            <BookOpenIcon size={19} color={colors.textSecondary} />
+          </Pressable>
           <Pressable
             onPress={() => setView({ name: 'search' })}
             hitSlop={8}

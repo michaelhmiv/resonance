@@ -549,7 +549,7 @@ function parseXmlAttributes(tagAttrs: string): Record<string, string> {
   return attrs;
 }
 
-/** Extract heading and paragraph blocks from an HTML/XHTML document. */
+/** Extract heading, blockquote, list, poetry, divider, and paragraph blocks from HTML/XHTML. */
 export function extractHtmlBlocks(html: string): {
   blocks: ExtractedBlock[];
   title?: string;
@@ -569,7 +569,7 @@ export function extractHtmlBlocks(html: string): {
     }
   }
 
-  // Strip scripts, styles, SVG, head
+  // Strip scripts, styles, nav, comments
   let body = html;
   const bodyMatch = /<body\b[^>]*>([\s\S]*?)<\/body>/i.exec(html);
   if (bodyMatch) body = bodyMatch[1];
@@ -580,13 +580,17 @@ export function extractHtmlBlocks(html: string): {
     .replace(/<!--[\s\S]*?-->/g, ' ');
 
   const blocks: ExtractedBlock[] = [];
-  // Match leaf-ish headings and block elements sequentially
+  // Match headings, blockquotes, paragraphs, lists, pre, and <hr/> scene breaks in order
   const blockRe =
-    /<(h[1-6]|p|blockquote|li|pre|dt|dd)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+    /<(hr)\b[^>]*\/?>|<(h[1-6]|p|blockquote|li|pre|dt|dd)\b[^>]*>([\s\S]*?)<\/\2>/gi;
   let m: RegExpExecArray | null;
   while ((m = blockRe.exec(body)) !== null) {
-    const tag = m[1].toLowerCase();
-    const inner = m[2]
+    if (m[1]?.toLowerCase() === 'hr') {
+      blocks.push({ kind: 'divider', text: '❦' });
+      continue;
+    }
+    const tag = m[2].toLowerCase();
+    const inner = m[3]
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<[^>]+>/g, '');
     const decoded = decodeHtmlEntities(inner);
@@ -598,6 +602,12 @@ export function extractHtmlBlocks(html: string): {
     } else if (tag === 'pre') {
       const text = decoded.trim();
       if (text) blocks.push({ kind: 'poetry', text });
+    } else if (tag === 'blockquote') {
+      const text = collapseWs(decoded);
+      if (text) blocks.push({ kind: 'blockquote', text });
+    } else if (tag === 'li') {
+      const text = collapseWs(decoded);
+      if (text) blocks.push({ kind: 'list_item', text });
     } else {
       // Preserve intentional line breaks (poetry inside <p> with <br/>)
       const lines = decoded
@@ -643,6 +653,79 @@ function joinZipPath(baseDir: string, href: string): string {
   return resolved.join('/');
 }
 
+// ── EPUB TOC Parsers (EPUB3 nav.xhtml & EPUB2 toc.ncx) ──────────────────────
+
+function parseEpub3NavToc(
+  navHtml: string,
+  navBaseDir: string
+): Array<{ title: string; href: string; level: number }> {
+  const entries: Array<{ title: string; href: string; level: number }> = [];
+  const navMatch =
+    /<nav\b[^>]*epub:type\s*=\s*["'][^"']*toc[^"']*["'][^>]*>([\s\S]*?)<\/nav>/i.exec(navHtml) ??
+    /<nav\b[^>]*>([\s\S]*?)<\/nav>/i.exec(navHtml);
+  const scope = navMatch ? navMatch[1] : navHtml;
+
+  // Walk <ol> nesting depth and <a href="...">title</a> tokens in document order
+  const tokenRe = /<(\/?)(ol|ul)\b[^>]*>|<a\b([^>]*?)>([\s\S]*?)<\/a>/gi;
+  let depth = 0;
+  let m: RegExpExecArray | null;
+  while ((m = tokenRe.exec(scope)) !== null) {
+    if (m[2]) {
+      if (m[1] === '/') depth = Math.max(0, depth - 1);
+      else depth += 1;
+    } else if (m[3] !== undefined) {
+      const attrs = parseXmlAttributes(m[3]);
+      const title = collapseWs(decodeHtmlEntities((m[4] ?? '').replace(/<[^>]+>/g, ' ')));
+      if (title && attrs.href) {
+        entries.push({
+          title,
+          href: joinZipPath(navBaseDir, attrs.href),
+          level: Math.max(1, Math.min(3, depth || 1)),
+        });
+      }
+    }
+  }
+  return entries;
+}
+
+function parseEpub2NcxToc(
+  ncxXml: string,
+  ncxBaseDir: string
+): Array<{ title: string; href: string; level: number }> {
+  const entries: Array<{ title: string; href: string; level: number }> = [];
+  const navMapMatch = /<navMap\b[^>]*>([\s\S]*?)<\/navMap>/i.exec(ncxXml);
+  const scope = navMapMatch ? navMapMatch[1] : ncxXml;
+
+  const tokenRe =
+    /<(\/?)(?:[a-zA-Z0-9_-]+:)?navPoint\b[^>]*>|<(?:[a-zA-Z0-9_-]+:)?text\b[^>]*>([\s\S]*?)<\/(?:[a-zA-Z0-9_-]+:)?text>|<(?:[a-zA-Z0-9_-]+:)?content\b([^>]*?)\/?>/gi;
+  let depth = 0;
+  let pendingTitle: string | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = tokenRe.exec(scope)) !== null) {
+    if (m[0].toLowerCase().includes('navpoint')) {
+      if (m[1] === '/') {
+        depth = Math.max(0, depth - 1);
+      } else {
+        depth += 1;
+        pendingTitle = null;
+      }
+    } else if (m[2] !== undefined) {
+      pendingTitle = collapseWs(decodeHtmlEntities(m[2].replace(/<[^>]+>/g, ' ')));
+    } else if (m[3] !== undefined) {
+      const attrs = parseXmlAttributes(m[3]);
+      if (pendingTitle && attrs.src) {
+        entries.push({
+          title: pendingTitle,
+          href: joinZipPath(ncxBaseDir, attrs.src),
+          level: Math.max(1, Math.min(3, depth || 1)),
+        });
+        pendingTitle = null;
+      }
+    }
+  }
+  return entries;
+}
+
 // ── EPUB Parser ─────────────────────────────────────────────────────────────
 
 export function parseEpubBytes(bytes: Uint8Array, filename: string): RawDocumentExtraction {
@@ -675,16 +758,64 @@ export function parseEpubBytes(bytes: Uint8Array, filename: string): RawDocument
   const descriptions = extractXmlTagText(opfXml, 'description');
   const languages = extractXmlTagText(opfXml, 'language');
 
-  // Build manifest map: id -> { href, mediaType }
-  const manifest = new Map<string, { href: string; mediaType: string }>();
+  // Build manifest map: id -> { href, mediaType, properties }
+  const manifest = new Map<string, { href: string; mediaType: string; properties: string }>();
+  let epub3NavHref: string | null = null;
+  let epub2NcxHref: string | null = null;
+
   const itemRe = /<item\b([^>]*?)\/?>/gi;
   let im: RegExpExecArray | null;
   while ((im = itemRe.exec(opfXml)) !== null) {
     const attrs = parseXmlAttributes(im[1]);
     if (attrs.id && attrs.href) {
-      manifest.set(attrs.id, {
-        href: attrs.href,
-        mediaType: (attrs['media-type'] ?? '').toLowerCase(),
+      const mediaType = (attrs['media-type'] ?? '').toLowerCase();
+      const properties = (attrs.properties ?? '').toLowerCase();
+      manifest.set(attrs.id, { href: attrs.href, mediaType, properties });
+      if (properties.split(/\s+/).includes('nav')) {
+        epub3NavHref = attrs.href;
+      }
+      if (mediaType === 'application/x-dtbncx+xml' || /\.ncx$/i.test(attrs.href)) {
+        epub2NcxHref = attrs.href;
+      }
+    }
+  }
+
+  // Parse native TOC (EPUB3 nav.xhtml first, then EPUB2 toc.ncx)
+  let tocEntries: Array<{ title: string; href: string; level: number }> = [];
+  if (epub3NavHref) {
+    const navPath = joinZipPath(baseDir, epub3NavHref);
+    const navHtml = zip.readText(navPath);
+    if (navHtml) {
+      const navDir = navPath.includes('/') ? navPath.slice(0, navPath.lastIndexOf('/')) : '';
+      tocEntries = parseEpub3NavToc(navHtml, navDir);
+    }
+  }
+  if (tocEntries.length === 0 && epub2NcxHref) {
+    const ncxPath = joinZipPath(baseDir, epub2NcxHref);
+    const ncxXml = zip.readText(ncxPath);
+    if (ncxXml) {
+      const ncxDir = ncxPath.includes('/') ? ncxPath.slice(0, ncxPath.lastIndexOf('/')) : '';
+      tocEntries = parseEpub2NcxToc(ncxXml, ncxDir);
+    }
+  }
+
+  // Map normalized spine path -> primary TOC entry (preserving hierarchical parent labels!)
+  const tocByPath = new Map<string, { title: string; level: number; compositeTitle: string }>();
+  let currentLevel1Title: string | null = null;
+  for (const entry of tocEntries) {
+    const key = safeDecodeUri(entry.href).toLowerCase();
+    if (entry.level === 1) {
+      currentLevel1Title = entry.title;
+    }
+    const compositeTitle =
+      entry.level >= 2 && currentLevel1Title && currentLevel1Title !== entry.title
+        ? `${currentLevel1Title} — ${entry.title}`
+        : entry.title;
+    if (!tocByPath.has(key)) {
+      tocByPath.set(key, {
+        title: entry.title,
+        level: entry.level,
+        compositeTitle,
       });
     }
   }
@@ -701,6 +832,7 @@ export function parseEpubBytes(bytes: Uint8Array, filename: string): RawDocument
   }
 
   const blocks: ExtractedBlock[] = [];
+  const detectedToc: Array<{ title: string; level: number; href?: string; blockIndex?: number }> = [];
   let chapterCount = 0;
 
   for (const idref of spineIds) {
@@ -710,6 +842,8 @@ export function parseEpubBytes(bytes: Uint8Array, filename: string): RawDocument
       item.mediaType.includes('html') ||
       /\.(xhtml|html|htm)$/i.test(item.href);
     if (!isHtml) continue;
+    // Skip dedicated EPUB3 nav document so raw TOC lists don't pollute reading prose
+    if (item.properties.split(/\s+/).includes('nav')) continue;
 
     const entryPath = joinZipPath(baseDir, item.href);
     const html = zip.readText(entryPath);
@@ -722,16 +856,41 @@ export function parseEpubBytes(bytes: Uint8Array, filename: string): RawDocument
     if (parsed.blocks.length === 0) continue;
     chapterCount++;
 
-    // If a spine chapter has no explicit heading, synthesize one from its <title>
-    const hasHeading = parsed.blocks.some((b) => b.kind === 'heading');
-    if (
-      !hasHeading &&
-      parsed.title &&
-      parsed.title.toLowerCase() !== (titles[0] ?? '').toLowerCase() &&
-      parsed.title.length <= 120
-    ) {
-      blocks.push({ kind: 'heading', text: parsed.title, level: 2 });
+    const tocMatch = tocByPath.get(safeDecodeUri(entryPath).toLowerCase());
+    const startBlockIdx = blocks.length;
+
+    if (tocMatch) {
+      // Inject authoritative TOC heading (including hierarchical "Part — Chapter" context)
+      detectedToc.push({
+        title: tocMatch.title,
+        level: tocMatch.level,
+        href: entryPath,
+        blockIndex: startBlockIdx,
+      });
+      blocks.push({
+        kind: 'heading',
+        text: tocMatch.compositeTitle,
+        level: tocMatch.level,
+      });
+    } else {
+      // If a spine chapter has no explicit heading, synthesize one from its <title>
+      const hasHeading = parsed.blocks.some((b) => b.kind === 'heading');
+      if (
+        !hasHeading &&
+        parsed.title &&
+        parsed.title.toLowerCase() !== (titles[0] ?? '').toLowerCase() &&
+        parsed.title.length <= 120
+      ) {
+        detectedToc.push({
+          title: parsed.title,
+          level: 2,
+          href: entryPath,
+          blockIndex: startBlockIdx,
+        });
+        blocks.push({ kind: 'heading', text: parsed.title, level: 2 });
+      }
     }
+
     blocks.push(...parsed.blocks);
   }
 
@@ -743,7 +902,7 @@ export function parseEpubBytes(bytes: Uint8Array, filename: string): RawDocument
     language: languages[0],
     description: descriptions[0],
     tags: subjects.slice(0, 8),
-    chapterCount,
+    chapterCount: detectedToc.length || chapterCount,
   };
 
   if (blocks.length === 0) {
@@ -756,6 +915,7 @@ export function parseEpubBytes(bytes: Uint8Array, filename: string): RawDocument
     blocks,
     rawText,
     detectedMetadata,
+    detectedToc: detectedToc.length > 0 ? detectedToc : undefined,
     ocrRequired: false,
     warnings,
   };

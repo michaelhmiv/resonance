@@ -71,3 +71,51 @@ export function withAlpha(hex: string, alpha: number): string {
   const b = parseInt(m.slice(4, 6), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
+
+// ── Reader Palette (Single Signature Warm Cream Paper) ───────────────────────
+
+export interface ReaderThemePalette {
+  background: string;
+  surface: string;
+  surfaceElevated: string;
+  border: string;
+  textPrimary: string;
+  textSecondary: string;
+  textTertiary: string;
+  accent: string;
+  accentMuted: string;
+  quoteBar: string;
+  searchMatchBg: string;
+  searchMatchActiveBg: string;
+  selectionBg: string;
+  highlightAlpha: number;
+}
+
+export const readerPalette: ReaderThemePalette = {
+  background: '#faf9f6',
+  surface: '#ffffff',
+  surfaceElevated: '#f5f2ec',
+  border: '#e8e5e0',
+  textPrimary: '#3a3530',
+  textSecondary: '#7a7368',
+  textTertiary: '#9a9388',
+  accent: '#8b7355',
+  accentMuted: '#a89880',
+  quoteBar: '#d5cbbd',
+  searchMatchBg: 'rgba(212, 165, 116, 0.34)',
+  searchMatchActiveBg: 'rgba(201, 162, 90, 0.62)',
+  selectionBg: 'rgba(139, 115, 85, 0.22)',
+  highlightAlpha: 0.30,
+};
+
+export const highlightColorMeta: ReadonlyArray<{
+  color: HighlightColor;
+  name: string;
+  meaning: string;
+}> = [
+  { color: colors.highlightGold, name: 'Gold', meaning: 'Insight' },
+  { color: colors.highlightSage, name: 'Sage', meaning: 'Practice' },
+  { color: colors.highlightRose, name: 'Rose', meaning: 'Question' },
+  { color: colors.highlightSlate, name: 'Slate', meaning: 'Theology' },
+];
+

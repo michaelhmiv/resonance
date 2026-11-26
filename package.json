@@ -18,6 +18,7 @@
     "verify:persistent-resonance": "node scripts/verify-persistent-resonance-contract.mjs",
     "prewarm:journal-resonance": "node scripts/prewarm-journal-resonance.mjs",
     "verify:adaptive-resonance": "node scripts/verify-adaptive-resonance-contract.mjs",
+    "verify:reader-v2": "node scripts/verify-reader-v2.mjs",
     "simulate:adaptive-resonance": "node scripts/simulate-adaptive-resonance-live.mjs"
   },
   "version": "2.0.0",

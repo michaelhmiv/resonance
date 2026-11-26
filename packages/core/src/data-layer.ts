@@ -14,6 +14,7 @@ import type {
   VersePassage,
   PassageHit,
   SearchScope,
+  SearchMode,
   LibraryPackage,
   LibraryBook,
   LibraryPassage,
@@ -21,6 +22,7 @@ import type {
   PersonalWorkMetadataPatch,
   JournalSegment,
   Highlight,
+  HighlightStyle,
   Bookmark,
   ResonanceResult,
   EntryCluster,
@@ -34,6 +36,8 @@ import type {
   PatternFeedbackInput,
   ReflectionPrompt,
   EmbeddingModelId,
+  ReadingProgress,
+  InBookSearchHit,
 } from './types';
 
 export interface DataLayer {
@@ -42,6 +46,19 @@ export interface DataLayer {
   getChapters(bookName: string, translation: Translation): Promise<number[]>;
   getVerses(bookName: string, chapter: number, translation: Translation): Promise<VersePassage[]>;
   searchPassages(query: string, scope: SearchScope): Promise<PassageHit[]>;
+  /** Reader v2: Hybrid (FTS5 + Semantic RRF) search across Scripture, Library, and Highlights. */
+  searchPassagesHybrid?(
+    query: string,
+    scope: SearchScope,
+    mode?: SearchMode,
+    options?: { bookId?: string; limit?: number }
+  ): Promise<PassageHit[]>;
+  /** Reader v2: In-book exact or semantic concept search. */
+  searchInBook?(
+    bookId: string,
+    query: string,
+    mode?: 'keyword' | 'semantic'
+  ): Promise<InBookSearchHit[]>;
 
   // ── Library ────────────────────────────────────────────────────────────
   getLibraryPackages(): Promise<LibraryPackage[]>;
@@ -105,10 +122,14 @@ export interface DataLayer {
   saveSegment(segment: JournalSegment): Promise<void>;
   deleteSegment(id: string): Promise<void>;
 
-  // ── Reading state (highlights, bookmarks) ──────────────────────────────
-  // A highlight is a phrase-range mark on a verse, with an optional note.
+  // ── Reading state (highlights, bookmarks, exact progress) ──────────────
+  // A highlight is a phrase-range mark on a verse/passage, with an optional note & tags.
   // Notes live on the highlight row (note_text) — no separate annotations.
   getHighlightsForRefs(refs: string[]): Promise<Highlight[]>;
+  /** Reader v2: All highlights for a specific book (for the Book Drawer Highlights tab). */
+  getBookHighlights?(bookId: string): Promise<Highlight[]>;
+  /** Reader v2: All user highlights across Scripture and Library (for Commonplace Hub). */
+  getAllHighlights?(options?: { color?: string; tag?: string; query?: string }): Promise<Highlight[]>;
   saveHighlight(input: SaveHighlightInput): Promise<Highlight>;
   updateHighlight(id: string, patch: UpdateHighlightPatch): Promise<Highlight>;
   deleteHighlight(id: string): Promise<void>;
@@ -120,9 +141,18 @@ export interface DataLayer {
   recordReadingEvent(bookId: string, chapter: number, verseRef: string, timestamp: number): Promise<void>;
   getReadingHistory(startDate: string, endDate: string): Promise<{ date: string; count: number }[]>;
   getLastReadPosition?(): Promise<{ bookId: string; chapter: number; verseRef: string } | null>;
+  /** Reader v2: Exact per-book reading position (chapter, block, passage, scroll %). */
+  getReadingProgress?(bookId: string): Promise<ReadingProgress | null>;
+  saveReadingProgress?(progress: ReadingProgress): Promise<void>;
 
   // ── Resonance ──────────────────────────────────────────────────────────
   findResonance(journalText: string, segmentId?: string): Promise<ResonanceResult | null>;
+  /** Reader v2: Bidirectional resonance from a passage or highlight being read. */
+  findPassageEchoes?(
+    passageText: string,
+    sourceRef: string,
+    options?: { bookId?: string; excludePassageId?: number | null }
+  ): Promise<ResonanceResult | null>;
   storeSegmentVector(segmentId: string, text: string): Promise<void>;
   appendQuoteToJournal(quote: string, source: string): Promise<void>;
   /**
@@ -167,8 +197,8 @@ export interface DataLayer {
 
 /**
  * Input for creating a new phrase highlight.
- * - startOffset / endOffset are char indices into the verse text
- * - selectedText is the literal phrase (stored for note context)
+ * - startOffset / endOffset are char indices into the verse/block text
+ * - selectedText is the literal phrase (stored for note context & re-anchoring)
  * - noteText is optional; omit or pass null for a "just a color" highlight
  */
 export interface SaveHighlightInput {
@@ -178,6 +208,16 @@ export interface SaveHighlightInput {
   endOffset: number;
   selectedText: string;
   noteText?: string | null;
+  bookId?: string | null;
+  chapterId?: string | null;
+  quotePrefix?: string | null;
+  quoteSuffix?: string | null;
+  tags?: string[];
+  style?: HighlightStyle;
+  /** Surrounding sentence/passage text for richer semantic embedding. */
+  contextText?: string | null;
+  /** Human-readable citation label (e.g. "Augustine · Confessions · Book I"). */
+  sourceLabel?: string | null;
 }
 
 /**
@@ -191,4 +231,10 @@ export interface UpdateHighlightPatch {
   endOffset?: number;
   selectedText?: string;
   noteText?: string | null;
+  tags?: string[];
+  style?: HighlightStyle;
+  quotePrefix?: string | null;
+  quoteSuffix?: string | null;
+  contextText?: string | null;
+  sourceLabel?: string | null;
 }

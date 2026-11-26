@@ -173,6 +173,7 @@ export function processPersonalDocument(
   }
 
   for (const block of extraction.blocks) {
+    if (block.kind === 'divider') continue;
     const cleaned = cleanPassageText(block.text);
     if (!cleaned) continue;
 

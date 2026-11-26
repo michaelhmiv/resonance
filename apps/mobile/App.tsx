@@ -30,6 +30,7 @@ import { useDbStore } from './src/db/dbStore';
 import { useSettingsStore } from './src/settings/settingsStore';
 import { useOfflineEngineStore } from './src/packages/offlineEngineManager';
 import { usePersonalLibraryStore } from './src/personal/personalLibraryService';
+import { backfillUnembeddedHighlights } from './src/embedding/highlightEmbeddingService';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 // Keep the native splash up until fonts + database are ready, then hide
@@ -72,16 +73,23 @@ function AppContent(): ReactNode {
   }, [fontsLoaded, setLoading, setReady, setError]);
 
   // Keep downloads, catalog syncs, personal batch imports, and embeddings resilient
-  // across backgrounding / foregrounding.
+  // across backgrounding / foregrounding, and backfill highlight vectors on ready.
   useEffect(() => {
     if (status !== 'ready') return;
+    const unsubReady = useOfflineEngineStore.getState().registerOnReady(() => {
+      void backfillUnembeddedHighlights();
+    });
     const sub = AppState.addEventListener('change', (nextState) => {
       useOfflineEngineStore.getState().handleAppStateChange(nextState);
       if (nextState === 'active') {
         void usePersonalLibraryStore.getState().resumeBackgroundWork();
+        void backfillUnembeddedHighlights();
       }
     });
-    return () => sub.remove();
+    return () => {
+      unsubReady();
+      sub.remove();
+    };
   }, [status]);
 
   useEffect(() => {
