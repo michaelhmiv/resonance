@@ -175,12 +175,20 @@ export async function initRerankerModel(
     if (!loadedTok) return false;
 
     const ort = await import('onnxruntime-react-native');
+    if (!ort || typeof ort.InferenceSession?.create !== 'function') {
+      console.warn('[rerankerService] onnxruntime-react-native InferenceSession.create missing');
+      return false;
+    }
     const cleanPath = paths.onnxPath.replace(/^file:\/\//, '');
-    session = await ort.InferenceSession.create(cleanPath);
+    session = await ort.InferenceSession.create(cleanPath, {
+      executionProviders: ['cpu'],
+      graphOptimizationLevel: 'all',
+    });
     tokenizer = loadedTok;
     activeRerankerId = 'qwen3-reranker-0.6b';
     return true;
-  } catch {
+  } catch (err) {
+    console.warn('[rerankerService] initRerankerModel failed:', err);
     await disposeReranker();
     return false;
   }
@@ -219,12 +227,12 @@ export async function scoreCandidatePair(
     );
 
     const sess = session as {
-      inputNames: string[];
-      outputNames: string[];
+      inputNames: readonly string[];
+      outputNames: readonly string[];
       run: (
         feeds: Record<string, unknown>,
-        outputs: string[]
-      ) => Promise<Record<string, { data: Float32Array; dims: number[] }>>;
+        fetches?: readonly string[]
+      ) => Promise<Record<string, { data: Float32Array; dims: readonly number[] }>>;
     };
 
     const feeds: Record<string, unknown> = {};
@@ -237,13 +245,20 @@ export async function scoreCandidatePair(
           BigInt64Array.from(inputIds.map((_, i) => BigInt(i))),
           [1, inputIds.length]
         );
+      } else if (name.includes('token_type_ids')) {
+        feeds[name] = new ort.Tensor(
+          'int64',
+          new BigInt64Array(inputIds.length),
+          [1, inputIds.length]
+        );
       } else {
         feeds[name] = idTensor;
       }
     }
 
-    const out = await sess.run(feeds, sess.outputNames);
-    const tensor = out[sess.outputNames[0]];
+    const firstOut = sess.outputNames[0];
+    const out = await sess.run(feeds, firstOut ? [firstOut] : undefined);
+    const tensor = firstOut ? out[firstOut] : undefined;
     if (!tensor || tensor.data.length === 0) return null;
 
     // `model_yesno_quantized.onnx` emits either [1, 2] ([logit_no, logit_yes])
@@ -259,7 +274,8 @@ export async function scoreCandidatePair(
 
     const prob = 1 / (1 + Math.exp(-diffLogit));
     return { prob, logit: diffLogit };
-  } catch {
+  } catch (err) {
+    console.warn('[rerankerService] scoreCandidatePair failed:', err);
     return null;
   }
 }

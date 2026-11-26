@@ -105,7 +105,7 @@ function personalStatusLabel(book: LibraryBook): string | null {
   } else if (book.ocrRequired) {
     parts.push('Needs OCR');
   } else {
-    parts.push('Pending engine');
+    parts.push('Queued to embed');
   }
   return parts.join(' · ');
 }

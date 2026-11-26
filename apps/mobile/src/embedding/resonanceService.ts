@@ -30,7 +30,7 @@ import {
 import { getDatabase } from '../db/database';
 import {
   embedQuery,
-  isEmbeddingReady,
+  ensureEmbeddingReady,
 } from './embeddingService';
 import {
   isRerankerReady,
@@ -528,8 +528,8 @@ function searchHighlightMatrix(
 export async function findResonance(
   journalText: string
 ): Promise<ResonanceResult | null> {
-  if (!isEmbeddingReady()) return null;
   if (journalText.trim().length < MIN_TEXT_LENGTH) return null;
+  if (!(await ensureEmbeddingReady())) return null;
 
   const queryVec = await embedQuery(journalText);
   if (!queryVec) return null;
@@ -692,9 +692,9 @@ export async function findPassageEchoes(
   _sourceRef: string,
   options?: { bookId?: string; excludePassageId?: number | null }
 ): Promise<ResonanceResult | null> {
-  if (!isEmbeddingReady()) return null;
   const cleaned = passageText.trim();
   if (cleaned.length < MIN_TEXT_LENGTH) return null;
+  if (!(await ensureEmbeddingReady())) return null;
 
   const queryVec = await embedQuery(cleaned.slice(0, 600));
   if (!queryVec) return null;
@@ -802,7 +802,7 @@ export async function searchInBookSemantic(
   query: string,
   limit = 30
 ): Promise<SemanticPassageMatch[]> {
-  if (!isEmbeddingReady() || query.trim().length < 2) return [];
+  if (query.trim().length < 2 || !(await ensureEmbeddingReady())) return [];
   const queryVec = await embedQuery(query.trim());
   if (!queryVec) return [];
 
@@ -853,7 +853,7 @@ export async function searchLibrarySemantic(
   scope: 'scripture' | 'library' | 'all' | 'highlights',
   limit = 40
 ): Promise<SemanticPassageMatch[]> {
-  if (!isEmbeddingReady() || query.trim().length < 2) return [];
+  if (query.trim().length < 2 || !(await ensureEmbeddingReady())) return [];
   const queryVec = await embedQuery(query.trim());
   if (!queryVec) return [];
 
@@ -983,8 +983,8 @@ export async function storeSegmentVector(
   segmentId: string,
   text: string
 ): Promise<void> {
-  if (!isEmbeddingReady()) return;
   if (text.trim().length < MIN_TEXT_LENGTH) return;
+  if (!(await ensureEmbeddingReady())) return;
 
   const vec = await embedQuery(text);
   if (!vec) return;

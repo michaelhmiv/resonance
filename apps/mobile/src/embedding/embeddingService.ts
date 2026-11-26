@@ -50,15 +50,24 @@ interface LoadedTokenizer {
 }
 
 let tokenizer: LoadedTokenizer | null = null;
+let lastEmbeddingError: string | null = null;
+
+export function getLastEmbeddingError(): string | null {
+  return lastEmbeddingError;
+}
 
 async function loadTokenizerFromJson(path: string, maxLen = 512): Promise<LoadedTokenizer | null> {
   try {
     const info = await FileSystem.getInfoAsync(path);
-    if (!info.exists) return null;
+    if (!info.exists) {
+      lastEmbeddingError = 'Tokenizer file is missing.';
+      return null;
+    }
     const raw = await FileSystem.readAsStringAsync(path);
     const parsed = JSON.parse(raw) as {
       model?: { vocab?: Record<string, number> };
       added_tokens?: Array<{ id: number; content: string }>;
+      post_processor?: { type?: string } | null;
     };
     const vocab = new Map<string, number>();
     if (parsed.model?.vocab) {
@@ -71,12 +80,26 @@ async function loadTokenizerFromJson(path: string, maxLen = 512): Promise<Loaded
         vocab.set(t.content, t.id);
       }
     }
+    if (vocab.size === 0) {
+      lastEmbeddingError = 'Tokenizer vocabulary is empty.';
+      return null;
+    }
     const unkId =
       vocab.get('<unk>') ?? vocab.get('[UNK]') ?? vocab.get('<|endoftext|>') ?? 0;
-    const bosId = vocab.get('<|im_start|>') ?? vocab.get('<s>') ?? vocab.get('[CLS]') ?? null;
-    const eosId = vocab.get('<|endoftext|>') ?? vocab.get('</s>') ?? vocab.get('[SEP]') ?? null;
+    // Qwen2 / Voyage-4-Nano uses ByteLevel post-processing with bos_token=null
+    // and adds neither BOS nor EOS when encoding passages/queries. Only attach
+    // BOS/EOS for TemplateProcessing models (e.g., BERT/RoBERTa/BGE).
+    const usesTemplateTokens = parsed.post_processor?.type === 'TemplateProcessing';
+    const bosId = usesTemplateTokens
+      ? (vocab.get('<s>') ?? vocab.get('[CLS]') ?? null)
+      : null;
+    const eosId = usesTemplateTokens
+      ? (vocab.get('</s>') ?? vocab.get('[SEP]') ?? null)
+      : null;
     return { vocab, unkId, bosId, eosId, maxLen };
-  } catch {
+  } catch (err) {
+    lastEmbeddingError = `Failed to load tokenizer: ${err instanceof Error ? err.message : String(err)}`;
+    console.warn('[embeddingService] loadTokenizerFromJson failed:', err);
     return null;
   }
 }
@@ -159,6 +182,7 @@ export function encodeWithTokenizer(
 
 let session: unknown | null = null;
 let activeModelId: EmbeddingModelId | null = null;
+let initInFlight: Promise<boolean> | null = null;
 
 export function getActiveEmbeddingModel(): EmbeddingModelId | null {
   return activeModelId;
@@ -188,47 +212,98 @@ export async function disposeEmbeddingModel(): Promise<void> {
  * Initialize the ONNX session for the active local embedding model
  * (`voyage-4-nano` INT8 downloaded via `offlineEngineManager`).
  *
- * Gracefully resolves to `false` if the weights aren't downloaded yet or
- * `onnxruntime-react-native` isn't linked in the current build.
+ * Coalesces concurrent calls and stores any diagnostic failure in
+ * `getLastEmbeddingError()` so callers can surface honest UI feedback.
  */
 export async function initEmbeddingModel(
   modelId: EmbeddingModelId = DEFAULT_LOCAL_EMBEDDING_MODEL
 ): Promise<boolean> {
   if (session !== null && activeModelId === modelId && tokenizer !== null) {
+    lastEmbeddingError = null;
     return true;
   }
 
-  await disposeEmbeddingModel();
-
-  if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
-    return false;
+  if (initInFlight) {
+    return initInFlight;
   }
 
-  try {
-    const paths = getEmbedderModelPaths();
-    const [onnxInfo, dataInfo, tokInfo] = await Promise.all([
-      FileSystem.getInfoAsync(paths.onnxPath),
-      FileSystem.getInfoAsync(paths.dataPath),
-      FileSystem.getInfoAsync(paths.tokenizerPath),
-    ]);
+  initInFlight = (async () => {
+    lastEmbeddingError = null;
+    await disposeEmbeddingModel();
 
-    if (!onnxInfo.exists || !dataInfo.exists || !tokInfo.exists) {
+    if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
+      lastEmbeddingError = 'On-device ONNX embedding is only available on Android and iOS.';
       return false;
     }
 
-    const loadedTok = await loadTokenizerFromJson(paths.tokenizerPath, 512);
-    if (!loadedTok) return false;
+    try {
+      const paths = getEmbedderModelPaths();
+      const [onnxInfo, dataInfo, tokInfo] = await Promise.all([
+        FileSystem.getInfoAsync(paths.onnxPath),
+        FileSystem.getInfoAsync(paths.dataPath),
+        FileSystem.getInfoAsync(paths.tokenizerPath),
+      ]);
 
-    const ort = await import('onnxruntime-react-native');
-    const cleanPath = paths.onnxPath.replace(/^file:\/\//, '');
-    session = await ort.InferenceSession.create(cleanPath);
-    tokenizer = loadedTok;
-    activeModelId = modelId;
-    return true;
-  } catch {
-    await disposeEmbeddingModel();
-    return false;
-  }
+      const onnxSize = (onnxInfo as { size?: number }).size ?? 0;
+      const dataSize = (dataInfo as { size?: number }).size ?? 0;
+      const tokSize = (tokInfo as { size?: number }).size ?? 0;
+
+      if (
+        !onnxInfo.exists ||
+        !dataInfo.exists ||
+        !tokInfo.exists ||
+        onnxSize <= 0 ||
+        dataSize <= 0 ||
+        tokSize <= 0
+      ) {
+        lastEmbeddingError =
+          'Offline Engine model files are not downloaded yet. Download the core engine in Settings.';
+        return false;
+      }
+
+      const loadedTok = await loadTokenizerFromJson(paths.tokenizerPath, 512);
+      if (!loadedTok) {
+        return false;
+      }
+
+      const ort = await import('onnxruntime-react-native');
+      if (!ort || typeof ort.InferenceSession?.create !== 'function') {
+        lastEmbeddingError =
+          'ONNX Runtime native module is unavailable in this build. Please reinstall the latest preview APK.';
+        console.warn('[embeddingService] onnxruntime-react-native InferenceSession.create missing');
+        return false;
+      }
+
+      const cleanPath = paths.onnxPath.replace(/^file:\/\//, '');
+      session = await ort.InferenceSession.create(cleanPath, {
+        executionProviders: ['cpu'],
+        graphOptimizationLevel: 'all',
+      });
+      tokenizer = loadedTok;
+      activeModelId = modelId;
+      lastEmbeddingError = null;
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      lastEmbeddingError = `Could not initialize on-device embedder: ${msg}`;
+      console.warn('[embeddingService] initEmbeddingModel failed:', err);
+      await disposeEmbeddingModel();
+      return false;
+    } finally {
+      initInFlight = null;
+    }
+  })();
+
+  return initInFlight;
+}
+
+/**
+ * Lazily initializes the Voyage-4-Nano ONNX session if weights are downloaded
+ * on disk and the session hasn't been loaded yet in this app launch.
+ */
+export async function ensureEmbeddingReady(): Promise<boolean> {
+  if (isEmbeddingReady()) return true;
+  return initEmbeddingModel(DEFAULT_LOCAL_EMBEDDING_MODEL);
 }
 
 // ── Embed text (Voyage-4-Nano INT8 → 512d MRL → L2 normalize) ──────────────
@@ -255,12 +330,12 @@ async function embedRawText(text: string): Promise<Float32Array | null> {
     );
 
     const sess = session as {
-      inputNames: string[];
-      outputNames: string[];
+      inputNames: readonly string[];
+      outputNames: readonly string[];
       run: (
         feeds: Record<string, unknown>,
-        outputs: string[]
-      ) => Promise<Record<string, { data: Float32Array; dims: number[] }>>;
+        fetches?: readonly string[]
+      ) => Promise<Record<string, { data: Float32Array; dims: readonly number[] }>>;
     };
 
     const feeds: Record<string, unknown> = {};
@@ -270,23 +345,33 @@ async function embedRawText(text: string): Promise<Float32Array | null> {
       } else if (name.includes('position_ids')) {
         const posIds = BigInt64Array.from(inputIds.map((_, i) => BigInt(i)));
         feeds[name] = new ort.Tensor('int64', posIds, [1, inputIds.length]);
+      } else if (name.includes('token_type_ids')) {
+        const typeIds = new BigInt64Array(inputIds.length);
+        feeds[name] = new ort.Tensor('int64', typeIds, [1, inputIds.length]);
       } else {
         feeds[name] = inputTensor;
       }
     }
 
-    const results = await sess.run(feeds, sess.outputNames);
+    // Prefer pooled 2D output (`sentence_embedding` or `pooler_output`) to match
+    // build_packs.py and avoid copying a large 3D `last_hidden_state` across JSI.
     const outName =
       sess.outputNames.find((n) => n.includes('sentence_embedding')) ??
+      sess.outputNames.find((n) => n === 'pooler_output' || n.includes('pooler_output')) ??
       sess.outputNames[0];
-    const outputTensor = results[outName];
-    if (!outputTensor) return null;
+
+    const results = await sess.run(feeds, outName ? [outName] : undefined);
+    const outputTensor = outName ? results[outName] : undefined;
+    if (!outputTensor) {
+      lastEmbeddingError = 'Embedder returned no output tensor.';
+      return null;
+    }
 
     const dims = outputTensor.dims;
     let pooled: Float32Array;
 
     if (dims.length === 2) {
-      // Already pooled [1, hidden_dim]
+      // Already pooled [1, hidden_dim] -> MRL slice to 512d
       const hiddenDim = dims[1];
       const outDim = Math.min(hiddenDim, EMBEDDING_DIM);
       pooled = new Float32Array(outDim);
@@ -316,7 +401,10 @@ async function embedRawText(text: string): Promise<Float32Array | null> {
     }
 
     return l2Normalize(pooled);
-  } catch {
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    lastEmbeddingError = `Embedding inference failed: ${msg}`;
+    console.warn('[embeddingService] embedRawText failed:', err);
     return null;
   }
 }

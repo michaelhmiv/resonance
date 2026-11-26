@@ -33,8 +33,10 @@ import {
   type PersonalImportMetadataForm,
 } from '../personal/personalLibraryService';
 import { useOfflineEngineStore } from '../packages/offlineEngineManager';
+import { useSettingsStore } from '../settings/settingsStore';
 import { formatBytes } from '../db/queries/settingsQueries';
 import { BottomSheetModal } from './BottomSheetModal';
+import { EmbeddingProgressCard } from './EmbeddingProgressCard';
 
 const ERA_PRESETS = [
   'Patristic',
@@ -125,8 +127,11 @@ function PersonalLibraryImportModalInner({
   const reembedWork = usePersonalLibraryStore((s) => s.reembedWork);
   const processEmbeddingQueue = usePersonalLibraryStore((s) => s.processEmbeddingQueue);
 
-  const enginePhase = useOfflineEngineStore((s) => s.phase);
+  const embedderReady = useOfflineEngineStore(
+    (s) => s.phase === 'ready' || s.groups.embedder.ready
+  );
   const setEngineSheetVisible = useOfflineEngineStore((s) => s.setSheetVisible);
+  const autoEmbedPersonalFiles = useSettingsStore((s) => s.autoEmbedPersonalFiles);
 
   const [step, setStep] = useState<ModalStep>(editingWork ? 'edit' : 'folder');
   const [pickingFiles, setPickingFiles] = useState(false);
@@ -234,6 +239,29 @@ function PersonalLibraryImportModalInner({
   useEffect(() => {
     setVisibleLimit(PAGE_SIZE);
   }, [searchQuery, statusFilter, formatFilter, subfolderFilter, sortBy]);
+
+  // If viewing a pending book while auto-embed is on and the embedder is ready, start automatically
+  useEffect(() => {
+    if (
+      step === 'edit' &&
+      liveEditingWork &&
+      liveEditingWork.totalChunks > 0 &&
+      !liveEditingWork.ocrRequired &&
+      liveEditingWork.embeddingStatus === 'pending' &&
+      autoEmbedPersonalFiles &&
+      embedderReady &&
+      !embeddingActiveBookId
+    ) {
+      void processEmbeddingQueue();
+    }
+  }, [
+    step,
+    liveEditingWork,
+    autoEmbedPersonalFiles,
+    embedderReady,
+    embeddingActiveBookId,
+    processEmbeddingQueue,
+  ]);
 
   // Prune any selected URIs that are no longer in discoveredFiles
   useEffect(() => {
@@ -705,6 +733,11 @@ function PersonalLibraryImportModalInner({
                 {' · Continues in background if closed'}
               </Text>
             </View>
+          ) : null}
+
+          {/* Pinned Live On-Device Embedding Progress Bar (model load, chunks, or error) */}
+          {!batchImporting ? (
+            <EmbeddingProgressCard compact onOpenEngineSheet={handleClose} />
           ) : null}
 
           <ScrollView
@@ -1320,7 +1353,7 @@ function PersonalLibraryImportModalInner({
                   style={styles.primaryBtn}
                 >
                   <Text style={styles.primaryBtnText}>
-                    {saving ? 'Adding to Library…' : 'Add to Library & Embed'}
+                    {saving ? 'Adding to Library…' : 'Add to Library'}
                   </Text>
                 </Pressable>
               </>
@@ -1411,12 +1444,21 @@ function PersonalLibraryImportModalInner({
                   setIncludeInResonance={setIncludeInResonance}
                 />
 
-                {enginePhase !== 'ready' ? (
+                {!embedderReady ? (
                   <View style={styles.infoBox}>
                     <Text style={styles.infoText}>
                       The Offline Engine isn&apos;t downloaded yet. This book will be
-                      readable in your Library immediately and will embed automatically
-                      once the engine is ready.
+                      readable in your Library immediately
+                      {autoEmbedPersonalFiles
+                        ? ' and will embed automatically once the engine is ready.'
+                        : '.'}
+                    </Text>
+                  </View>
+                ) : !autoEmbedPersonalFiles ? (
+                  <View style={styles.infoBox}>
+                    <Text style={styles.infoText}>
+                      Auto-embedding is turned off in Settings. You can embed this book
+                      anytime from its Edit sheet or Settings → Personal Library.
                     </Text>
                   </View>
                 ) : null}
@@ -1435,7 +1477,7 @@ function PersonalLibraryImportModalInner({
                         ? 'Saving to Library…'
                         : inspected.duplicateWork
                           ? 'Import as New Copy'
-                          : 'Add to Library & Embed'}
+                          : 'Add to Library'}
                     </Text>
                   </Pressable>
 
@@ -1475,16 +1517,18 @@ function PersonalLibraryImportModalInner({
                       ? `Embedded (${liveEditingWork.embeddedChunks}/${liveEditingWork.totalChunks} passages · Voyage-4-Nano 512d int8)`
                       : liveEditingWork.embeddingStatus === 'embedding' ||
                           embeddingActiveBookId === liveEditingWork.bookId
-                        ? `Embedding ${liveEditingWork.embeddedChunks} / ${liveEditingWork.totalChunks} passages…`
+                        ? `Embedding automatically (${liveEditingWork.embeddedChunks} / ${liveEditingWork.totalChunks} passages)…`
                         : liveEditingWork.embeddingStatus === 'error'
-                          ? liveEditingWork.lastError ?? 'Embedding error.'
-                          : enginePhase === 'ready'
-                            ? `Queued (${liveEditingWork.embeddedChunks}/${liveEditingWork.totalChunks} passages)`
-                            : `Waiting for Offline Engine (${liveEditingWork.totalChunks} passages readable now)`}
+                          ? liveEditingWork.lastError ?? 'Embedding paused before finishing.'
+                          : !embedderReady
+                            ? `Waiting for Offline Engine (${liveEditingWork.totalChunks} passages readable now${autoEmbedPersonalFiles ? ' — will embed automatically' : ''})`
+                            : autoEmbedPersonalFiles
+                              ? `Queued for automatic embedding (${liveEditingWork.embeddedChunks}/${liveEditingWork.totalChunks} passages)`
+                              : `Not embedded yet (${liveEditingWork.totalChunks} passages · auto-embedding is off in Settings)`}
                   </Text>
 
-                  <View style={styles.inlineBtnRow}>
-                    {enginePhase !== 'ready' ? (
+                  {!embedderReady ? (
+                    <View style={styles.inlineBtnRow}>
                       <Pressable
                         onPress={() => {
                           handleClose();
@@ -1497,26 +1541,58 @@ function PersonalLibraryImportModalInner({
                           Download Offline Engine
                         </Text>
                       </Pressable>
-                    ) : (
+                    </View>
+                  ) : liveEditingWork.embeddingStatus === 'embedding' ||
+                    embeddingActiveBookId === liveEditingWork.bookId ? (
+                    <View style={styles.inlineBtnRow}>
+                      <ActivityIndicator size="small" color={colors.accent} />
+                      <Text style={styles.cardMeta}>Running in background…</Text>
+                    </View>
+                  ) : liveEditingWork.embeddingStatus === 'ready' ? (
+                    <View style={styles.inlineBtnRow}>
                       <Pressable
-                        onPress={() => {
-                          if (liveEditingWork.embeddingStatus === 'ready') {
-                            void reembedWork(liveEditingWork.bookId);
-                          } else {
-                            void processEmbeddingQueue();
-                          }
-                        }}
+                        onPress={() => void reembedWork(liveEditingWork.bookId)}
                         style={styles.accentOutlineBtn}
                       >
                         <Feather name="cpu" size={14} color={colors.accent} />
                         <Text style={styles.accentOutlineText}>
-                          {liveEditingWork.embeddingStatus === 'ready'
-                            ? 'Re-embed passages'
-                            : 'Embed now'}
+                          Re-embed passages
                         </Text>
                       </Pressable>
-                    )}
-                  </View>
+                    </View>
+                  ) : liveEditingWork.embeddingStatus === 'error' ? (
+                    <View style={styles.inlineBtnRow}>
+                      <Pressable
+                        onPress={() =>
+                          void processEmbeddingQueue({
+                            force: true,
+                            retryErrors: true,
+                          })
+                        }
+                        style={styles.accentOutlineBtn}
+                      >
+                        <Feather name="cpu" size={14} color={colors.accent} />
+                        <Text style={styles.accentOutlineText}>
+                          Retry embedding
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : !autoEmbedPersonalFiles ? (
+                    <View style={styles.inlineBtnRow}>
+                      <Pressable
+                        onPress={() =>
+                          void processEmbeddingQueue({
+                            force: true,
+                            retryErrors: true,
+                          })
+                        }
+                        style={styles.accentOutlineBtn}
+                      >
+                        <Feather name="cpu" size={14} color={colors.accent} />
+                        <Text style={styles.accentOutlineText}>Embed now</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
                 </View>
 
                 <MetadataFields
