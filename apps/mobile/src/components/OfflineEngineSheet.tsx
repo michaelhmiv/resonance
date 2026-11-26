@@ -13,7 +13,6 @@
 import { type ReactNode } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,8 +24,15 @@ import { Feather } from '@expo/vector-icons';
 import { colors, fontFamilies, layout, radii, spacing } from '@resonance/theme';
 import { useOfflineEngineStore } from '../packages/offlineEngineManager';
 import { formatBytes } from '../db/queries/settingsQueries';
+import { BottomSheetModal } from './BottomSheetModal';
 
 export function OfflineEngineSheet(): ReactNode {
+  const sheetVisible = useOfflineEngineStore((s) => s.sheetVisible);
+  if (!sheetVisible) return null;
+  return <OfflineEngineSheetInner />;
+}
+
+function OfflineEngineSheetInner(): ReactNode {
   const {
     sheetVisible,
     phase,
@@ -48,48 +54,41 @@ export function OfflineEngineSheet(): ReactNode {
 
   const isBusy = phase === 'downloading';
 
+  const handleClose = () => {
+    if (isBusy) setSheetVisible(false);
+    else void dismissFirstLaunchPrompt();
+  };
+
+  const modalHeader = (
+    <View style={styles.headerRow}>
+      <Text style={styles.eyebrow}>
+        <Text style={styles.goldMark}>✦ </Text>
+        OFFLINE RESONANCE ENGINE
+      </Text>
+      <Pressable
+        onPress={handleClose}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel="Close"
+        style={({ pressed }) => [styles.closeBtn, pressed && styles.closeBtnPressed]}
+      >
+        <Feather name="x" size={18} color={colors.textSecondary} />
+      </Pressable>
+    </View>
+  );
+
   return (
-    <Modal
+    <BottomSheetModal
       visible={sheetVisible}
-      transparent
-      animationType="slide"
-      onRequestClose={() => {
-        if (isBusy) setSheetVisible(false);
-        else void dismissFirstLaunchPrompt();
-      }}
+      onClose={handleClose}
+      height={undefined}
+      maxHeight="88%"
+      header={modalHeader}
     >
-      <View style={styles.overlay}>
-        <Pressable
-          style={styles.backdrop}
-          onPress={() => {
-            if (isBusy) setSheetVisible(false);
-            else void dismissFirstLaunchPrompt();
-          }}
-        />
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
-            {/* Header */}
-            <View style={styles.headerRow}>
-              <Text style={styles.eyebrow}>
-                <Text style={styles.goldMark}>✦ </Text>
-                OFFLINE RESONANCE ENGINE
-              </Text>
-              <Pressable
-                onPress={() => {
-                  if (isBusy) setSheetVisible(false);
-                  else void dismissFirstLaunchPrompt();
-                }}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Close"
-              >
-                <Feather name="x" size={18} color={colors.textTertiary} />
-              </Pressable>
-            </View>
 
             {phase === 'ready' ? (
               <>
@@ -293,9 +292,7 @@ export function OfflineEngineSheet(): ReactNode {
               </>
             )}
           </ScrollView>
-        </View>
-      </View>
-    </Modal>
+    </BottomSheetModal>
   );
 }
 
@@ -329,33 +326,6 @@ function ComponentRow({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(58, 53, 48, 0.35)',
-  },
-  backdrop: {
-    flex: 1,
-  },
-  sheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    maxHeight: '88%',
-    paddingHorizontal: layout.screenPaddingX,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xl,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.border,
-    alignSelf: 'center',
-    marginBottom: spacing.md,
-  },
   scrollContent: {
     gap: spacing.md,
     paddingBottom: spacing.md,
@@ -364,6 +334,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingBottom: spacing.sm,
+  },
+  closeBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  closeBtnPressed: {
+    opacity: 0.65,
   },
   eyebrow: {
     fontFamily: fontFamilies.sansSemibold,

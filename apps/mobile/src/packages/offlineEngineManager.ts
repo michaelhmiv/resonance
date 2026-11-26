@@ -163,8 +163,8 @@ let catalogWorkerRunning = false;
 let catalogCancelRequested = false;
 let catalogBackgroundPaused = false;
 
-function yieldToUi(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
+function yieldToUi(ms = 16): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function sqlString(value: string): string {

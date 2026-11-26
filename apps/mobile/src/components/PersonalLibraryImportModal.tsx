@@ -10,13 +10,10 @@
  * Resonance toggle, re-embed, delete).
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -37,6 +34,7 @@ import {
 } from '../personal/personalLibraryService';
 import { useOfflineEngineStore } from '../packages/offlineEngineManager';
 import { formatBytes } from '../db/queries/settingsQueries';
+import { BottomSheetModal } from './BottomSheetModal';
 
 const ERA_PRESETS = [
   'Patristic',
@@ -76,42 +74,56 @@ const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
   { key: 'size_desc', label: 'Largest' },
 ];
 
-export function PersonalLibraryImportModal({
+const PAGE_SIZE = 40;
+
+export function PersonalLibraryImportModal(
+  props: PersonalLibraryImportModalProps
+): ReactNode {
+  if (!props.visible) return null;
+  return <PersonalLibraryImportModalInner {...props} />;
+}
+
+function PersonalLibraryImportModalInner({
   visible,
   editingWork = null,
   onClose,
   onImportedBook,
 }: PersonalLibraryImportModalProps): ReactNode {
-  const {
-    connectedFolderLabel,
-    discoveredFiles,
-    scanning,
-    lastScannedAt,
-    scanProgress,
-    scanNotice,
-    scanError,
-    batchImporting,
-    batchProgress,
-    batchSummary,
-    batchError,
-    embeddingActiveBookId,
-    initialize,
-    pickFiles,
-    connectDeviceFolder,
-    disconnectDeviceFolder,
-    scanFolders,
-    inspectFile,
-    commitImport,
-    startBatchImport,
-    cancelBatchImport,
-    clearBatchBanner,
-    importPastedText,
-    updateMetadata,
-    removeWork,
-    reembedWork,
-    processEmbeddingQueue,
-    pauseEmbeddingQueue,
-  } = usePersonalLibraryStore();
+  // Granular Zustand selectors so unrelated background updates (e.g. embedding `works` ticks)
+  // never trigger full modal re-renders while browsing files.
+  const connectedFolderLabel = usePersonalLibraryStore((s) => s.connectedFolderLabel);
+  const discoveredFiles = usePersonalLibraryStore((s) => s.discoveredFiles);
+  const scanning = usePersonalLibraryStore((s) => s.scanning);
+  const scanProgress = usePersonalLibraryStore((s) => s.scanProgress);
+  const scanNotice = usePersonalLibraryStore((s) => s.scanNotice);
+  const scanError = usePersonalLibraryStore((s) => s.scanError);
+  const batchImporting = usePersonalLibraryStore((s) => s.batchImporting);
+  const batchProgress = usePersonalLibraryStore((s) => s.batchProgress);
+  const batchSummary = usePersonalLibraryStore((s) => s.batchSummary);
+  const batchError = usePersonalLibraryStore((s) => s.batchError);
+  const embeddingActiveBookId = usePersonalLibraryStore((s) => s.embeddingActiveBookId);
+  const liveEditingWork = usePersonalLibraryStore((s) =>
+    editingWork
+      ? s.works.find((w) => w.bookId === editingWork.bookId) ?? editingWork
+      : null
+  );
+
+  const initialize = usePersonalLibraryStore((s) => s.initialize);
+  const pickFiles = usePersonalLibraryStore((s) => s.pickFiles);
+  const connectDeviceFolder = usePersonalLibraryStore((s) => s.connectDeviceFolder);
+  const disconnectDeviceFolder = usePersonalLibraryStore((s) => s.disconnectDeviceFolder);
+  const scanFolders = usePersonalLibraryStore((s) => s.scanFolders);
+  const cancelScan = usePersonalLibraryStore((s) => s.cancelScan);
+  const inspectFile = usePersonalLibraryStore((s) => s.inspectFile);
+  const commitImport = usePersonalLibraryStore((s) => s.commitImport);
+  const startBatchImport = usePersonalLibraryStore((s) => s.startBatchImport);
+  const cancelBatchImport = usePersonalLibraryStore((s) => s.cancelBatchImport);
+  const clearBatchBanner = usePersonalLibraryStore((s) => s.clearBatchBanner);
+  const importPastedText = usePersonalLibraryStore((s) => s.importPastedText);
+  const updateMetadata = usePersonalLibraryStore((s) => s.updateMetadata);
+  const removeWork = usePersonalLibraryStore((s) => s.removeWork);
+  const reembedWork = usePersonalLibraryStore((s) => s.reembedWork);
+  const processEmbeddingQueue = usePersonalLibraryStore((s) => s.processEmbeddingQueue);
 
   const enginePhase = useOfflineEngineStore((s) => s.phase);
   const setEngineSheetVisible = useOfflineEngineStore((s) => s.setSheetVisible);
@@ -123,12 +135,13 @@ export function PersonalLibraryImportModal({
   const [saving, setSaving] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  // List search, filter, sort, and multi-select state
+  // List search, filter, sort, pagination, and multi-select state
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [formatFilter, setFormatFilter] = useState<'all' | PersonalSourceFormat>('all');
   const [subfolderFilter, setSubfolderFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortKey>('new_first');
+  const [visibleLimit, setVisibleLimit] = useState<number>(PAGE_SIZE);
   const [selectedUris, setSelectedUris] = useState<Set<string>>(() => new Set());
 
   // Paste text mode state
@@ -154,8 +167,14 @@ export function PersonalLibraryImportModal({
     setIncludeInResonance(initial?.includeInResonance ?? true);
   }, []);
 
+  // Closing the modal cancels any in-flight folder browse scan immediately so the JS
+  // thread stays free, while background batch imports & embeddings continue untouched.
+  const handleClose = useCallback(() => {
+    cancelScan();
+    onClose();
+  }, [cancelScan, onClose]);
+
   useEffect(() => {
-    if (!visible) return;
     setLocalError(null);
     setSelectedUris(new Set());
     setSearchQuery('');
@@ -163,9 +182,13 @@ export function PersonalLibraryImportModal({
     setFormatFilter('all');
     setSubfolderFilter('all');
     setSortBy('new_first');
+    setVisibleLimit(PAGE_SIZE);
+
+    let cancelled = false;
+    let scanTimer: ReturnType<typeof setTimeout> | null = null;
 
     void initialize().then(() => {
-      if (editingWork) return;
+      if (cancelled || editingWork) return;
       const store = usePersonalLibraryStore.getState();
       // Never re-walk folders while a batch import is actively running or when scanned recently
       const isFresh =
@@ -173,7 +196,12 @@ export function PersonalLibraryImportModal({
         Date.now() - store.lastScannedAt < 2 * 60_000 &&
         store.discoveredFiles.length > 0;
       if (!store.batchImporting && !store.scanning && !isFresh) {
-        void scanFolders();
+        // Defer folder walk by 300ms so sheet slide-in & immediate close/swipe stay 60fps
+        scanTimer = setTimeout(() => {
+          if (!cancelled) {
+            void scanFolders();
+          }
+        }, 300);
       }
     });
 
@@ -195,7 +223,17 @@ export function PersonalLibraryImportModal({
       setPasteText('');
       resetForm();
     }
-  }, [visible, editingWork, initialize, scanFolders, resetForm]);
+
+    return () => {
+      cancelled = true;
+      if (scanTimer) clearTimeout(scanTimer);
+    };
+  }, [editingWork, initialize, scanFolders, resetForm]);
+
+  // Reset pagination whenever filters or search query change
+  useEffect(() => {
+    setVisibleLimit(PAGE_SIZE);
+  }, [searchQuery, statusFilter, formatFilter, subfolderFilter, sortBy]);
 
   // Prune any selected URIs that are no longer in discoveredFiles
   useEffect(() => {
@@ -487,46 +525,90 @@ export function PersonalLibraryImportModal({
     );
   };
 
-  const newFilesCount = discoveredFiles.filter((f) => !f.alreadyImportedBookId).length;
+  const newFilesCount = totalNewCount;
+  const visibleFiles = useMemo(
+    () => filteredFiles.slice(0, visibleLimit),
+    [filteredFiles, visibleLimit]
+  );
+  const remainingHiddenCount = Math.max(0, filteredFiles.length - visibleFiles.length);
+
+  const modalHeader = (
+    <View style={styles.header}>
+      <View style={styles.headerLeft}>
+        {step === 'review' ? (
+          <Pressable
+            onPress={() => setStep('folder')}
+            hitSlop={10}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Back to files"
+          >
+            <Feather name="arrow-left" size={18} color={colors.accent} />
+          </Pressable>
+        ) : null}
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {step === 'edit'
+            ? 'Edit Book Metadata'
+            : step === 'review'
+              ? 'Review & Edit Metadata'
+              : 'Add to Your Library'}
+        </Text>
+      </View>
+      <Pressable
+        onPress={handleClose}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel="Close"
+        style={({ pressed }) => [styles.closeBtn, pressed && styles.closeBtnPressed]}
+      >
+        <Feather name="x" size={20} color={colors.textSecondary} />
+      </Pressable>
+    </View>
+  );
+
+  const modalFooter =
+    step === 'folder' && selectedFiles.length > 0 ? (
+      <View style={styles.selectionFooter}>
+        <View style={styles.selectionFooterLeft}>
+          <Text style={styles.selectionFooterCount}>
+            {batchImporting && batchProgress
+              ? `Importing ${batchProgress.currentIndex} of ${batchProgress.total}…`
+              : `${selectedFiles.length} selected`}
+          </Text>
+          {!batchImporting ? (
+            <Pressable onPress={handleClearSelection} hitSlop={8}>
+              <Text style={styles.selectionFooterClear}>Clear</Text>
+            </Pressable>
+          ) : null}
+        </View>
+        <Pressable
+          onPress={() => void handleBatchImportFiles(selectedFiles)}
+          disabled={batchImporting}
+          style={[
+            styles.selectionFooterImportBtn,
+            batchImporting && styles.disabledBtn,
+          ]}
+        >
+          {batchImporting ? (
+            <ActivityIndicator size="small" color={colors.surface} />
+          ) : (
+            <Feather name="download" size={14} color={colors.surface} />
+          )}
+          <Text style={styles.selectionFooterImportText}>
+            {batchImporting ? 'Importing…' : `Import ${selectedFiles.length}`}
+          </Text>
+        </Pressable>
+      </View>
+    ) : null;
 
   return (
-    <Modal
+    <BottomSheetModal
       visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
+      onClose={handleClose}
+      height="90%"
+      header={modalHeader}
+      footer={modalFooter}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.overlay}
-      >
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
-
-          {/* Modal Header */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              {step === 'review' ? (
-                <Pressable
-                  onPress={() => setStep('folder')}
-                  hitSlop={10}
-                  style={styles.backBtn}
-                >
-                  <Feather name="arrow-left" size={18} color={colors.accent} />
-                </Pressable>
-              ) : null}
-              <Text style={styles.headerTitle}>
-                {step === 'edit'
-                  ? 'Edit Book Metadata'
-                  : step === 'review'
-                    ? 'Review & Edit Metadata'
-                    : 'Add to Your Library'}
-              </Text>
-            </View>
-            <Pressable onPress={onClose} hitSlop={10} accessibilityLabel="Close">
-              <Feather name="x" size={20} color={colors.textTertiary} />
-            </Pressable>
-          </View>
 
           {/* Source Switcher (Files & Folder vs Paste Text) */}
           {step === 'folder' || step === 'paste' ? (
@@ -1047,6 +1129,14 @@ export function PersonalLibraryImportModal({
                         ? `Scanning folders (${scanProgress.foldersScanned} checked · ${scanProgress.filesFound} book${scanProgress.filesFound === 1 ? '' : 's'} found)…`
                         : 'Scanning folder & subfolders…'}
                     </Text>
+                    <Pressable
+                      onPress={cancelScan}
+                      style={styles.subtleBtn}
+                      accessibilityRole="button"
+                      accessibilityLabel="Stop scan"
+                    >
+                      <Text style={styles.subtleBtnText}>Stop scan</Text>
+                    </Pressable>
                   </View>
                 ) : discoveredFiles.length === 0 ? (
                   <View style={styles.emptyCard}>
@@ -1066,7 +1156,7 @@ export function PersonalLibraryImportModal({
                   </View>
                 ) : (
                   <View style={styles.card}>
-                    {filteredFiles.map((file, idx) => {
+                    {visibleFiles.map((file, idx) => {
                       const isInspecting = inspectingFile === file.uri;
                       const isSelected = selectedUris.has(file.uri);
                       const locationLabel = file.subfolder
@@ -1147,6 +1237,21 @@ export function PersonalLibraryImportModal({
                         </View>
                       );
                     })}
+                    {remainingHiddenCount > 0 ? (
+                      <>
+                        <View style={styles.divider} />
+                        <Pressable
+                          onPress={() => setVisibleLimit((n) => n + PAGE_SIZE)}
+                          style={styles.showMoreBtn}
+                          accessibilityRole="button"
+                        >
+                          <Text style={styles.showMoreText}>
+                            Show {Math.min(PAGE_SIZE, remainingHiddenCount)} more (
+                            {remainingHiddenCount} remaining)
+                          </Text>
+                        </Pressable>
+                      </>
+                    ) : null}
                   </View>
                 )}
               </>
@@ -1354,35 +1459,35 @@ export function PersonalLibraryImportModal({
             ) : null}
 
             {/* ── EDIT EXISTING PERSONAL WORK METADATA & EMBEDDING ─────── */}
-            {step === 'edit' && editingWork ? (
+            {step === 'edit' && liveEditingWork ? (
               <>
                 <View style={styles.card}>
                   <View style={styles.cardRowBetween}>
                     <Text style={styles.cardTitle}>On-Device Embedding Status</Text>
                     <View style={styles.formatPill}>
                       <Text style={styles.formatPillText}>
-                        {editingWork.sourceFormat.toUpperCase()}
+                        {liveEditingWork.sourceFormat.toUpperCase()}
                       </Text>
                     </View>
                   </View>
                   <Text style={styles.cardMeta}>
-                    {editingWork.embeddingStatus === 'ready'
-                      ? `Embedded (${editingWork.embeddedChunks}/${editingWork.totalChunks} passages · Voyage-4-Nano 512d int8)`
-                      : editingWork.embeddingStatus === 'embedding' ||
-                          embeddingActiveBookId === editingWork.bookId
-                        ? `Embedding ${editingWork.embeddedChunks} / ${editingWork.totalChunks} passages…`
-                        : editingWork.embeddingStatus === 'error'
-                          ? editingWork.lastError ?? 'Embedding error.'
+                    {liveEditingWork.embeddingStatus === 'ready'
+                      ? `Embedded (${liveEditingWork.embeddedChunks}/${liveEditingWork.totalChunks} passages · Voyage-4-Nano 512d int8)`
+                      : liveEditingWork.embeddingStatus === 'embedding' ||
+                          embeddingActiveBookId === liveEditingWork.bookId
+                        ? `Embedding ${liveEditingWork.embeddedChunks} / ${liveEditingWork.totalChunks} passages…`
+                        : liveEditingWork.embeddingStatus === 'error'
+                          ? liveEditingWork.lastError ?? 'Embedding error.'
                           : enginePhase === 'ready'
-                            ? `Queued (${editingWork.embeddedChunks}/${editingWork.totalChunks} passages)`
-                            : `Waiting for Offline Engine (${editingWork.totalChunks} passages readable now)`}
+                            ? `Queued (${liveEditingWork.embeddedChunks}/${liveEditingWork.totalChunks} passages)`
+                            : `Waiting for Offline Engine (${liveEditingWork.totalChunks} passages readable now)`}
                   </Text>
 
                   <View style={styles.inlineBtnRow}>
                     {enginePhase !== 'ready' ? (
                       <Pressable
                         onPress={() => {
-                          onClose();
+                          handleClose();
                           setEngineSheetVisible(true);
                         }}
                         style={styles.accentOutlineBtn}
@@ -1395,8 +1500,8 @@ export function PersonalLibraryImportModal({
                     ) : (
                       <Pressable
                         onPress={() => {
-                          if (editingWork.embeddingStatus === 'ready') {
-                            void reembedWork(editingWork.bookId);
+                          if (liveEditingWork.embeddingStatus === 'ready') {
+                            void reembedWork(liveEditingWork.bookId);
                           } else {
                             void processEmbeddingQueue();
                           }
@@ -1405,7 +1510,7 @@ export function PersonalLibraryImportModal({
                       >
                         <Feather name="cpu" size={14} color={colors.accent} />
                         <Text style={styles.accentOutlineText}>
-                          {editingWork.embeddingStatus === 'ready'
+                          {liveEditingWork.embeddingStatus === 'ready'
                             ? 'Re-embed passages'
                             : 'Embed now'}
                         </Text>
@@ -1454,45 +1559,7 @@ export function PersonalLibraryImportModal({
               </>
             ) : null}
           </ScrollView>
-
-          {step === 'folder' && selectedFiles.length > 0 ? (
-            <View style={styles.selectionFooter}>
-              <View style={styles.selectionFooterLeft}>
-                <Text style={styles.selectionFooterCount}>
-                  {batchImporting && batchProgress
-                    ? `Importing ${batchProgress.currentIndex} of ${batchProgress.total}…`
-                    : `${selectedFiles.length} selected`}
-                </Text>
-                {!batchImporting ? (
-                  <Pressable onPress={handleClearSelection} hitSlop={8}>
-                    <Text style={styles.selectionFooterClear}>Clear</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-              <Pressable
-                onPress={() => void handleBatchImportFiles(selectedFiles)}
-                disabled={batchImporting}
-                style={[
-                  styles.selectionFooterImportBtn,
-                  batchImporting && styles.disabledBtn,
-                ]}
-              >
-                {batchImporting ? (
-                  <ActivityIndicator size="small" color={colors.surface} />
-                ) : (
-                  <Feather name="download" size={14} color={colors.surface} />
-                )}
-                <Text style={styles.selectionFooterImportText}>
-                  {batchImporting
-                    ? 'Importing…'
-                    : `Import ${selectedFiles.length}`}
-                </Text>
-              </Pressable>
-            </View>
-          ) : null}
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+    </BottomSheetModal>
   );
 }
 
@@ -1668,44 +1735,51 @@ function StatPill({ label, value }: { label: string; value: string }): ReactNode
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(58, 53, 48, 0.35)',
-  },
-  sheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    height: '90%',
-    paddingHorizontal: layout.screenPaddingX,
-    paddingTop: spacing.sm,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.border,
-    alignSelf: 'center',
-    marginBottom: spacing.sm,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+    paddingBottom: spacing.sm,
   },
   headerLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
   },
   backBtn: {
-    paddingRight: spacing.xs,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  closeBtnPressed: {
+    opacity: 0.65,
+  },
+  showMoreBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  showMoreText: {
+    fontFamily: fontFamilies.sansSemibold,
+    fontSize: 13,
+    color: colors.accent,
   },
   headerTitle: {
+    flex: 1,
     fontFamily: fontFamilies.serifSemibold,
     fontSize: 22,
     color: colors.textPrimary,
