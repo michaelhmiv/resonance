@@ -16,17 +16,16 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
-// P1-03: the optional on-device ML modules are not installed in Phase 1.
-// Map them to an empty stub so Metro can bundle the dynamic imports in
-// embeddingService.ts / reflectionService.ts; callers already degrade
-// gracefully when the native module is absent.
+// Optional LLM module (llama.rn) is not bundled; map it to an empty stub
+// so Metro can bundle the dynamic import in reflectionService.ts.
+// `onnxruntime-react-native` IS installed and natively linked for on-device
+// Voyage-4-Nano embeddings and Qwen3-Reranker scoring.
 const nativeModuleStub = path.resolve(
   projectRoot,
   'src/embedding/nativeModuleStub.ts'
 );
 config.resolver.extraNodeModules = {
   ...(config.resolver.extraNodeModules || {}),
-  'onnxruntime-react-native': nativeModuleStub,
   'llama.rn': nativeModuleStub,
 };
 

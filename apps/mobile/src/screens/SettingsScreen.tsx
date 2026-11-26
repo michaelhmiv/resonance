@@ -35,6 +35,7 @@ import { useOfflineEngineStore } from '../packages/offlineEngineManager';
 import { usePersonalLibraryStore } from '../personal/personalLibraryService';
 import { PersonalLibraryImportModal } from '../components/PersonalLibraryImportModal';
 import { LibraryCatalogModal } from '../components/LibraryCatalogModal';
+import { EmbeddingProgressCard } from '../components/EmbeddingProgressCard';
 import {
   getStorageInfo,
   clearAllJournalData,
@@ -379,27 +380,7 @@ function PersonalLibrarySection(): ReactNode {
         label={scanning ? 'Scanning folder…' : 'Scan folder for new books'}
         onPress={() => void scanFolders()}
       />
-      {embeddingActiveBookId ? (
-        <>
-          <RowDivider />
-          <InfoRow
-            label="Embedding status"
-            value="Embedding automatically in background…"
-          />
-        </>
-      ) : pendingCount > 0 && autoEmbedPersonalFiles ? (
-        <>
-          <RowDivider />
-          <InfoRow
-            label="Embedding queue"
-            value={
-              embedderReady
-                ? `${pendingCount} queued (starting automatically)`
-                : `${pendingCount} waiting for Offline Engine`
-            }
-          />
-        </>
-      ) : manualEmbedCount > 0 && !autoEmbedPersonalFiles ? (
+      {manualEmbedCount > 0 && !autoEmbedPersonalFiles && !embeddingActiveBookId ? (
         <>
           <RowDivider />
           <ActionRow
@@ -409,7 +390,7 @@ function PersonalLibrarySection(): ReactNode {
             }
           />
         </>
-      ) : errorCount > 0 ? (
+      ) : errorCount > 0 && !embeddingActiveBookId ? (
         <>
           <RowDivider />
           <ActionRow
@@ -420,6 +401,7 @@ function PersonalLibrarySection(): ReactNode {
           />
         </>
       ) : null}
+      <EmbeddingProgressCard style={styles.embeddingCard} />
       <QuietNote>
         Edit any book&apos;s title, author, era, shelf, tags, or echo toggle anytime
         from Word → Library.
@@ -877,5 +859,8 @@ const styles = StyleSheet.create({
   },
   modalActionDestructive: {
     color: '#a85c5c',
+  },
+  embeddingCard: {
+    marginTop: spacing.sm,
   },
 });

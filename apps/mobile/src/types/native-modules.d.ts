@@ -1,31 +1,7 @@
 /**
- * Type declarations for native modules that are linked at build time
- * but not available during tsc --noEmit (no native modules installed
- * in the CI / local dev environment).
+ * Type declarations for optional native modules not installed in this build.
+ * (`onnxruntime-react-native` is installed and provides its own types.)
  */
-
-declare module 'onnxruntime-react-native' {
-  export interface Tensor {
-    data: Float32Array | BigInt64Array;
-    dims: number[];
-    type: string;
-  }
-  export const Tensor: {
-    new (type: string, data: BigInt64Array, dims: number[]): Tensor;
-  };
-  export interface InferenceSession {
-    inputNames: string[];
-    outputNames: string[];
-    run(
-      feeds: Record<string, unknown>,
-      outputs: string[]
-    ): Promise<Record<string, Tensor>>;
-    release(): void;
-  }
-  export const InferenceSession: {
-    create(path: string): Promise<InferenceSession>;
-  };
-}
 
 declare module 'llama.rn' {
   export interface LlamaModel {

@@ -24,6 +24,7 @@ export function WordScreen(): ReactNode {
   const batchImporting = usePersonalLibraryStore((s) => s.batchImporting);
   const batchProgress = usePersonalLibraryStore((s) => s.batchProgress);
   const embeddingActiveBookId = usePersonalLibraryStore((s) => s.embeddingActiveBookId);
+  const embeddingProgress = usePersonalLibraryStore((s) => s.embeddingProgress);
   const personalWorks = usePersonalLibraryStore((s) => s.works);
 
   // Offline engine & Church Library catalog download state
@@ -157,6 +158,59 @@ export function WordScreen(): ReactNode {
       };
     }
 
+    if (embeddingProgress?.phase === 'loading_model') {
+      const targetWork = embeddingProgress.bookId
+        ? personalWorks.find((w) => w.bookId === embeddingProgress.bookId) ?? null
+        : null;
+      return {
+        label: 'Loading Voyage-4-Nano embedder…',
+        detail:
+          embeddingProgress.queueTotal > 1
+            ? `Book 1 of ${embeddingProgress.queueTotal} · preparing on-device runtime`
+            : `${embeddingProgress.bookTitle ?? 'Personal Library'} · preparing on-device runtime`,
+        progressPct: 12,
+        onPress: () => {
+          setEditingWork(targetWork);
+          setImportModalVisible(true);
+        },
+      };
+    }
+
+    if (embeddingProgress?.phase === 'embedding') {
+      const targetWork = embeddingProgress.bookId
+        ? personalWorks.find((w) => w.bookId === embeddingProgress.bookId) ?? null
+        : null;
+      const total = Math.max(1, embeddingProgress.totalChunks);
+      const done = Math.min(total, embeddingProgress.embeddedChunks);
+      const pct = Math.min(100, Math.round((done / total) * 100));
+      return {
+        label: `Embedding "${embeddingProgress.bookTitle ?? targetWork?.title ?? 'Book'}"`,
+        detail:
+          embeddingProgress.queueTotal > 1
+            ? `${done}/${total} passages (${pct}%) · book ${embeddingProgress.queueIndex} of ${embeddingProgress.queueTotal}`
+            : `${done}/${total} passages (${pct}%) · running in background`,
+        progressPct: Math.max(3, pct),
+        onPress: () => {
+          setEditingWork(targetWork);
+          setImportModalVisible(true);
+        },
+      };
+    }
+
+    if (embeddingProgress?.phase === 'error') {
+      const targetWork = embeddingProgress.bookId
+        ? personalWorks.find((w) => w.bookId === embeddingProgress.bookId) ?? null
+        : null;
+      return {
+        label: 'Embedding paused — tap to view',
+        detail: embeddingProgress.error ?? 'Tap to retry on-device embedding',
+        onPress: () => {
+          setEditingWork(targetWork);
+          setImportModalVisible(true);
+        },
+      };
+    }
+
     if (embeddingActiveBookId) {
       const activeWork = personalWorks.find(
         (w) => w.bookId === embeddingActiveBookId
@@ -189,6 +243,7 @@ export function WordScreen(): ReactNode {
     batchImporting,
     batchProgress,
     embeddingActiveBookId,
+    embeddingProgress,
     personalWorks,
   ]);
 

@@ -49,6 +49,7 @@ import {
 } from '../db/queries/libraryQueries';
 import {
   embedPassage,
+  getLastEmbeddingError,
   initEmbeddingModel,
   isEmbeddingReady,
 } from '../embedding/embeddingService';
@@ -97,6 +98,25 @@ export interface BatchImportProgress {
   failed: number;
 }
 
+export type EmbeddingProgressPhase =
+  | 'idle'
+  | 'loading_model'
+  | 'embedding'
+  | 'error';
+
+export interface EmbeddingProgress {
+  phase: EmbeddingProgressPhase;
+  bookId: string | null;
+  bookTitle: string | null;
+  /** 1-based index of the active book in the current queue pass. */
+  queueIndex: number;
+  /** Total pending books in the current queue pass. */
+  queueTotal: number;
+  embeddedChunks: number;
+  totalChunks: number;
+  error: string | null;
+}
+
 export interface InspectedDocument {
   file: DiscoveredFolderFile;
   rawBytes: Uint8Array;
@@ -134,6 +154,8 @@ export interface PersonalLibraryState {
   batchError: string | null;
   embeddingActiveBookId: string | null;
   embeddingPaused: boolean;
+  /** Live on-device embedding progress (model load, per-passage progress, or error). */
+  embeddingProgress: EmbeddingProgress | null;
   /** Monotonic revision bumped whenever books/metadata change so LibraryBrowser refreshes. */
   libraryRevision: number;
 
@@ -176,6 +198,7 @@ export interface PersonalLibraryState {
     retryErrors?: boolean;
   }) => Promise<void>;
   pauseEmbeddingQueue: () => void;
+  clearEmbeddingError: () => void;
 }
 
 // ── Internal helpers ────────────────────────────────────────────────────────
@@ -469,6 +492,7 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
   batchError: null,
   embeddingActiveBookId: null,
   embeddingPaused: false,
+  embeddingProgress: null,
   libraryRevision: 0,
 
   async initialize() {
@@ -1477,7 +1501,18 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
 
   pauseEmbeddingQueue() {
     embeddingPauseFlag = true;
-    set({ embeddingPaused: true });
+    set((s) => ({
+      embeddingPaused: true,
+      embeddingProgress:
+        s.embeddingProgress?.phase === 'error' ? s.embeddingProgress : null,
+    }));
+  },
+
+  clearEmbeddingError() {
+    set((s) => ({
+      embeddingProgress:
+        s.embeddingProgress?.phase === 'error' ? null : s.embeddingProgress,
+    }));
   },
 
   async processEmbeddingQueue(options) {
@@ -1510,6 +1545,8 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
     embeddingRetryErrorsRequested = retryErrors;
     set({ embeddingPaused: false });
 
+    let endedWithError = false;
+
     try {
       while (!embeddingPauseFlag) {
         const passForce = embeddingForceRequested;
@@ -1522,14 +1559,8 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           break;
         }
 
-        // Ensure Voyage-4-Nano ONNX session is ready (no-op if not downloaded yet)
-        if (!isEmbeddingReady()) {
-          const ok = await initEmbeddingModel(DEFAULT_LOCAL_EMBEDDING_MODEL);
-          if (!ok) {
-            break; // Keep works readable in Library as 'pending' until embedder is downloaded
-          }
-        }
-
+        // Check pending works BEFORE loading the 411 MB model so idle passes do zero work
+        // and active passes immediately display book title + queue size during model load.
         const works = await getPersonalWorks();
         const pending = works.filter((w) => {
           if (w.totalChunks <= 0 || w.ocrRequired) return false;
@@ -1547,7 +1578,57 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           break;
         }
 
-        for (const work of pending) {
+        // Ensure Voyage-4-Nano ONNX session is ready
+        if (!isEmbeddingReady()) {
+          const engineState = useOfflineEngineStore.getState();
+          const embedderDownloaded =
+            engineState.phase === 'ready' || engineState.groups.embedder.ready;
+
+          // If the user hasn't downloaded the Offline Engine yet and didn't force an
+          // explicit manual click, stay quietly queued until the engine finishes.
+          if (!embedderDownloaded && !passForce) {
+            break;
+          }
+
+          set({
+            embeddingActiveBookId: pending[0].bookId,
+            embeddingProgress: {
+              phase: 'loading_model',
+              bookId: pending[0].bookId,
+              bookTitle: pending[0].title,
+              queueIndex: 1,
+              queueTotal: pending.length,
+              embeddedChunks: pending[0].embeddedChunks,
+              totalChunks: pending[0].totalChunks,
+              error: null,
+            },
+          });
+          await yieldToUi(16);
+
+          const ok = await initEmbeddingModel(DEFAULT_LOCAL_EMBEDDING_MODEL);
+          if (!ok) {
+            const errMsg =
+              getLastEmbeddingError() ??
+              'Could not initialize the on-device Voyage-4-Nano embedder.';
+            endedWithError = true;
+            set({
+              embeddingProgress: {
+                phase: 'error',
+                bookId: pending[0].bookId,
+                bookTitle: pending[0].title,
+                queueIndex: 1,
+                queueTotal: pending.length,
+                embeddedChunks: pending[0].embeddedChunks,
+                totalChunks: pending[0].totalChunks,
+                error: errMsg,
+              },
+            });
+            break;
+          }
+        }
+
+        for (let wIdx = 0; wIdx < pending.length; wIdx++) {
+          const work = pending[wIdx];
           if (embeddingPauseFlag) break;
 
           if (work.embeddingStatus === 'error') {
@@ -1563,6 +1644,19 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           let embedded = alreadyEmbeddedIds.size;
           let failed = false;
           let interrupted = false;
+
+          set({
+            embeddingProgress: {
+              phase: 'embedding',
+              bookId: work.bookId,
+              bookTitle: work.title,
+              queueIndex: wIdx + 1,
+              queueTotal: pending.length,
+              embeddedChunks: embedded,
+              totalChunks: passages.length,
+              error: null,
+            },
+          });
 
           await updatePersonalEmbeddingState(work.bookId, {
             status: 'embedding',
@@ -1613,8 +1707,22 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
             alreadyEmbeddedIds.add(p.id);
             embedded = alreadyEmbeddedIds.size;
 
-            // Throttle UI/SQLite progress updates every 5 chunks or at the end
-            if (embedded % 5 === 0 || embedded === passages.length) {
+            // Update live progress bar on every single passage so UI feedback is immediate
+            set({
+              embeddingProgress: {
+                phase: 'embedding',
+                bookId: work.bookId,
+                bookTitle: work.title,
+                queueIndex: wIdx + 1,
+                queueTotal: pending.length,
+                embeddedChunks: embedded,
+                totalChunks: passages.length,
+                error: null,
+              },
+            });
+
+            // Persist SQLite progress on first passage, every 5 passages, and completion
+            if (embedded === 1 || embedded % 5 === 0 || embedded === passages.length) {
               await updatePersonalEmbeddingState(work.bookId, {
                 status: 'embedding',
                 embeddedChunks: embedded,
@@ -1642,12 +1750,28 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           }
 
           if (failed) {
+            const errMsg =
+              getLastEmbeddingError() ??
+              'On-device embedding paused before finishing. Tap Retry to resume.';
+            endedWithError = true;
             await updatePersonalEmbeddingState(work.bookId, {
               status: 'error',
               embeddedChunks: embedded,
               totalChunks: passages.length,
               modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
-              error: 'On-device embedding paused before finishing. Tap Retry to resume.',
+              error: errMsg,
+            });
+            set({
+              embeddingProgress: {
+                phase: 'error',
+                bookId: work.bookId,
+                bookTitle: work.title,
+                queueIndex: wIdx + 1,
+                queueTotal: pending.length,
+                embeddedChunks: embedded,
+                totalChunks: passages.length,
+                error: errMsg,
+              },
             });
           } else {
             sessionRetriedErrorBooks.delete(work.bookId);
@@ -1663,12 +1787,30 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           await get().refreshWorks();
         }
       }
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      endedWithError = true;
+      set({
+        embeddingProgress: {
+          phase: 'error',
+          bookId: null,
+          bookTitle: null,
+          queueIndex: 0,
+          queueTotal: 0,
+          embeddedChunks: 0,
+          totalChunks: 0,
+          error: `Embedding failed: ${errMsg}`,
+        },
+      });
     } finally {
       embeddingLoopRunning = false;
       embeddingRescanRequested = false;
       embeddingForceRequested = false;
       embeddingRetryErrorsRequested = false;
-      set({ embeddingActiveBookId: null });
+      set((s) => ({
+        embeddingActiveBookId: null,
+        embeddingProgress: endedWithError ? s.embeddingProgress : null,
+      }));
     }
   },
 }));

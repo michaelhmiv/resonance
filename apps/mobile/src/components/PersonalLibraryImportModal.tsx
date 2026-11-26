@@ -36,6 +36,7 @@ import { useOfflineEngineStore } from '../packages/offlineEngineManager';
 import { useSettingsStore } from '../settings/settingsStore';
 import { formatBytes } from '../db/queries/settingsQueries';
 import { BottomSheetModal } from './BottomSheetModal';
+import { EmbeddingProgressCard } from './EmbeddingProgressCard';
 
 const ERA_PRESETS = [
   'Patristic',
@@ -732,6 +733,11 @@ function PersonalLibraryImportModalInner({
                 {' · Continues in background if closed'}
               </Text>
             </View>
+          ) : null}
+
+          {/* Pinned Live On-Device Embedding Progress Bar (model load, chunks, or error) */}
+          {!batchImporting ? (
+            <EmbeddingProgressCard compact onOpenEngineSheet={handleClose} />
           ) : null}
 
           <ScrollView

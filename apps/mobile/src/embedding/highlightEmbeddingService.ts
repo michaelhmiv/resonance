@@ -30,7 +30,7 @@ import {
   markOfflineNodeDeleted,
   upsertOfflineSourceNode,
 } from './offlineAdaptiveStore';
-import { embedPassage, isEmbeddingReady } from './embeddingService';
+import { embedPassage, ensureEmbeddingReady, isEmbeddingReady } from './embeddingService';
 import { clearHighlightVectors } from './resonanceService';
 
 let backfillRunning = false;
@@ -125,8 +125,8 @@ export async function syncHighlightToResonance(
     // Non-fatal: never interrupt the reader UX
   }
 
-  // 2. Embed immediately on-device if Voyage-4-Nano is ready
-  if (!isEmbeddingReady()) return;
+  // 2. Embed immediately on-device if Voyage-4-Nano is downloaded/ready
+  if (!(await ensureEmbeddingReady())) return;
 
   try {
     let changed = false;
@@ -211,7 +211,7 @@ export async function removeHighlightFromResonance(highlightId: string): Promise
  * offline embedding model finished downloading. Safe to call repeatedly.
  */
 export async function backfillUnembeddedHighlights(limit = 40): Promise<number> {
-  if (backfillRunning || !isEmbeddingReady()) return 0;
+  if (backfillRunning) return 0;
   const db = getDatabase();
   if (!db) return 0;
 
@@ -225,6 +225,9 @@ export async function backfillUnembeddedHighlights(limit = 40): Promise<number> 
         ((h.selected_text && h.selected_text.trim().length >= 4) ||
           (h.note_text && h.note_text.trim().length >= 3))
     );
+    if (pending.length === 0) return 0;
+    if (!(await ensureEmbeddingReady())) return 0;
+
     for (const hl of pending.slice(0, limit)) {
       if (!isEmbeddingReady()) break;
       await syncHighlightToResonance(hl, 'updated');
