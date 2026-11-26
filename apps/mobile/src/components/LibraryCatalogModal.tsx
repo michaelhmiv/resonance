@@ -184,8 +184,16 @@ export function LibraryCatalogModal({
               onChangeText={setSearch}
               placeholder="Search title, author, or era (e.g. Augustine, Kempis)…"
               placeholderTextColor={colors.placeholder}
-              clearButtonMode="while-editing"
             />
+            {search.length > 0 ? (
+              <Pressable
+                onPress={() => setSearch('')}
+                hitSlop={8}
+                accessibilityLabel="Clear search"
+              >
+                <Feather name="x-circle" size={15} color={colors.textTertiary} />
+              </Pressable>
+            ) : null}
           </View>
 
           {/* Filter pills */}
@@ -210,6 +218,7 @@ export function LibraryCatalogModal({
                   style={[styles.filterPill, active && styles.filterPillActive]}
                 >
                   <Text
+                    numberOfLines={1}
                     style={[
                       styles.filterPillText,
                       active && styles.filterPillTextActive,
@@ -260,6 +269,7 @@ export function LibraryCatalogModal({
 
           {/* Catalog body */}
           <ScrollView
+            style={styles.listScroll}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listBody}
           >
@@ -533,17 +543,22 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   filterScroll: {
-    maxHeight: 38,
+    flexGrow: 0,
+    flexShrink: 0,
     marginBottom: spacing.sm,
   },
   filterRow: {
-    gap: 6,
+    flexDirection: 'row',
+    gap: 8,
     alignItems: 'center',
+    paddingVertical: 4,
     paddingRight: spacing.md,
   },
   filterPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    minHeight: 34,
+    justifyContent: 'center',
+    paddingHorizontal: 13,
+    paddingVertical: 7,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
@@ -555,11 +570,16 @@ const styles = StyleSheet.create({
   },
   filterPillText: {
     fontFamily: fontFamilies.sansMedium,
-    fontSize: 12,
+    fontSize: 12.5,
+    lineHeight: 17,
+    includeFontPadding: false,
     color: colors.textSecondary,
   },
   filterPillTextActive: {
     color: colors.surface,
+  },
+  listScroll: {
+    flex: 1,
   },
   activeBanner: {
     backgroundColor: colors.surface,

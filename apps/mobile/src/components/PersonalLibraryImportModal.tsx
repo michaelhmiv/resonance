@@ -10,7 +10,7 @@
  * Resonance toggle, re-embed, delete).
  */
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -27,7 +27,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { colors, fontFamilies, layout, radii, spacing } from '@resonance/theme';
-import type { PersonalWorkMetadata } from '@resonance/core';
+import type { PersonalSourceFormat, PersonalWorkMetadata } from '@resonance/core';
 import {
   PERSONAL_INBOX_DIR,
   usePersonalLibraryStore,
@@ -64,6 +64,17 @@ interface PersonalLibraryImportModalProps {
 }
 
 type ModalStep = 'folder' | 'paste' | 'review' | 'edit';
+type StatusFilter = 'all' | 'new' | 'imported';
+type SortKey = 'new_first' | 'name_asc' | 'name_desc' | 'folder' | 'format' | 'size_desc';
+
+const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
+  { key: 'new_first', label: 'New first' },
+  { key: 'name_asc', label: 'A → Z' },
+  { key: 'name_desc', label: 'Z → A' },
+  { key: 'folder', label: 'Folder' },
+  { key: 'format', label: 'Format' },
+  { key: 'size_desc', label: 'Largest' },
+];
 
 export function PersonalLibraryImportModal({
   visible,
@@ -75,6 +86,8 @@ export function PersonalLibraryImportModal({
     connectedFolderLabel,
     discoveredFiles,
     scanning,
+    scanProgress,
+    scanNotice,
     scanError,
     embeddingActiveBookId,
     initialize,
@@ -99,8 +112,19 @@ export function PersonalLibraryImportModal({
   const [inspectingFile, setInspectingFile] = useState<string | null>(null);
   const [inspected, setInspected] = useState<InspectedDocument | null>(null);
   const [batchImporting, setBatchImporting] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(
+    null
+  );
   const [saving, setSaving] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+
+  // List search, filter, sort, and multi-select state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [formatFilter, setFormatFilter] = useState<'all' | PersonalSourceFormat>('all');
+  const [subfolderFilter, setSubfolderFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<SortKey>('new_first');
+  const [selectedUris, setSelectedUris] = useState<Set<string>>(() => new Set());
 
   // Paste text mode state
   const [pasteText, setPasteText] = useState('');
@@ -128,6 +152,12 @@ export function PersonalLibraryImportModal({
   useEffect(() => {
     if (!visible) return;
     setLocalError(null);
+    setSelectedUris(new Set());
+    setSearchQuery('');
+    setStatusFilter('all');
+    setFormatFilter('all');
+    setSubfolderFilter('all');
+    setSortBy('new_first');
     void initialize().then(() => {
       if (!editingWork) {
         void scanFolders();
@@ -153,6 +183,157 @@ export function PersonalLibraryImportModal({
       resetForm();
     }
   }, [visible, editingWork, initialize, scanFolders, resetForm]);
+
+  // Prune any selected URIs that are no longer in discoveredFiles
+  useEffect(() => {
+    setSelectedUris((prev) => {
+      if (prev.size === 0) return prev;
+      const valid = new Set(discoveredFiles.map((f) => f.uri));
+      let changed = false;
+      const next = new Set<string>();
+      for (const uri of prev) {
+        if (valid.has(uri)) next.add(uri);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [discoveredFiles]);
+
+  // Available formats & subfolders for dynamic filter chips
+  const availableFormats = useMemo(() => {
+    const counts = new Map<PersonalSourceFormat, number>();
+    for (const f of discoveredFiles) {
+      counts.set(f.format, (counts.get(f.format) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [discoveredFiles]);
+
+  const availableSubfolders = useMemo(() => {
+    const counts = new Map<string, number>();
+    let hasRoot = false;
+    for (const f of discoveredFiles) {
+      if (f.subfolder) {
+        counts.set(f.subfolder, (counts.get(f.subfolder) ?? 0) + 1);
+      } else {
+        hasRoot = true;
+      }
+    }
+    const list = Array.from(counts.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    return { list, hasRoot };
+  }, [discoveredFiles]);
+
+  const totalNewCount = useMemo(
+    () => discoveredFiles.filter((f) => !f.alreadyImportedBookId).length,
+    [discoveredFiles]
+  );
+  const totalImportedCount = discoveredFiles.length - totalNewCount;
+
+  const filteredFiles = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const list = discoveredFiles.filter((f) => {
+      if (statusFilter === 'new' && f.alreadyImportedBookId) return false;
+      if (statusFilter === 'imported' && !f.alreadyImportedBookId) return false;
+      if (formatFilter !== 'all' && f.format !== formatFilter) return false;
+      if (subfolderFilter === '__root__' && f.subfolder !== null) return false;
+      if (
+        subfolderFilter !== 'all' &&
+        subfolderFilter !== '__root__' &&
+        f.subfolder !== subfolderFilter
+      ) {
+        return false;
+      }
+      if (q) {
+        const hay = `${f.filename} ${f.subfolder ?? ''} ${f.format}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    const sorted = [...list];
+    sorted.sort((a, b) => {
+      switch (sortBy) {
+        case 'name_asc':
+          return a.filename.localeCompare(b.filename);
+        case 'name_desc':
+          return b.filename.localeCompare(a.filename);
+        case 'folder': {
+          const fa = a.subfolder ?? '';
+          const fb = b.subfolder ?? '';
+          if (fa !== fb) return fa.localeCompare(fb);
+          return a.filename.localeCompare(b.filename);
+        }
+        case 'format': {
+          if (a.format !== b.format) return a.format.localeCompare(b.format);
+          return a.filename.localeCompare(b.filename);
+        }
+        case 'size_desc': {
+          if (a.sizeBytes !== b.sizeBytes) return b.sizeBytes - a.sizeBytes;
+          return a.filename.localeCompare(b.filename);
+        }
+        case 'new_first':
+        default: {
+          const aPicked = a.source === 'picked' ? 0 : 1;
+          const bPicked = b.source === 'picked' ? 0 : 1;
+          if (aPicked !== bPicked) return aPicked - bPicked;
+          const aNew = a.alreadyImportedBookId === null ? 0 : 1;
+          const bNew = b.alreadyImportedBookId === null ? 0 : 1;
+          if (aNew !== bNew) return aNew - bNew;
+          return a.filename.localeCompare(b.filename);
+        }
+      }
+    });
+    return sorted;
+  }, [discoveredFiles, searchQuery, statusFilter, formatFilter, subfolderFilter, sortBy]);
+
+  const visibleNewFiles = useMemo(
+    () => filteredFiles.filter((f) => !f.alreadyImportedBookId),
+    [filteredFiles]
+  );
+
+  const selectedFiles = useMemo(
+    () => discoveredFiles.filter((f) => selectedUris.has(f.uri)),
+    [discoveredFiles, selectedUris]
+  );
+
+  const allVisibleSelected =
+    filteredFiles.length > 0 && filteredFiles.every((f) => selectedUris.has(f.uri));
+
+  const toggleSelectUri = (uri: string) => {
+    setSelectedUris((prev) => {
+      const next = new Set(prev);
+      if (next.has(uri)) next.delete(uri);
+      else next.add(uri);
+      return next;
+    });
+  };
+
+  const handleSelectAllVisible = () => {
+    if (allVisibleSelected) {
+      setSelectedUris((prev) => {
+        const next = new Set(prev);
+        for (const f of filteredFiles) next.delete(f.uri);
+        return next;
+      });
+    } else {
+      setSelectedUris((prev) => {
+        const next = new Set(prev);
+        for (const f of filteredFiles) next.add(f.uri);
+        return next;
+      });
+    }
+  };
+
+  const handleSelectAllNewVisible = () => {
+    setSelectedUris((prev) => {
+      const next = new Set(prev);
+      for (const f of visibleNewFiles) next.add(f.uri);
+      return next;
+    });
+  };
+
+  const handleClearSelection = () => {
+    setSelectedUris(new Set());
+  };
 
   const parsedTags = tagsDraft
     .split(',')
@@ -201,24 +382,42 @@ export function PersonalLibraryImportModal({
       const added = await pickFiles();
       if (added.length === 1) {
         await handleInspectFile(added[0]);
+      } else if (added.length > 1) {
+        // Pre-select newly picked files so the user can import them in 1 tap
+        setSelectedUris((prev) => {
+          const next = new Set(prev);
+          for (const f of added) next.add(f.uri);
+          return next;
+        });
       }
     } finally {
       setPickingFiles(false);
     }
   };
 
-  const handleBatchImportNew = async () => {
-    const newFiles = discoveredFiles.filter((f) => !f.alreadyImportedBookId);
-    if (newFiles.length === 0) return;
+  const handleBatchImportFiles = async (targets: DiscoveredFolderFile[]) => {
+    if (targets.length === 0) return;
     setBatchImporting(true);
+    setBatchProgress({ done: 0, total: targets.length });
     setLocalError(null);
     let importedCount = 0;
+    let skippedDupes = 0;
+    let failedCount = 0;
     let lastBookId: string | null = null;
     try {
-      for (const file of newFiles) {
+      for (let i = 0; i < targets.length; i++) {
+        const file = targets[i];
+        setBatchProgress({ done: i + 1, total: targets.length });
         try {
           const result = await inspectFile(file);
-          if (result.duplicateWork || result.processed.chunks.length === 0) continue;
+          if (result.duplicateWork) {
+            skippedDupes++;
+            continue;
+          }
+          if (result.processed.chunks.length === 0) {
+            failedCount++;
+            continue;
+          }
           const saved = await commitImport(result, {
             title: result.processed.suggestedTitle,
             author: result.processed.suggestedAuthor,
@@ -231,11 +430,18 @@ export function PersonalLibraryImportModal({
           importedCount++;
           lastBookId = saved.bookId;
         } catch {
-          // Continue remaining files in batch
+          failedCount++;
         }
       }
+      setSelectedUris(new Set());
       if (importedCount === 0) {
-        setLocalError('No new readable passages were found in the folder.');
+        if (skippedDupes > 0 && failedCount === 0) {
+          setLocalError(
+            `All ${skippedDupes} selected file${skippedDupes === 1 ? ' is' : 's are'} already in your Library.`
+          );
+        } else {
+          setLocalError('No new readable passages were found in the selected files.');
+        }
       } else {
         onClose();
         if (lastBookId && importedCount === 1) {
@@ -244,6 +450,7 @@ export function PersonalLibraryImportModal({
       }
     } finally {
       setBatchImporting(false);
+      setBatchProgress(null);
     }
   };
 
@@ -402,6 +609,12 @@ export function PersonalLibraryImportModal({
               </View>
             ) : null}
 
+            {scanNotice && step === 'folder' ? (
+              <View style={styles.infoBox}>
+                <Text style={styles.infoText}>{scanNotice}</Text>
+              </View>
+            ) : null}
+
             {/* ── STEP 1: INDIVIDUAL FILES, CONNECTED FOLDER & INBOX ─────── */}
             {step === 'folder' ? (
               <>
@@ -419,10 +632,11 @@ export function PersonalLibraryImportModal({
                   <View style={styles.inlineBtnRow}>
                     <Pressable
                       onPress={() => void handlePickFiles()}
-                      disabled={pickingFiles || inspectingFile !== null}
+                      disabled={pickingFiles || inspectingFile !== null || batchImporting}
                       style={[
                         styles.accentFilledBtn,
-                        (pickingFiles || inspectingFile !== null) && styles.disabledBtn,
+                        (pickingFiles || inspectingFile !== null || batchImporting) &&
+                          styles.disabledBtn,
                       ]}
                     >
                       {pickingFiles ? (
@@ -443,8 +657,8 @@ export function PersonalLibraryImportModal({
                       <Text style={styles.cardTitle}>Connected Folder</Text>
                       <Text style={styles.cardMeta}>
                         {connectedFolderLabel
-                          ? connectedFolderLabel
-                          : 'Optional — link a folder on your device, Google Drive, or iCloud to scan all books inside it.'}
+                          ? `${connectedFolderLabel} · includes subfolders`
+                          : 'Optional — link a folder on your device, Google Drive, or iCloud. Subfolders are scanned automatically.'}
                       </Text>
                     </View>
                   </View>
@@ -452,6 +666,7 @@ export function PersonalLibraryImportModal({
                   <View style={styles.inlineBtnRow}>
                     <Pressable
                       onPress={() => void connectDeviceFolder()}
+                      disabled={batchImporting}
                       style={styles.accentOutlineBtn}
                     >
                       <Feather name="folder-plus" size={14} color={colors.accent} />
@@ -463,7 +678,7 @@ export function PersonalLibraryImportModal({
                     <Pressable
                       onPress={() => void scanFolders()}
                       style={styles.subtleBtn}
-                      disabled={scanning}
+                      disabled={scanning || batchImporting}
                     >
                       <Feather name="refresh-cw" size={14} color={colors.textSecondary} />
                       <Text style={styles.subtleBtnText}>
@@ -474,6 +689,7 @@ export function PersonalLibraryImportModal({
                     {connectedFolderLabel ? (
                       <Pressable
                         onPress={() => void disconnectDeviceFolder()}
+                        disabled={batchImporting}
                         style={styles.subtleBtn}
                       >
                         <Text style={styles.subtleBtnText}>Unlink</Text>
@@ -500,15 +716,23 @@ export function PersonalLibraryImportModal({
                   pollutes your echoes. Everything stays on your device.
                 </Text>
 
-                {/* Discovered Files */}
+                {/* Discovered Files Header + Quick Select Bar */}
                 <View style={styles.sectionHeaderRow}>
                   <Text style={styles.sectionLabel}>
-                    READY TO IMPORT ({discoveredFiles.length})
+                    READY TO IMPORT ({filteredFiles.length}
+                    {filteredFiles.length !== discoveredFiles.length
+                      ? ` OF ${discoveredFiles.length}`
+                      : ''}
+                    )
                   </Text>
-                  {newFilesCount > 1 ? (
+                  {newFilesCount > 1 && selectedFiles.length === 0 ? (
                     <Pressable
-                      onPress={() => void handleBatchImportNew()}
-                      disabled={batchImporting}
+                      onPress={() =>
+                        void handleBatchImportFiles(
+                          discoveredFiles.filter((f) => !f.alreadyImportedBookId)
+                        )
+                      }
+                      disabled={batchImporting || scanning}
                     >
                       <Text style={styles.batchLink}>
                         {batchImporting
@@ -519,9 +743,275 @@ export function PersonalLibraryImportModal({
                   ) : null}
                 </View>
 
+                {/* Search, Filter, Sort & Quick Select Controls */}
+                {!scanning && discoveredFiles.length > 0 ? (
+                  <View style={styles.listControls}>
+                    {/* Search input */}
+                    <View style={styles.searchWrap}>
+                      <Feather name="search" size={15} color={colors.textTertiary} />
+                      <TextInput
+                        style={styles.searchInput}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        placeholder="Search books, subfolders, or formats…"
+                        placeholderTextColor={colors.placeholder}
+                      />
+                      {searchQuery.length > 0 ? (
+                        <Pressable
+                          onPress={() => setSearchQuery('')}
+                          hitSlop={8}
+                          accessibilityLabel="Clear search"
+                        >
+                          <Feather name="x-circle" size={15} color={colors.textTertiary} />
+                        </Pressable>
+                      ) : null}
+                    </View>
+
+                    {/* Status + Format filter pills */}
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.pillScroll}
+                      contentContainerStyle={styles.pillScrollContent}
+                    >
+                      {(
+                        [
+                          { key: 'all', label: `All (${discoveredFiles.length})` },
+                          { key: 'new', label: `New (${totalNewCount})` },
+                          { key: 'imported', label: `In Library (${totalImportedCount})` },
+                        ] as Array<{ key: StatusFilter; label: string }>
+                      ).map((opt) => {
+                        const active = statusFilter === opt.key;
+                        return (
+                          <Pressable
+                            key={opt.key}
+                            onPress={() => setStatusFilter(opt.key)}
+                            style={[styles.filterPill, active && styles.filterPillActive]}
+                          >
+                            <Text
+                              numberOfLines={1}
+                              style={[
+                                styles.filterPillText,
+                                active && styles.filterPillTextActive,
+                              ]}
+                            >
+                              {opt.label}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+
+                      {availableFormats.length > 1 ? (
+                        <>
+                          <View style={styles.pillDivider} />
+                          <Pressable
+                            onPress={() => setFormatFilter('all')}
+                            style={[
+                              styles.filterPill,
+                              formatFilter === 'all' && styles.filterPillActive,
+                            ]}
+                          >
+                            <Text
+                              numberOfLines={1}
+                              style={[
+                                styles.filterPillText,
+                                formatFilter === 'all' && styles.filterPillTextActive,
+                              ]}
+                            >
+                              All types
+                            </Text>
+                          </Pressable>
+                          {availableFormats.map(([fmt, count]) => {
+                            const active = formatFilter === fmt;
+                            return (
+                              <Pressable
+                                key={fmt}
+                                onPress={() =>
+                                  setFormatFilter(active ? 'all' : fmt)
+                                }
+                                style={[
+                                  styles.filterPill,
+                                  active && styles.filterPillActive,
+                                ]}
+                              >
+                                <Text
+                                  numberOfLines={1}
+                                  style={[
+                                    styles.filterPillText,
+                                    active && styles.filterPillTextActive,
+                                  ]}
+                                >
+                                  {fmt.toUpperCase()} ({count})
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </>
+                      ) : null}
+                    </ScrollView>
+
+                    {/* Subfolder filter pills (only shown when files span subfolders) */}
+                    {availableSubfolders.list.length > 0 ? (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.pillScroll}
+                        contentContainerStyle={styles.pillScrollContent}
+                      >
+                        <Pressable
+                          onPress={() => setSubfolderFilter('all')}
+                          style={[
+                            styles.filterPill,
+                            subfolderFilter === 'all' && styles.filterPillActive,
+                          ]}
+                        >
+                          <Text
+                            numberOfLines={1}
+                            style={[
+                              styles.filterPillText,
+                              subfolderFilter === 'all' && styles.filterPillTextActive,
+                            ]}
+                          >
+                            All folders
+                          </Text>
+                        </Pressable>
+                        {availableSubfolders.hasRoot ? (
+                          <Pressable
+                            onPress={() =>
+                              setSubfolderFilter(
+                                subfolderFilter === '__root__' ? 'all' : '__root__'
+                              )
+                            }
+                            style={[
+                              styles.filterPill,
+                              subfolderFilter === '__root__' && styles.filterPillActive,
+                            ]}
+                          >
+                            <Text
+                              numberOfLines={1}
+                              style={[
+                                styles.filterPillText,
+                                subfolderFilter === '__root__' &&
+                                  styles.filterPillTextActive,
+                              ]}
+                            >
+                              Top folder
+                            </Text>
+                          </Pressable>
+                        ) : null}
+                        {availableSubfolders.list.map(([sub, count]) => {
+                          const active = subfolderFilter === sub;
+                          return (
+                            <Pressable
+                              key={sub}
+                              onPress={() =>
+                                setSubfolderFilter(active ? 'all' : sub)
+                              }
+                              style={[
+                                styles.filterPill,
+                                active && styles.filterPillActive,
+                              ]}
+                            >
+                              <Text
+                                numberOfLines={1}
+                                style={[
+                                  styles.filterPillText,
+                                  active && styles.filterPillTextActive,
+                                ]}
+                              >
+                                {sub} ({count})
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+                    ) : null}
+
+                    {/* Sort pills */}
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.pillScroll}
+                      contentContainerStyle={styles.pillScrollContent}
+                    >
+                      <Text style={styles.sortPrefix}>Sort:</Text>
+                      {SORT_OPTIONS.map((opt) => {
+                        const active = sortBy === opt.key;
+                        return (
+                          <Pressable
+                            key={opt.key}
+                            onPress={() => setSortBy(opt.key)}
+                            style={[styles.sortPill, active && styles.sortPillActive]}
+                          >
+                            <Text
+                              numberOfLines={1}
+                              style={[
+                                styles.sortPillText,
+                                active && styles.sortPillTextActive,
+                              ]}
+                            >
+                              {opt.label}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+
+                    {/* Quick selection toolbar */}
+                    <View style={styles.quickSelectBar}>
+                      <Pressable
+                        onPress={handleSelectAllVisible}
+                        disabled={filteredFiles.length === 0 || batchImporting}
+                        style={styles.quickSelectBtn}
+                      >
+                        <Feather
+                          name={allVisibleSelected ? 'check-square' : 'square'}
+                          size={13}
+                          color={colors.accent}
+                        />
+                        <Text style={styles.quickSelectBtnText}>
+                          {allVisibleSelected
+                            ? `Deselect visible (${filteredFiles.length})`
+                            : `Select all (${filteredFiles.length})`}
+                        </Text>
+                      </Pressable>
+
+                      {visibleNewFiles.length > 0 &&
+                      visibleNewFiles.length < filteredFiles.length ? (
+                        <Pressable
+                          onPress={handleSelectAllNewVisible}
+                          disabled={batchImporting}
+                          style={styles.quickSelectBtn}
+                        >
+                          <Text style={styles.quickSelectBtnText}>
+                            Select new ({visibleNewFiles.length})
+                          </Text>
+                        </Pressable>
+                      ) : null}
+
+                      {selectedFiles.length > 0 ? (
+                        <Pressable
+                          onPress={handleClearSelection}
+                          disabled={batchImporting}
+                          style={styles.quickClearBtn}
+                        >
+                          <Text style={styles.quickClearBtnText}>
+                            Clear ({selectedFiles.length})
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  </View>
+                ) : null}
+
                 {scanning ? (
                   <View style={styles.centerPad}>
                     <ActivityIndicator color={colors.accent} />
+                    <Text style={styles.scanProgressText}>
+                      {scanProgress && scanProgress.foldersScanned > 0
+                        ? `Scanning folders (${scanProgress.foldersScanned} checked · ${scanProgress.filesFound} book${scanProgress.filesFound === 1 ? '' : 's'} found)…`
+                        : 'Scanning folder & subfolders…'}
+                    </Text>
                   </View>
                 ) : discoveredFiles.length === 0 ? (
                   <View style={styles.emptyCard}>
@@ -529,15 +1019,24 @@ export function PersonalLibraryImportModal({
                     <Text style={styles.emptyCardBody}>
                       Tap &ldquo;Choose files&rdquo; above to pick individual EPUB, PDF,
                       DOCX, Markdown, HTML, or TXT files — or link a folder to scan all
-                      books inside it.
+                      books inside it and its subfolders.
+                    </Text>
+                  </View>
+                ) : filteredFiles.length === 0 ? (
+                  <View style={styles.emptyCard}>
+                    <Text style={styles.emptyCardTitle}>No matching books</Text>
+                    <Text style={styles.emptyCardBody}>
+                      Try clearing your search or switching the filter pills above.
                     </Text>
                   </View>
                 ) : (
                   <View style={styles.card}>
-                    {discoveredFiles.map((file, idx) => {
+                    {filteredFiles.map((file, idx) => {
                       const isInspecting = inspectingFile === file.uri;
-                      const sourceLabel =
-                        file.source === 'picked'
+                      const isSelected = selectedUris.has(file.uri);
+                      const locationLabel = file.subfolder
+                        ? file.subfolder
+                        : file.source === 'picked'
                           ? 'Selected file'
                           : file.source === 'inbox'
                             ? 'Inbox'
@@ -545,36 +1044,71 @@ export function PersonalLibraryImportModal({
                       return (
                         <View key={file.uri}>
                           {idx > 0 ? <View style={styles.divider} /> : null}
-                          <Pressable
-                            onPress={() => void handleInspectFile(file)}
-                            disabled={inspectingFile !== null}
-                            style={styles.fileRow}
-                          >
-                            <View style={styles.fileBadge}>
-                              <Text style={styles.fileBadgeText}>
-                                {file.format.toUpperCase()}
-                              </Text>
-                            </View>
-                            <View style={styles.flexOne}>
-                              <Text style={styles.fileName} numberOfLines={1}>
-                                {file.filename}
-                              </Text>
-                              <Text style={styles.fileSub}>
-                                {file.sizeBytes > 0 ? `${formatBytes(file.sizeBytes)} · ` : ''}
-                                {sourceLabel}
-                                {file.alreadyImportedBookId ? ' · In Library' : ' · New'}
-                              </Text>
-                            </View>
-                            {isInspecting ? (
-                              <ActivityIndicator size="small" color={colors.accent} />
-                            ) : (
-                              <Feather
-                                name="chevron-right"
-                                size={18}
-                                color={colors.textTertiary}
-                              />
-                            )}
-                          </Pressable>
+                          <View style={styles.fileRow}>
+                            <Pressable
+                              onPress={() => toggleSelectUri(file.uri)}
+                              disabled={batchImporting}
+                              hitSlop={8}
+                              accessibilityRole="checkbox"
+                              accessibilityState={{ checked: isSelected }}
+                              style={[
+                                styles.checkbox,
+                                isSelected && styles.checkboxChecked,
+                              ]}
+                            >
+                              {isSelected ? (
+                                <Feather name="check" size={12} color={colors.surface} />
+                              ) : null}
+                            </Pressable>
+
+                            <Pressable
+                              onPress={() => {
+                                if (selectedUris.size > 0) {
+                                  toggleSelectUri(file.uri);
+                                } else {
+                                  void handleInspectFile(file);
+                                }
+                              }}
+                              disabled={inspectingFile !== null || batchImporting}
+                              style={styles.fileRowMain}
+                            >
+                              <View style={styles.fileBadge}>
+                                <Text style={styles.fileBadgeText}>
+                                  {file.format.toUpperCase()}
+                                </Text>
+                              </View>
+                              <View style={styles.flexOne}>
+                                <Text style={styles.fileName} numberOfLines={1}>
+                                  {file.filename}
+                                </Text>
+                                <Text style={styles.fileSub} numberOfLines={1}>
+                                  {file.sizeBytes > 0
+                                    ? `${formatBytes(file.sizeBytes)} · `
+                                    : ''}
+                                  {locationLabel}
+                                  {file.alreadyImportedBookId ? ' · In Library' : ' · New'}
+                                </Text>
+                              </View>
+                            </Pressable>
+
+                            <Pressable
+                              onPress={() => void handleInspectFile(file)}
+                              disabled={inspectingFile !== null || batchImporting}
+                              hitSlop={8}
+                              accessibilityLabel={`Review ${file.filename}`}
+                              style={styles.inspectChevronBtn}
+                            >
+                              {isInspecting ? (
+                                <ActivityIndicator size="small" color={colors.accent} />
+                              ) : (
+                                <Feather
+                                  name="chevron-right"
+                                  size={18}
+                                  color={colors.textTertiary}
+                                />
+                              )}
+                            </Pressable>
+                          </View>
                         </View>
                       );
                     })}
@@ -885,6 +1419,42 @@ export function PersonalLibraryImportModal({
               </>
             ) : null}
           </ScrollView>
+
+          {step === 'folder' && selectedFiles.length > 0 ? (
+            <View style={styles.selectionFooter}>
+              <View style={styles.selectionFooterLeft}>
+                <Text style={styles.selectionFooterCount}>
+                  {batchImporting && batchProgress
+                    ? `Importing ${batchProgress.done} of ${batchProgress.total}…`
+                    : `${selectedFiles.length} selected`}
+                </Text>
+                {!batchImporting ? (
+                  <Pressable onPress={handleClearSelection} hitSlop={8}>
+                    <Text style={styles.selectionFooterClear}>Clear</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              <Pressable
+                onPress={() => void handleBatchImportFiles(selectedFiles)}
+                disabled={batchImporting}
+                style={[
+                  styles.selectionFooterImportBtn,
+                  batchImporting && styles.disabledBtn,
+                ]}
+              >
+                {batchImporting ? (
+                  <ActivityIndicator size="small" color={colors.surface} />
+                ) : (
+                  <Feather name="download" size={14} color={colors.surface} />
+                )}
+                <Text style={styles.selectionFooterImportText}>
+                  {batchImporting
+                    ? 'Importing…'
+                    : `Import ${selectedFiles.length}`}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -1288,11 +1858,170 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: colors.border,
   },
+  listControls: {
+    gap: spacing.xs + 2,
+  },
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: fontFamilies.sans,
+    fontSize: 14,
+    color: colors.textPrimary,
+    padding: 0,
+  },
+  pillScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  pillScrollContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 3,
+    paddingRight: spacing.md,
+  },
+  pillDivider: {
+    width: 1,
+    height: 18,
+    backgroundColor: colors.border,
+    marginHorizontal: 2,
+  },
+  filterPill: {
+    minHeight: 32,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  filterPillActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  filterPillText: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 12.5,
+    lineHeight: 16,
+    includeFontPadding: false,
+    color: colors.textSecondary,
+  },
+  filterPillTextActive: {
+    color: colors.surface,
+  },
+  sortPrefix: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginRight: 2,
+  },
+  sortPill: {
+    minHeight: 28,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radii.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  sortPillActive: {
+    backgroundColor: '#f3ede2',
+    borderColor: colors.accent,
+  },
+  sortPillText: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 12,
+    lineHeight: 16,
+    includeFontPadding: false,
+    color: colors.textSecondary,
+  },
+  sortPillTextActive: {
+    color: colors.accent,
+  },
+  quickSelectBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+    paddingTop: 2,
+  },
+  quickSelectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radii.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  quickSelectBtnText: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 12,
+    lineHeight: 16,
+    includeFontPadding: false,
+    color: colors.accent,
+  },
+  quickClearBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radii.sm,
+  },
+  quickClearBtnText: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 12,
+    lineHeight: 16,
+    includeFontPadding: false,
+    color: colors.textTertiary,
+  },
+  scanProgressText: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 12.5,
+    color: colors.textTertiary,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
   fileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.xs,
+    gap: spacing.sm,
+    paddingVertical: spacing.xs + 2,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  fileRowMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm + 2,
+  },
+  inspectChevronBtn: {
+    padding: 4,
   },
   fileBadge: {
     width: 44,
@@ -1316,6 +2045,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textTertiary,
     marginTop: 2,
+  },
+  selectionFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    paddingTop: spacing.sm + 2,
+    paddingBottom: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  selectionFooterLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm + 2,
+  },
+  selectionFooterCount: {
+    fontFamily: fontFamilies.sansSemibold,
+    fontSize: 13.5,
+    color: colors.textPrimary,
+  },
+  selectionFooterClear: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 13,
+    color: colors.textTertiary,
+  },
+  selectionFooterImportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.accent,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: radii.md,
+  },
+  selectionFooterImportText: {
+    fontFamily: fontFamilies.sansSemibold,
+    fontSize: 14,
+    color: colors.surface,
   },
   statsGrid: {
     flexDirection: 'row',

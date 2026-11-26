@@ -66,8 +66,15 @@ export interface DiscoveredFolderFile {
   filename: string;
   format: PersonalSourceFormat;
   source: 'picked' | 'device_folder' | 'inbox';
+  /** Relative subfolder path inside the connected folder (null if root, picked, or inbox). */
+  subfolder: string | null;
   sizeBytes: number;
   alreadyImportedBookId: string | null;
+}
+
+export interface ScanProgress {
+  foldersScanned: number;
+  filesFound: number;
 }
 
 export interface InspectedDocument {
@@ -95,6 +102,8 @@ export interface PersonalLibraryState {
   pickedFiles: DiscoveredFolderFile[];
   discoveredFiles: DiscoveredFolderFile[];
   scanning: boolean;
+  scanProgress: ScanProgress | null;
+  scanNotice: string | null;
   scanError: string | null;
   works: PersonalWorkMetadata[];
   embeddingActiveBookId: string | null;
@@ -134,6 +143,11 @@ export interface PersonalLibraryState {
 
 let embeddingLoopRunning = false;
 let embeddingPauseFlag = false;
+let activeScanRunId = 0;
+
+const MAX_SCAN_DEPTH = 6;
+const MAX_SCAN_FOLDERS = 250;
+const MAX_SCAN_FILES = 1000;
 
 async function ensurePersonalDirs(): Promise<void> {
   for (const dir of [PERSONAL_LIBRARY_ROOT, PERSONAL_INBOX_DIR, PERSONAL_FILES_DIR]) {
@@ -310,6 +324,8 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
   pickedFiles: [],
   discoveredFiles: [],
   scanning: false,
+  scanProgress: null,
+  scanNotice: null,
   scanError: null,
   works: [],
   embeddingActiveBookId: null,
@@ -422,6 +438,7 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           filename,
           format,
           source: 'picked',
+          subfolder: null,
           sizeBytes,
           alreadyImportedBookId: opaque
             ? null
@@ -516,7 +533,13 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
   },
 
   async scanFolders() {
-    set({ scanning: true, scanError: null });
+    const runId = ++activeScanRunId;
+    set({
+      scanning: true,
+      scanProgress: { foldersScanned: 0, filesFound: 0 },
+      scanNotice: null,
+      scanError: null,
+    });
     await ensurePersonalDirs();
     const works = await getPersonalWorks();
     const importedByName = new Map<string, string>();
@@ -539,84 +562,177 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
       });
     }
 
-    // 1. Scan connected folder (device storage, Google Drive, iCloud, etc.)
+    // 1. Recursively scan connected folder & subfolders (device storage, Google Drive, iCloud, etc.)
     const folderUri = get().connectedFolderUri;
+    let scanNotice: string | null = null;
     if (folderUri) {
       try {
-        const dir = new ExpoDirectory(folderUri);
-        const entries = dir.list();
-        const hasSubdirs = entries.some((e) => e instanceof ExpoDirectory);
-        const hasOpaqueEntry = entries.some(
-          (e) => e instanceof ExpoFile && isOpaqueProviderName(extractFilenameFromUri(e.uri))
-        );
+        interface QueueItem {
+          dir: ExpoDirectory;
+          relativePath: string;
+          depth: number;
+        }
+        const queue: QueueItem[] = [
+          { dir: new ExpoDirectory(folderUri), relativePath: '', depth: 0 },
+        ];
+        const visitedDirUris = new Set<string>([folderUri]);
+        let foldersScanned = 0;
+        let folderFilesFound = 0;
+        let fallbackFileIdx = 1;
+        let fallbackFolderIdx = 1;
+        let hitLimit = false;
+        let failedSubfolders = 0;
 
-        // On cloud providers like Google Drive, entry URIs are opaque IDs, while
-        // `dir.info().files` queries Android DocumentFile.name for real display names.
-        // Only call `dir.info()` when flat (no subdirs) so its size calc never recurses.
-        let resolvedNames: string[] | null = null;
-        if (hasOpaqueEntry && !hasSubdirs && entries.length > 0 && entries.length <= 100) {
-          try {
-            const info = dir.info();
-            if (Array.isArray(info.files) && info.files.length === entries.length) {
-              resolvedNames = info.files;
-            }
-          } catch {
-            // Fall back to MIME detection + clean placeholder names
+        while (queue.length > 0) {
+          if (activeScanRunId !== runId) {
+            return get().discoveredFiles;
           }
+          if (foldersScanned >= MAX_SCAN_FOLDERS || folderFilesFound >= MAX_SCAN_FILES) {
+            hitLimit = true;
+            break;
+          }
+
+          const current = queue.shift()!;
+          let entries: (ExpoDirectory | ExpoFile)[];
+          try {
+            entries = current.dir.list();
+          } catch (dirErr) {
+            // Root folder failure should surface clearly; unreadable subfolder is non-fatal
+            if (current.depth === 0) {
+              throw dirErr;
+            }
+            failedSubfolders++;
+            continue;
+          }
+
+          foldersScanned++;
+          const hasSubdirs = entries.some((e) => e instanceof ExpoDirectory);
+          const hasOpaqueEntry = entries.some(
+            (e) =>
+              e instanceof ExpoFile &&
+              isOpaqueProviderName(extractFilenameFromUri(e.uri))
+          );
+
+          // On cloud providers like Google Drive, entry URIs are opaque IDs, while
+          // `dir.info().files` queries Android DocumentFile.name for real display names.
+          // Calling it only on leaf folders (no subdirs) keeps it shallow & fast.
+          let resolvedNames: string[] | null = null;
+          if (hasOpaqueEntry && !hasSubdirs && entries.length > 0 && entries.length <= 100) {
+            try {
+              const info = current.dir.info();
+              if (Array.isArray(info.files) && info.files.length === entries.length) {
+                resolvedNames = info.files;
+              }
+            } catch {
+              // Fall back to MIME detection + clean placeholder names
+            }
+          }
+
+          for (let i = 0; i < entries.length; i++) {
+            const entry = entries[i];
+
+            if (entry instanceof ExpoDirectory) {
+              if (
+                current.depth < MAX_SCAN_DEPTH &&
+                !visitedDirUris.has(entry.uri) &&
+                foldersScanned + queue.length < MAX_SCAN_FOLDERS
+              ) {
+                visitedDirUris.add(entry.uri);
+                const resolvedDirName = resolvedNames?.[i]?.trim() || '';
+                const uriLeaf = extractFilenameFromUri(entry.uri);
+                const folderName =
+                  resolvedDirName && !isOpaqueProviderName(resolvedDirName)
+                    ? resolvedDirName
+                    : uriLeaf && !isOpaqueProviderName(uriLeaf)
+                      ? uriLeaf
+                      : `Subfolder ${fallbackFolderIdx++}`;
+                const nextRelative = current.relativePath
+                  ? `${current.relativePath}/${folderName}`
+                  : folderName;
+                queue.push({
+                  dir: entry,
+                  relativePath: nextRelative,
+                  depth: current.depth + 1,
+                });
+              }
+              continue;
+            }
+
+            if (folderFilesFound >= MAX_SCAN_FILES) {
+              hitLimit = true;
+              break;
+            }
+
+            const uri = entry.uri;
+            if (seenUris.has(uri)) continue;
+
+            const resolvedName = resolvedNames?.[i]?.trim() || '';
+            const uriLeaf = extractFilenameFromUri(uri);
+            const candidateName =
+              resolvedName && !isOpaqueProviderName(resolvedName)
+                ? resolvedName
+                : !isOpaqueProviderName(uriLeaf)
+                  ? uriLeaf
+                  : '';
+
+            let mimeType: string | null = null;
+            try {
+              mimeType = entry.type ?? null;
+            } catch {
+              mimeType = null;
+            }
+
+            const format =
+              (candidateName ? detectPersonalFormat(candidateName) : null) ??
+              detectPersonalFormatFromMime(mimeType);
+            if (!format) continue;
+
+            seenUris.add(uri);
+            folderFilesFound++;
+            const filename =
+              candidateName || makeFallbackFilename(uri, format, fallbackFileIdx++);
+
+            let sizeBytes = 0;
+            try {
+              if (typeof entry.size === 'number' && entry.size > 0) {
+                sizeBytes = entry.size;
+              }
+            } catch {
+              // Cloud SAF URIs may omit size until read
+            }
+
+            discovered.push({
+              uri,
+              filename,
+              format,
+              source: 'device_folder',
+              subfolder: current.relativePath || null,
+              sizeBytes,
+              alreadyImportedBookId: candidateName
+                ? importedByName.get(filename.toLowerCase()) ?? null
+                : null,
+            });
+          }
+
+          // Update live scan progress & yield to UI thread between folders
+          set({
+            scanProgress: {
+              foldersScanned,
+              filesFound: folderFilesFound,
+            },
+          });
+          await new Promise((resolve) => setTimeout(resolve, 0));
         }
 
-        let fallbackIdx = 1;
-        for (let i = 0; i < entries.length; i++) {
-          const entry = entries[i];
-          if (!(entry instanceof ExpoFile)) continue;
-          const uri = entry.uri;
-          if (seenUris.has(uri)) continue;
-
-          const resolvedName = resolvedNames?.[i]?.trim() || '';
-          const uriLeaf = extractFilenameFromUri(uri);
-          const candidateName =
-            resolvedName && !isOpaqueProviderName(resolvedName)
-              ? resolvedName
-              : !isOpaqueProviderName(uriLeaf)
-                ? uriLeaf
-                : '';
-
-          let mimeType: string | null = null;
-          try {
-            mimeType = entry.type ?? null;
-          } catch {
-            mimeType = null;
-          }
-
-          const format =
-            (candidateName ? detectPersonalFormat(candidateName) : null) ??
-            detectPersonalFormatFromMime(mimeType);
-          if (!format) continue;
-
-          seenUris.add(uri);
-          const filename = candidateName || makeFallbackFilename(uri, format, fallbackIdx++);
-
-          let sizeBytes = 0;
-          try {
-            if (typeof entry.size === 'number' && entry.size > 0) {
-              sizeBytes = entry.size;
-            }
-          } catch {
-            // Cloud SAF URIs may omit size until read
-          }
-
-          discovered.push({
-            uri,
-            filename,
-            format,
-            source: 'device_folder',
-            sizeBytes,
-            alreadyImportedBookId: candidateName
-              ? importedByName.get(filename.toLowerCase()) ?? null
-              : null,
-          });
+        if (hitLimit) {
+          scanNotice = `Showing the first ${folderFilesFound} books across ${foldersScanned} folders. For massive cloud trees, link a more specific subfolder or use "Choose files".`;
+        } else if (failedSubfolders > 0) {
+          scanNotice = `Scanned ${foldersScanned} folder${foldersScanned === 1 ? '' : 's'} (${failedSubfolders} subfolder${failedSubfolders === 1 ? '' : 's'} could not be opened).`;
         }
       } catch (err) {
+        if (activeScanRunId !== runId) {
+          return get().discoveredFiles;
+        }
         const rawMsg = err instanceof Error ? err.message : '';
         const provider = providerLabelFromUri(folderUri);
         set({
@@ -627,6 +743,10 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
               : 'Could not read connected folder. Try reconnecting it.',
         });
       }
+    }
+
+    if (activeScanRunId !== runId) {
+      return get().discoveredFiles;
     }
 
     // 2. Scan managed Resonance Inbox folder
@@ -651,6 +771,7 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           filename: name,
           format,
           source: 'inbox',
+          subfolder: null,
           sizeBytes,
           alreadyImportedBookId: importedByName.get(name.toLowerCase()) ?? null,
         });
@@ -660,7 +781,13 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
     }
 
     const sorted = sortDiscoveredFiles(discovered);
-    set({ discoveredFiles: sorted, works, scanning: false });
+    set({
+      discoveredFiles: sorted,
+      works,
+      scanning: false,
+      scanProgress: null,
+      scanNotice,
+    });
     return sorted;
   },
 
@@ -733,9 +860,19 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
       chunks: inspected.processed.chunks,
     });
 
-    // Mark the picked file as imported so it flips from "New" to "In Library"
+    // Mark the imported file in-memory so it flips from "New" to "In Library"
+    // immediately without re-walking cloud subfolders on every book.
     set((s) => ({
       pickedFiles: s.pickedFiles.map((f) =>
+        f.uri === inspected.file.uri
+          ? {
+              ...f,
+              filename: inspected.file.filename,
+              alreadyImportedBookId: saved.bookId,
+            }
+          : f
+      ),
+      discoveredFiles: s.discoveredFiles.map((f) =>
         f.uri === inspected.file.uri
           ? {
               ...f,
@@ -748,7 +885,6 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
 
     clearLibraryVectors();
     await get().refreshWorks();
-    await get().scanFolders();
 
     // Kick off on-device embedding queue in background (gracefully stays pending if engine not ready)
     void get().processEmbeddingQueue();
@@ -813,9 +949,16 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
   async removeWork(bookId) {
     const ok = await deletePersonalWork(bookId);
     if (ok) {
+      set((s) => ({
+        pickedFiles: s.pickedFiles.map((f) =>
+          f.alreadyImportedBookId === bookId ? { ...f, alreadyImportedBookId: null } : f
+        ),
+        discoveredFiles: s.discoveredFiles.map((f) =>
+          f.alreadyImportedBookId === bookId ? { ...f, alreadyImportedBookId: null } : f
+        ),
+      }));
       clearLibraryVectors();
       await get().refreshWorks();
-      await get().scanFolders();
     }
     return ok;
   },
