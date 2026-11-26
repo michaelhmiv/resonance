@@ -2,8 +2,8 @@
  * ReadingView v2 — Resonance's book-grade contemplative reading surface.
  *
  * Capabilities:
- *   - 4 curated Paper Themes (Paper / Sepia / Dusk / Night) + in-reader `Aa`
- *     typography sheet (typeface, 14–28px size, line spacing, margins, alignment)
+ *   - In-reader `Aa` typography sheet (typeface, 14–28px size, line spacing,
+ *     margins, alignment) on Resonance's signature warm cream paper
  *   - Rich block formatting (chapter headings, paragraphs, blockquotes, poetry,
  *     epigraphs, lists, ornamental dividers, inline tappable Scripture refs)
  *   - Scripture Reader Flow vs. Verse-by-Verse Study mode
@@ -45,7 +45,7 @@ import {
   colors,
   fontFamilies,
   radii,
-  readerThemes,
+  readerPalette,
   spacing,
   withAlpha,
   type ReaderThemePalette,
@@ -456,9 +456,9 @@ export function ReadingView({
   const [libraryBook, setLibraryBook] = useState<LibraryBook | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Reading preferences & paper theme
+  // Reading preferences (single signature warm cream paper palette)
   const [prefs, setPrefs] = useState<ReaderPreferences>(DEFAULT_READER_PREFERENCES);
-  const theme: ReaderThemePalette = readerThemes[prefs.theme] ?? readerThemes.cream;
+  const theme: ReaderThemePalette = readerPalette;
 
   // Annotations, cross-refs, bookmarks
   const [highlights, setHighlights] = useState<Highlight[]>([]);
@@ -1646,7 +1646,7 @@ export function ReadingView({
               hitSlop={6}
               style={styles.headerIconBtn}
               accessibilityRole="button"
-              accessibilityLabel="Typography and paper appearance"
+              accessibilityLabel="Reading typography"
             >
               <TypeIcon size={18} color={theme.textSecondary} />
             </Pressable>
@@ -2090,7 +2090,7 @@ export function ReadingView({
         onClose={() => setDrawerState((prev) => ({ ...prev, open: false }))}
       />
 
-      {/* ── Typography & Paper Theme Sheet (`Aa`) ──────────────────────── */}
+      {/* ── Reading Typography Sheet (`Aa`) ────────────────────────────── */}
       <ReaderAppearanceSheet
         visible={appearanceOpen}
         prefs={prefs}

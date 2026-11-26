@@ -6,7 +6,6 @@
  *   - Color selector (Gold / Sage / Rose / Slate)
  *   - Tag chips + quick-add tags (`#prayer`, `#insight`, `#question`, `#theology`, `#practice`)
  *   - Subtle Resonance indexing cue ("Indexed into Resonance memory")
- *   - Paper-theme aware (adapts cleanly to Paper, Sepia, Dusk, and Night themes)
  */
 
 import { type ReactNode, useState, useEffect } from 'react';
@@ -26,7 +25,7 @@ import {
   fontFamilies,
   highlightColorMeta,
   radii,
-  readerThemes,
+  readerPalette,
   spacing,
   withAlpha,
   type ReaderThemePalette,
@@ -47,7 +46,7 @@ export interface NoteModalProps {
   initialTags?: string[];
   /** Optional initial highlight color. */
   initialColor?: string;
-  /** Optional reader paper theme. */
+  /** Optional reader palette override. */
   theme?: ReaderThemePalette;
   /** True when editing an existing note (shows delete). */
   isEdit: boolean;
@@ -63,7 +62,7 @@ export function NoteModal({
   initialText,
   initialTags = [],
   initialColor = colors.highlightGold,
-  theme = readerThemes.cream,
+  theme = readerPalette,
   isEdit,
   onSave,
   onDelete,

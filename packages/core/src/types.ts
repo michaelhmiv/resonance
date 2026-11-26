@@ -829,7 +829,6 @@ export type ReaderAlignId = 'left' | 'justify';
 export type ScriptureDisplayMode = 'flow' | 'study';
 
 export interface ReaderPreferences {
-  theme: 'cream' | 'parchment' | 'dusk' | 'night';
   fontFamily: ReaderFontId;
   fontSize: number; // 14..28
   lineHeightMultiplier: number; // 1.4..2.0

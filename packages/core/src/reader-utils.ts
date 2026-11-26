@@ -31,7 +31,6 @@ import type {
 // ── Default Reader Preferences ──────────────────────────────────────────────
 
 export const DEFAULT_READER_PREFERENCES: ReaderPreferences = {
-  theme: 'cream',
   fontFamily: 'garamond',
   fontSize: 18,
   lineHeightMultiplier: 1.65,
@@ -52,14 +51,6 @@ export function parseReaderPreferences(
   if (!raw) return base;
   try {
     const parsed = JSON.parse(raw) as Partial<ReaderPreferences>;
-    if (
-      parsed.theme === 'cream' ||
-      parsed.theme === 'parchment' ||
-      parsed.theme === 'dusk' ||
-      parsed.theme === 'night'
-    ) {
-      base.theme = parsed.theme;
-    }
     if (
       parsed.fontFamily === 'garamond' ||
       parsed.fontFamily === 'serif' ||

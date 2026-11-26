@@ -1,7 +1,8 @@
-Resonance — Responsive Add to Library & Catalog Sheets (Swipe-Down + Non-Blocking Scan).
+Resonance — Reader v2 Overhaul (Typography, Chapters, In-Book Search, Annotations & Highlight Embeddings).
 
 What's in this build:
-• Fixes non-responsive "Add to Your Library" sheet: replaces synchronous Google Drive/SAF header peeking and tight folder-scan loops with async native reads + cooperative UI frame yields so the JS thread never locks up
-• Adds interactive swipe-down-to-dismiss on the handle and header bar, tap-outside backdrop dismissal, and larger circular Close (×) buttons across Add to Library, Library Catalog, and Offline Engine sheets
-• Unmounts closed sheets cleanly, uses granular store selectors, and paginates large discovered book lists (40 at a time) so opening, scrolling, and closing stay instant even with hundreds of cloud books
-• Closing Add to Library stops any in-progress folder scan immediately while keeping active book imports, catalog downloads, and embeddings running in the background
+• Book-grade formatting & typography: reconstructs chapter headings, paragraphs, blockquotes, lists, dividers, and tappable Scripture references, with an in-reader `Aa` typography sheet (typeface, 14–28px text size, line spacing, margins, alignment) and Scripture Reader Flow vs. Verse-by-Verse Study mode
+• Real Chapters, TOC Drawer & Resume Position: native EPUB3/EPUB2 chapter outlines plus inferred book/chapter hierarchy in a tabbed Book Drawer (Contents · Notes · Bookmarks), seamless continuous vertical scroll with live chapter indicator, reading progress, and exact per-book position resume
+• In-Book Search & Upgraded Global Search: search inside the current book in Exact or Meaning (semantic) mode with chapter-grouped hits and match highlights; global Search adds Smart Reference Jump ("Rom 8:28", "Ps 23"), Keyword/Hybrid/Meaning modes, and a dedicated Highlights & Notes scope
+• Zero-mode Highlighting, Margin Notes & Commonplace Book: tap any paragraph or verse to highlight with word/sentence-snapping range handles, 4 semantic colors (Insight / Practice / Question / Theology), Fill or Underline styles, collapsible margin notes with #tags, and a new Highlights & Notes tab with tag/color filters and Markdown export
+• Highlights & Notes Wired into Resonance: highlights and margin notes are embedded on-device (with background backfill) so your own annotations surface in Journal Resonance cards and the new bidirectional `Echoes ✦` sheet right inside the reader

@@ -1,9 +1,8 @@
 /**
- * ReaderAppearanceSheet — in-reader `Aa` typography & paper theme bottom sheet.
+ * ReaderAppearanceSheet — in-reader `Aa` typography bottom sheet.
  *
- * Lets readers tune Paper Theme (Paper / Sepia / Dusk / Night), typeface,
- * font size (14–28px), line spacing, margins, alignment, Scripture Flow vs.
- * Study mode, and Margin Echoes without leaving the page.
+ * Lets readers tune typeface, font size (14–28px), line spacing, margins,
+ * alignment, and Scripture Flow vs. Study mode without leaving the page.
  */
 
 import { type ReactNode } from 'react';
@@ -11,9 +10,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import {
   fontFamilies,
   radii,
-  readerThemes,
   spacing,
-  type ReaderThemeId,
   type ReaderThemePalette,
 } from '@resonance/theme';
 import type {
@@ -33,8 +30,6 @@ export interface ReaderAppearanceSheetProps {
   onChange: (patch: Partial<ReaderPreferences>) => void;
   onClose: () => void;
 }
-
-const THEME_ORDER: ReaderThemeId[] = ['cream', 'parchment', 'dusk', 'night'];
 
 const FONT_OPTIONS: Array<{ id: ReaderFontId; label: string; sampleFamily: string }> = [
   { id: 'garamond', label: 'Garamond', sampleFamily: fontFamilies.serif },
@@ -65,7 +60,7 @@ export function ReaderAppearanceSheet({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <Pressable style={styles.dismissArea} onPress={onClose} accessibilityLabel="Close appearance settings" />
+        <Pressable style={styles.dismissArea} onPress={onClose} accessibilityLabel="Close typography settings" />
         <View
           style={[
             styles.sheet,
@@ -75,7 +70,7 @@ export function ReaderAppearanceSheet({
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: theme.border }]}>
             <Text style={[styles.title, { color: theme.textPrimary }]}>
-              Reading Appearance
+              Reading Typography
             </Text>
             <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Close">
               <XIcon size={18} color={theme.textSecondary} />
@@ -83,38 +78,6 @@ export function ReaderAppearanceSheet({
           </View>
 
           <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-            {/* Paper Theme Swatches */}
-            <View style={styles.section}>
-              <Text style={[styles.label, { color: theme.textTertiary }]}>Paper</Text>
-              <View style={styles.themeRow}>
-                {THEME_ORDER.map((tid) => {
-                  const pal = readerThemes[tid];
-                  const active = prefs.theme === tid;
-                  return (
-                    <Pressable
-                      key={tid}
-                      onPress={() => onChange({ theme: tid })}
-                      style={[
-                        styles.themeSwatch,
-                        {
-                          backgroundColor: pal.background,
-                          borderColor: active ? theme.accent : pal.border,
-                          borderWidth: active ? 2 : 1,
-                        },
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                    >
-                      <Text style={[styles.themeAa, { color: pal.textPrimary }]}>Aa</Text>
-                      <Text style={[styles.themeLabel, { color: pal.textSecondary }]}>
-                        {pal.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-
             {/* Font Size Stepper */}
             <View style={styles.section}>
               <View style={styles.labelRow}>
@@ -397,25 +360,6 @@ const styles = StyleSheet.create({
   valueHint: {
     fontFamily: fontFamilies.sansMedium,
     fontSize: 12,
-  },
-  themeRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  themeSwatch: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: radii.md,
-    alignItems: 'center',
-    gap: 2,
-  },
-  themeAa: {
-    fontFamily: fontFamilies.serifSemibold,
-    fontSize: 19,
-  },
-  themeLabel: {
-    fontFamily: fontFamilies.sansMedium,
-    fontSize: 11,
   },
   stepperRow: {
     flexDirection: 'row',
