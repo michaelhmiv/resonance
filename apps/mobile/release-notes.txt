@@ -1,7 +1,7 @@
-Resonance — Personal Library Individual Files & Cloud Folder Import build.
+Resonance — Recursive Subfolder Scanning, Import Search/Filter/Select & Catalog UI Fix.
 
 What's in this build:
-• Added individual & multi-file import ("Choose files") in Add to Your Library — pick one or more EPUB, PDF, DOCX, HTML, Markdown, or TXT books directly from your phone, Google Drive, iCloud Drive, or Downloads (single picks jump straight to metadata review; multi-picks stage for 1-tap batch import)
-• Fixed Google Drive / cloud folder import crash by migrating Personal Library folder scanning and file reading off expo-file-system/legacy SAF to modern expo-file-system v56 APIs
-• Added MIME-type & magic-byte format detection, clean Google Drive folder labels, and metadata-backed title resolution for opaque cloud URIs
-• Everything remains 100% local after import — files are copied, extracted, and embedded on-device
+• Recursive subfolder scanning for Connected Folders (device storage, Google Drive, iCloud) — discovers books nested inside subfolders with live scan progress and subfolder labels
+• Search, filter (All / New / In Library, file type, subfolder), sort (New first, A→Z, Z→A, Folder, Format, Largest), checkboxes, Select all / Select new, and a sticky batch Import footer in Add to Your Library
+• Fixed pinched / vertically clipped filter pills ("Downloaded", "Church Fathers", etc.) at the top of the Browse Library Catalog sheet, plus added a clear-search button
+• Individual & multi-file import ("Choose files") remains 100% local after import
