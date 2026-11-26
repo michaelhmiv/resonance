@@ -12,7 +12,6 @@
 import {
   Directory as ExpoDirectory,
   File as ExpoFile,
-  FileMode,
 } from 'expo-file-system';
 import * as FileSystem from 'expo-file-system/legacy';
 import { create } from 'zustand';
@@ -141,6 +140,7 @@ export interface PersonalLibraryState {
   connectDeviceFolder: () => Promise<boolean>;
   disconnectDeviceFolder: () => Promise<void>;
   scanFolders: () => Promise<DiscoveredFolderFile[]>;
+  cancelScan: () => void;
   inspectFile: (
     file: DiscoveredFolderFile,
     options?: { onStage?: (stage: 'downloading' | 'extracting') => void }
@@ -179,8 +179,8 @@ let batchLoopRunning = false;
 let batchCancelFlag = false;
 let activeScanRunId = 0;
 
-function yieldToUi(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
+function yieldToUi(ms = 20): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 const MAX_SCAN_DEPTH = 6;
@@ -324,7 +324,8 @@ function makePersonalBookId(titleOrFilename: string): string {
 }
 
 const READ_TIMEOUT_MS = 45_000;
-const MAX_HEADER_PEEKS_PER_SCAN = 80;
+const HEADER_PEEK_TIMEOUT_MS = 3_500;
+const MAX_HEADER_PEEKS_PER_SCAN = 30;
 
 function normalizeSafDirUri(uri: string): string {
   // Android SAF `content://` tree/document URIs break if Expo appends a trailing `/`,
@@ -347,18 +348,28 @@ function isGenericBinaryMime(mimeType: string | null | undefined): boolean {
   );
 }
 
-function peekHeaderFormat(entry: ExpoFile): PersonalSourceFormat | null {
+/**
+ * Non-blocking async 256-byte header peek on Android/iOS native I/O thread.
+ * Never blocks the React Native JS thread (unlike synchronous JSI `FileHandle.readBytes`).
+ */
+async function peekHeaderFormatAsync(uri: string): Promise<PersonalSourceFormat | null> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
   try {
-    const handle = entry.open(FileMode.ReadOnly);
-    try {
-      const header = handle.readBytes(256);
-      const bytes = header instanceof Uint8Array ? header : new Uint8Array(header);
-      return detectPersonalFormatFromHeaderBytes(bytes);
-    } finally {
-      handle.close();
-    }
+    const timeoutPromise = new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), HEADER_PEEK_TIMEOUT_MS);
+    });
+    const readPromise = FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+      position: 0,
+      length: 256,
+    })
+      .then((b64) => detectPersonalFormatFromHeaderBytes(base64ToBytes(b64)))
+      .catch(() => null);
+    return await Promise.race([readPromise, timeoutPromise]);
   } catch {
     return null;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -637,6 +648,13 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
     await get().scanFolders();
   },
 
+  cancelScan() {
+    activeScanRunId++;
+    if (get().scanning) {
+      set({ scanning: false, scanProgress: null });
+    }
+  },
+
   async scanFolders() {
     const runId = ++activeScanRunId;
     set({
@@ -646,7 +664,9 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
       scanError: null,
     });
     await ensurePersonalDirs();
+    if (activeScanRunId !== runId) return get().discoveredFiles;
     const works = await getPersonalWorks();
+    if (activeScanRunId !== runId) return get().discoveredFiles;
     const importedByName = new Map<string, string>();
     for (const w of works) {
       importedByName.set(w.sourceFilename.toLowerCase(), w.bookId);
@@ -690,6 +710,7 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
         let skippedGoogleDocs = 0;
         let hitLimit = false;
         let failedSubfolders = 0;
+        let lastProgressAt = 0;
 
         while (queue.length > 0) {
           if (activeScanRunId !== runId) {
@@ -698,6 +719,12 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           if (foldersScanned >= MAX_SCAN_FOLDERS || folderFilesFound >= MAX_SCAN_FILES) {
             hitLimit = true;
             break;
+          }
+
+          // Yield a full frame before synchronous directory listing so touch events never freeze
+          await yieldToUi(24);
+          if (activeScanRunId !== runId) {
+            return get().discoveredFiles;
           }
 
           const current = queue.shift()!;
@@ -726,6 +753,10 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           // Calling it only on leaf folders (no subdirs) keeps it shallow & fast.
           let resolvedNames: string[] | null = null;
           if (hasOpaqueEntry && !hasSubdirs && entries.length > 0 && entries.length <= 150) {
+            await yieldToUi(20);
+            if (activeScanRunId !== runId) {
+              return get().discoveredFiles;
+            }
             try {
               const info = current.dir.info();
               if (Array.isArray(info.files) && info.files.length === entries.length) {
@@ -737,6 +768,14 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           }
 
           for (let i = 0; i < entries.length; i++) {
+            // Yield cooperatively every 4 entries so Close / Swipe / Back taps fire immediately
+            if (i > 0 && i % 4 === 0) {
+              await yieldToUi(16);
+              if (activeScanRunId !== runId) {
+                return get().discoveredFiles;
+              }
+            }
+
             const entry = entries[i];
 
             if (entry instanceof ExpoDirectory) {
@@ -785,26 +824,31 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
                   ? uriLeaf
                   : '';
 
+            // Fast path: if filename already identifies the format, skip synchronous SAF `entry.type` IPC!
+            let format: PersonalSourceFormat | null = candidateName
+              ? detectPersonalFormat(candidateName)
+              : null;
+
             let mimeType: string | null = null;
-            try {
-              mimeType = entry.type ?? null;
-            } catch {
-              mimeType = null;
-            }
-
-            if (mimeType?.toLowerCase().startsWith('application/vnd.google-apps.')) {
-              if (mimeType.toLowerCase() === 'application/vnd.google-apps.document') {
-                skippedGoogleDocs++;
+            if (!format) {
+              try {
+                mimeType = entry.type ?? null;
+              } catch {
+                mimeType = null;
               }
-              continue;
-            }
 
-            let format =
-              (candidateName ? detectPersonalFormat(candidateName) : null) ??
-              detectPersonalFormatFromMime(mimeType);
+              if (mimeType?.toLowerCase().startsWith('application/vnd.google-apps.')) {
+                if (mimeType.toLowerCase() === 'application/vnd.google-apps.document') {
+                  skippedGoogleDocs++;
+                }
+                continue;
+              }
+
+              format = detectPersonalFormatFromMime(mimeType);
+            }
 
             // Google Drive frequently reports `.epub` and `.md` as `application/octet-stream`
-            // or `application/zip`. Peek the first 256 bytes to catch them cleanly.
+            // or `application/zip`. Peek the first 256 bytes ASYNCHRONOUSLY so JS never freezes.
             if (
               !format &&
               !candidateName &&
@@ -812,7 +856,10 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
               headerPeeksUsed < MAX_HEADER_PEEKS_PER_SCAN
             ) {
               headerPeeksUsed++;
-              format = peekHeaderFormat(entry);
+              format = await peekHeaderFormatAsync(uri);
+              if (activeScanRunId !== runId) {
+                return get().discoveredFiles;
+              }
             }
 
             if (!format) continue;
@@ -822,13 +869,17 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
             const filename =
               candidateName || makeFallbackFilename(uri, format, fallbackFileIdx++);
 
+            // Skip synchronous `entry.size` IPC on Android SAF `content://` URIs during walk
+            // (exact byte size is read asynchronously during inspect/import).
             let sizeBytes = 0;
-            try {
-              if (typeof entry.size === 'number' && entry.size > 0) {
-                sizeBytes = entry.size;
+            if (!uri.startsWith('content://')) {
+              try {
+                if (typeof entry.size === 'number' && entry.size > 0) {
+                  sizeBytes = entry.size;
+                }
+              } catch {
+                // ignore
               }
-            } catch {
-              // Cloud SAF URIs may omit size until read
             }
 
             discovered.push({
@@ -844,14 +895,18 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
             });
           }
 
-          // Update live scan progress & yield to UI thread between folders
-          set({
-            scanProgress: {
-              foldersScanned,
-              filesFound: folderFilesFound,
-            },
-          });
-          await new Promise((resolve) => setTimeout(resolve, 0));
+          // Throttle progress updates to at most every 250ms
+          const now = Date.now();
+          if (now - lastProgressAt >= 250 || queue.length === 0) {
+            lastProgressAt = now;
+            set({
+              scanProgress: {
+                foldersScanned,
+                filesFound: folderFilesFound,
+              },
+            });
+          }
+          await yieldToUi(20);
         }
 
         const notices: string[] = [];
@@ -921,6 +976,10 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
       // non-fatal
     }
 
+    if (activeScanRunId !== runId) {
+      return get().discoveredFiles;
+    }
+
     const sorted = sortDiscoveredFiles(discovered);
     set({
       discoveredFiles: sorted,
@@ -937,12 +996,16 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
     options?.onStage?.('downloading');
     const rawBytes = await readUriBytes(file.uri);
     options?.onStage?.('extracting');
-    // Yield a frame so progress UI repaints before synchronous parsing runs
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Yield a full frame so touch events & progress UI paint before synchronous parsing
+    await yieldToUi(24);
 
     const fileHash = computeContentFingerprint(rawBytes);
     const duplicateWork = await findPersonalWorkByHash(fileHash);
+    await yieldToUi(24);
+
     const extraction = extractDocumentFromBytes(rawBytes, file.filename, file.format);
+    await yieldToUi(24);
+
     const processed = processPersonalDocument(extraction);
 
     // If the source provider gave an opaque URI with a generic placeholder name,
@@ -977,7 +1040,8 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
     const ext = inspected.file.format;
     const localFilePath = `${PERSONAL_FILES_DIR}${bookId}.${ext}`;
 
-    // Save a local managed copy natively (fast Uint8Array write, no JS base64 loop)
+    // Yield before/after synchronous native file write so touch events stay responsive
+    await yieldToUi(16);
     try {
       const destFile = new ExpoFile(localFilePath);
       destFile.write(inspected.rawBytes);
@@ -992,6 +1056,7 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
         // Non-fatal: SQLite already holds the extracted passages
       }
     }
+    await yieldToUi(16);
 
     const saved = await savePersonalWork({
       bookId,

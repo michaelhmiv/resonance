@@ -13,7 +13,6 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -30,6 +29,7 @@ import type {
 } from '@resonance/core';
 import { useOfflineEngineStore } from '../packages/offlineEngineManager';
 import { formatBytes } from '../db/queries/settingsQueries';
+import { BottomSheetModal } from './BottomSheetModal';
 
 interface LibraryCatalogModalProps {
   visible: boolean;
@@ -40,25 +40,28 @@ interface LibraryCatalogModalProps {
 
 type FilterKey = 'all' | 'downloaded' | CatalogCollectionId;
 
-export function LibraryCatalogModal({
+export function LibraryCatalogModal(props: LibraryCatalogModalProps): ReactNode {
+  if (!props.visible) return null;
+  return <LibraryCatalogModalInner {...props} />;
+}
+
+function LibraryCatalogModalInner({
   visible,
   onClose,
   onOpenBook,
 }: LibraryCatalogModalProps): ReactNode {
-  const {
-    corpusManifest,
-    manifestSyncing,
-    installedWorkIds,
-    activeCatalogDownload,
-    catalogQueueIds,
-    catalogError,
-    syncCorpusManifest,
-    downloadCatalogWork,
-    downloadCatalogCollection,
-    cancelCatalogDownload,
-    removeCatalogWork,
-    removeCatalogCollection,
-  } = useOfflineEngineStore();
+  const corpusManifest = useOfflineEngineStore((s) => s.corpusManifest);
+  const manifestSyncing = useOfflineEngineStore((s) => s.manifestSyncing);
+  const installedWorkIds = useOfflineEngineStore((s) => s.installedWorkIds);
+  const activeCatalogDownload = useOfflineEngineStore((s) => s.activeCatalogDownload);
+  const catalogQueueIds = useOfflineEngineStore((s) => s.catalogQueueIds);
+  const catalogError = useOfflineEngineStore((s) => s.catalogError);
+  const syncCorpusManifest = useOfflineEngineStore((s) => s.syncCorpusManifest);
+  const downloadCatalogWork = useOfflineEngineStore((s) => s.downloadCatalogWork);
+  const downloadCatalogCollection = useOfflineEngineStore((s) => s.downloadCatalogCollection);
+  const cancelCatalogDownload = useOfflineEngineStore((s) => s.cancelCatalogDownload);
+  const removeCatalogWork = useOfflineEngineStore((s) => s.removeCatalogWork);
+  const removeCatalogCollection = useOfflineEngineStore((s) => s.removeCatalogCollection);
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterKey>('all');
@@ -68,10 +71,12 @@ export function LibraryCatalogModal({
   });
 
   useEffect(() => {
-    if (!visible) return;
     // Uses 5-minute TTL unless user explicitly taps Refresh — instant reopen!
-    void syncCorpusManifest(false);
-  }, [visible, syncCorpusManifest]);
+    const timer = setTimeout(() => {
+      void syncCorpusManifest(false);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [syncCorpusManifest]);
 
   const installedSet = useMemo(() => new Set(installedWorkIds), [installedWorkIds]);
   const queuedSet = useMemo(() => new Set(catalogQueueIds), [catalogQueueIds]);
@@ -133,50 +138,50 @@ export function LibraryCatalogModal({
         )
       : 0;
 
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
+  const modalHeader = (
+    <View style={styles.header}>
+      <View style={styles.flexOne}>
+        <Text style={styles.title}>Library Catalog</Text>
+        <Text style={styles.subtitle}>
+          Pick individual books or whole collections · {installedWorkIds.length} of{' '}
+          {allWorks.length || 72} downloaded
+        </Text>
+      </View>
+      <View style={styles.headerActions}>
+        <Pressable
+          onPress={() => void syncCorpusManifest(true)}
+          hitSlop={8}
+          disabled={manifestSyncing}
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.btnPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Refresh catalog from GitHub Releases"
+        >
+          {manifestSyncing ? (
+            <ActivityIndicator size="small" color={colors.accent} />
+          ) : (
+            <Feather name="refresh-cw" size={17} color={colors.accent} />
+          )}
+        </Pressable>
+        <Pressable
+          onPress={onClose}
+          hitSlop={12}
+          style={({ pressed }) => [styles.closeBtn, pressed && styles.btnPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Close catalog"
+        >
+          <Feather name="x" size={20} color={colors.textSecondary} />
+        </Pressable>
+      </View>
+    </View>
+  );
 
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.flexOne}>
-              <Text style={styles.title}>Library Catalog</Text>
-              <Text style={styles.subtitle}>
-                Pick individual books or whole collections · {installedWorkIds.length} of{' '}
-                {allWorks.length || 72} downloaded
-              </Text>
-            </View>
-            <View style={styles.headerActions}>
-              <Pressable
-                onPress={() => void syncCorpusManifest(true)}
-                hitSlop={8}
-                disabled={manifestSyncing}
-                style={styles.iconBtn}
-                accessibilityLabel="Refresh catalog from GitHub Releases"
-              >
-                {manifestSyncing ? (
-                  <ActivityIndicator size="small" color={colors.accent} />
-                ) : (
-                  <Feather name="refresh-cw" size={17} color={colors.accent} />
-                )}
-              </Pressable>
-              <Pressable
-                onPress={onClose}
-                hitSlop={10}
-                style={styles.iconBtn}
-                accessibilityLabel="Close catalog"
-              >
-                <Feather name="x" size={20} color={colors.textTertiary} />
-              </Pressable>
-            </View>
-          </View>
+  return (
+    <BottomSheetModal
+      visible={visible}
+      onClose={onClose}
+      height="92%"
+      header={modalHeader}
+    >
 
           {/* Search input */}
           <View style={styles.searchWrap}>
@@ -469,36 +474,11 @@ export function LibraryCatalogModal({
               })
             )}
           </ScrollView>
-        </View>
-      </View>
-    </Modal>
+    </BottomSheetModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(58, 53, 48, 0.35)',
-  },
-  sheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    height: '92%',
-    paddingHorizontal: layout.screenPaddingX,
-    paddingTop: spacing.sm,
-  },
-  handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.border,
-    alignSelf: 'center',
-    marginBottom: spacing.sm,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -526,7 +506,24 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   iconBtn: {
-    padding: 6,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  btnPressed: {
+    opacity: 0.65,
   },
   searchWrap: {
     flexDirection: 'row',

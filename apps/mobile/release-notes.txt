@@ -1,8 +1,7 @@
-Resonance — Word Tab UX Sweep, Performance Overhaul & Background Sync.
+Resonance — Responsive Add to Library & Catalog Sheets (Swipe-Down + Non-Blocking Scan).
 
 What's in this build:
-• Exit any book effortlessly: compact reading header with ← Books / ← Library back button, Android hardware Back support, and active Word tab re-tap reset
-• Flush bottom reading action bar: eliminates the gap above the bottom tab bar and fixes Highlight Mode overflow with a dedicated highlight strip (including highlight removal and Note guardrails)
-• Major Word tab performance fixes: single batched O(1) cross-reference lookup per chapter, memoized verse rows, cached Bible/Library queries, and batched SQLite passage inserts
-• Seamless tab switching & deep-linking: fixes stuck tab transitions, adds Patterns → Word verse deep-linking, scrollable chapter grid (Psalms 1–150, Isaiah, etc.), Old/New Testament filters, and Library section navigation
-• True background downloading, importing & embedding: closing sync/import modals is instant and never stalls or cancels active work; queues persist and auto-resume across foreground/background transitions with a live status banner on the Word tab
+• Fixes non-responsive "Add to Your Library" sheet: replaces synchronous Google Drive/SAF header peeking and tight folder-scan loops with async native reads + cooperative UI frame yields so the JS thread never locks up
+• Adds interactive swipe-down-to-dismiss on the handle and header bar, tap-outside backdrop dismissal, and larger circular Close (×) buttons across Add to Library, Library Catalog, and Offline Engine sheets
+• Unmounts closed sheets cleanly, uses granular store selectors, and paginates large discovered book lists (40 at a time) so opening, scrolling, and closing stay instant even with hundreds of cloud books
+• Closing Add to Library stops any in-progress folder scan immediately while keeping active book imports, catalog downloads, and embeddings running in the background
