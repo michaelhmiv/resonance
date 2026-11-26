@@ -79,9 +79,9 @@ jobs:
             exit 1
           fi
           echo "Release build type is unsigned; banked keystore signs below."
-      - name: Gradle assembleRelease (unsigned)
+      - name: Gradle assembleRelease (unsigned, arm64-v8a)
         working-directory: apps/mobile/android
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
       - name: Sign with banked upload keystore
         working-directory: apps/mobile/android
         env:

@@ -149,6 +149,8 @@ function encodePrompt(tok: RerankerTokenizer, text: string): number[] {
   return ids;
 }
 
+let rerankerInitInFlight: Promise<boolean> | null = null;
+
 export async function initRerankerModel(
   modelId: RerankerModelId = 'qwen3-reranker-0.6b'
 ): Promise<boolean> {
@@ -157,41 +159,54 @@ export async function initRerankerModel(
     return false;
   }
   if (isRerankerReady()) return true;
+  if (rerankerInitInFlight) return rerankerInitInFlight;
 
-  await disposeReranker();
-  if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
-    return false;
-  }
-
-  try {
-    const paths = getRerankerModelPaths();
-    const [onnxInfo, tokInfo] = await Promise.all([
-      FileSystem.getInfoAsync(paths.onnxPath),
-      FileSystem.getInfoAsync(paths.tokenizerPath),
-    ]);
-    if (!onnxInfo.exists || !tokInfo.exists) return false;
-
-    const loadedTok = await loadRerankerTokenizer(paths.tokenizerPath);
-    if (!loadedTok) return false;
-
-    const ort = await import('onnxruntime-react-native');
-    if (!ort || typeof ort.InferenceSession?.create !== 'function') {
-      console.warn('[rerankerService] onnxruntime-react-native InferenceSession.create missing');
+  rerankerInitInFlight = (async () => {
+    await disposeReranker();
+    if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
       return false;
     }
-    const cleanPath = paths.onnxPath.replace(/^file:\/\//, '');
-    session = await ort.InferenceSession.create(cleanPath, {
-      executionProviders: ['cpu'],
-      graphOptimizationLevel: 'all',
-    });
-    tokenizer = loadedTok;
-    activeRerankerId = 'qwen3-reranker-0.6b';
-    return true;
-  } catch (err) {
-    console.warn('[rerankerService] initRerankerModel failed:', err);
-    await disposeReranker();
-    return false;
-  }
+
+    try {
+      const paths = getRerankerModelPaths();
+      const [onnxInfo, tokInfo] = await Promise.all([
+        FileSystem.getInfoAsync(paths.onnxPath),
+        FileSystem.getInfoAsync(paths.tokenizerPath),
+      ]);
+      if (!onnxInfo.exists || !tokInfo.exists) return false;
+
+      const loadedTok = await loadRerankerTokenizer(paths.tokenizerPath);
+      if (!loadedTok) return false;
+
+      const ort = await import('onnxruntime-react-native');
+      if (!ort || typeof ort.InferenceSession?.create !== 'function') {
+        console.warn('[rerankerService] onnxruntime-react-native InferenceSession.create missing');
+        return false;
+      }
+      const cleanPath = paths.onnxPath.replace(/^file:\/\//, '');
+      session = await ort.InferenceSession.create(cleanPath, {
+        executionProviders: ['cpu'],
+        graphOptimizationLevel: 'all',
+      });
+      tokenizer = loadedTok;
+      activeRerankerId = 'qwen3-reranker-0.6b';
+      return true;
+    } catch (err) {
+      console.warn('[rerankerService] initRerankerModel failed:', err);
+      await disposeReranker();
+      return false;
+    } finally {
+      rerankerInitInFlight = null;
+    }
+  })();
+
+  return rerankerInitInFlight;
+}
+
+/** Lazily load the optional Qwen3-Reranker-0.6B ONNX session if installed on disk. */
+export async function ensureRerankerReady(): Promise<boolean> {
+  if (isRerankerReady()) return true;
+  return initRerankerModel('qwen3-reranker-0.6b');
 }
 
 export interface RerankScore {

@@ -1,7 +1,6 @@
-Resonance — Real On-Device ONNX Embedding + Auto-Embed + Live Progress UI.
+Resonance — Slim arm64-v8a APK (~65% smaller) & Optional Reranker (~58% smaller core download).
 
 What's in this build:
-• Fixes on-device embedding doing nothing: installs and natively links `onnxruntime-react-native` for Android (with Expo SDK 56 / React Native 0.85 autolinking, Gradle 9, bridgeless, and ProGuard fixes) and removes the Phase 1 Metro stub so Voyage-4-Nano and Qwen3-Reranker run natively on-device
-• Fixes Voyage-4-Nano tokenization & output pooling on-device (ByteLevel BOS/EOS alignment + `pooler_output` selection + CPU execution provider) so personal book & highlight vectors match the pre-embedded Library packs
-• Automatic embedding for added files (on by default): books, documents, and pasted notes added to your Personal Library embed automatically in the background without requiring manual clicks; adds an "Auto-embed added files" toggle in Settings → Personal Library (on by default) to opt out anytime
-• New live Embedding Progress UI component: displays model loading, active book title, queue position, real-time per-passage progress bar, Pause control, and honest diagnostic error/Retry feedback across Personal Library import/edit sheets, Settings, and the Word tab
+• Slimmer Android APK (~108 MB → ~35–40 MB): targets modern 64-bit Android devices (`arm64-v8a`) instead of bundling 4 copies of React Native, Hermes, and ONNX Runtime in a single APK
+• Lighter core Offline Engine download (~998 MB → ~415 MB): core download now installs only Voyage-4-Nano (512d INT8) + World English Bible vectors, which power all embeddings, semantic search, Personal Library, highlights, and Journal Resonance
+• Optional Qwen3-Reranker-0.6B add-on (~583 MB): now managed separately in Settings → Offline Resonance Engine, with one-tap Download or Remove to reclaim ~583 MB anytime
