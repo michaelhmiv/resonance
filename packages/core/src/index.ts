@@ -32,3 +32,7 @@ export * from './corpus-pipeline';
 // ── Shared offline-capable Patterns & Study Bookshelf concordance engine ────
 export * from './patterns-engine';
 
+// ── Reader v2 utilities (blocks, chapters, anchors, search, citations) ──────
+export * from './reader-utils';
+
+

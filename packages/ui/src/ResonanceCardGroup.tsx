@@ -38,6 +38,7 @@ export function ResonanceCardGroup({
   // Group cards by kind.
   const scripture = cards.filter((c) => c.kind === 'scripture');
   const voices = cards.filter((c) => c.kind === 'voice');
+  const highlights = cards.filter((c) => c.kind === 'highlight');
   const past = cards.filter((c) => c.kind === 'past_entry');
 
   return (
@@ -46,6 +47,19 @@ export function ResonanceCardGroup({
         <WindIcon size={14} color={colors.resonance} />
         <Text style={styles.headerText}>Resonance</Text>
       </View>
+
+      {highlights.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Your highlights & notes</Text>
+          {highlights.map((card, i) => (
+            <ResonanceCardItem
+              key={`h-${card.highlightId ?? card.passageId}-${i}`}
+              card={card}
+              onOpen={onOpenPassage}
+            />
+          ))}
+        </View>
+      )}
 
       {scripture.length > 0 && (
         <View style={styles.section}>
@@ -112,9 +126,17 @@ function ResonanceCardItem({
       accessibilityRole={canOpen ? 'button' : 'text'}
       accessibilityLabel={`Resonance: ${card.source}`}
     >
+      {card.provenance ? (
+        <Text style={styles.provenance}>{card.provenance}</Text>
+      ) : null}
       <Text style={styles.quote} numberOfLines={3}>
         "{card.text}"
       </Text>
+      {card.noteText ? (
+        <Text style={styles.noteLine} numberOfLines={2}>
+          Note: {card.noteText}
+        </Text>
+      ) : null}
       <Text style={styles.source}>{card.source}</Text>
     </Pressable>
   );
@@ -157,6 +179,12 @@ const styles = StyleSheet.create({
   cardPressed: {
     backgroundColor: colors.background,
   },
+  provenance: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 10.5,
+    color: colors.accent,
+    marginBottom: 4,
+  },
   quote: {
     ...serifText,
     fontFamily: fontFamilies.serifItalic,
@@ -164,6 +192,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     color: colors.textPrimary,
+  },
+  noteLine: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.textSecondary,
+    marginTop: 5,
   },
   source: {
     fontFamily: fontFamilies.sans,

@@ -173,3 +173,80 @@ export function NoteIcon(props: IconProps): ReactNode {
     </SvgWrap>
   );
 }
+
+/** Table of Contents / Chapters list icon. */
+export function ListIcon(props: IconProps): ReactNode {
+  return (
+    <SvgWrap {...props}>
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" />
+      <line x1="3" y1="12" x2="3.01" y2="12" />
+      <line x1="3" y1="18" x2="3.01" y2="18" />
+    </SvgWrap>
+  );
+}
+
+/** Typography / Appearance (Aa) icon. */
+export function TypeIcon(props: IconProps): ReactNode {
+  return (
+    <SvgWrap {...props}>
+      <polyline points="4 7 4 4 20 4 20 7" />
+      <line x1="9" y1="20" x2="15" y2="20" />
+      <line x1="12" y1="4" x2="12" y2="20" />
+    </SvgWrap>
+  );
+}
+
+/** Sparkles / Resonance Echoes icon. */
+export function SparklesIcon(props: IconProps): ReactNode {
+  return (
+    <SvgWrap {...props}>
+      <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />
+      <path d="M19 16l.7 1.8L21.5 18.5l-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7L19 16z" />
+    </SvgWrap>
+  );
+}
+
+/** Copy citation icon. */
+export function CopyIcon(props: IconProps): ReactNode {
+  return (
+    <SvgWrap {...props}>
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </SvgWrap>
+  );
+}
+
+/** Open book / Commonplace notebook icon. */
+export function BookOpenIcon(props: IconProps): ReactNode {
+  return (
+    <SvgWrap {...props}>
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+    </SvgWrap>
+  );
+}
+
+/** Feather / Send-to-Journal icon. */
+export function JournalIcon(props: IconProps): ReactNode {
+  return (
+    <SvgWrap {...props}>
+      <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+      <line x1="16" y1="8" x2="2" y2="22" />
+      <line x1="17.5" y1="15" x2="9" y2="15" />
+    </SvgWrap>
+  );
+}
+
+/** Annotation tag icon. */
+export function TagIcon(props: IconProps): ReactNode {
+  return (
+    <SvgWrap {...props}>
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+      <line x1="7" y1="7" x2="7.01" y2="7" />
+    </SvgWrap>
+  );
+}
+

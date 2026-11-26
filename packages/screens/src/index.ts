@@ -5,6 +5,8 @@ export type { ReadingMode } from './word/ReadingView';
 export { ScriptureBrowser } from './word/ScriptureBrowser';
 export { LibraryBrowser } from './word/LibraryBrowser';
 export { SearchScreen } from './word/SearchScreen';
+export { HighlightsHub } from './word/HighlightsHub';
+export type { HighlightsHubProps } from './word/HighlightsHub';
 export { JournalScreen } from './journal/JournalScreen';
 export { PatternsScreen } from './patterns/PatternsScreen';
 export type { PatternsScreenProps } from './patterns/PatternsScreen';

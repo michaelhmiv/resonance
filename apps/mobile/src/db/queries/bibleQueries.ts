@@ -130,19 +130,8 @@ export interface VersePassage {
   chunk_id: number | null;
 }
 
-export interface PassageHit {
-  id: number;
-  book_id: string;
-  chapter: number | null;
-  verse_start: number | null;
-  verse_end: number | null;
-  text: string;
-  translation: string | null;
-  /** Human-readable source line, e.g. "Genesis 1:1" or "Confessions — Book I". */
-  source: string;
-}
-
-export type SearchScope = 'scripture' | 'library';
+export type { PassageHit, SearchScope } from '@resonance/core';
+import type { PassageHit } from '@resonance/core';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -320,60 +309,167 @@ interface SearchRow {
   verse_end: number | null;
   text: string;
   translation: string | null;
+  division: string | null;
   book_title: string | null;
   book_author: string | null;
 }
 
-/** Full-text (LIKE) search across Scripture or Library passages. */
+function scoreKeywordMatch(text: string, queryLower: string, terms: string[]): number {
+  const lower = text.toLowerCase();
+  let score = 0;
+  if (lower.includes(queryLower)) score += 3.0;
+  let matchedTerms = 0;
+  for (const t of terms) {
+    if (lower.includes(t)) {
+      matchedTerms += 1;
+      // Word boundary bonus
+      const idx = lower.indexOf(t);
+      const beforeOk = idx === 0 || !/[a-z0-9]/.test(lower[idx - 1]);
+      const afterOk = idx + t.length >= lower.length || !/[a-z0-9]/.test(lower[idx + t.length]);
+      score += beforeOk && afterOk ? 1.2 : 0.7;
+    }
+  }
+  if (matchedTerms === 0) return 0;
+  return score / Math.max(1, Math.log2(text.length / 40 + 2));
+}
+
+/**
+ * Multi-word tokenized keyword search across Scripture, Library, All, or
+ * user Highlights & Margin Notes, ranked by phrase & word-boundary relevance.
+ */
 export async function searchPassages(
   query: string,
-  scope: SearchScope
+  scope: 'scripture' | 'library' | 'all' | 'highlights',
+  options?: { bookId?: string; limit?: number }
 ): Promise<PassageHit[]> {
   const db = getDatabase();
   if (!db) return [];
   const trimmed = query.trim();
   if (trimmed.length === 0) return [];
-  const like = `%${trimmed}%`;
+  const limit = options?.limit ?? 80;
+  const qLower = trimmed.toLowerCase();
+  const terms = Array.from(
+    new Set(
+      qLower
+        .split(/\s+/)
+        .map((t) => t.replace(/^["']|["']$/g, ''))
+        .filter((t) => t.length >= 2)
+    )
+  ).slice(0, 6);
 
-  const scopeClause =
-    scope === 'scripture'
-      ? 'p.translation IS NOT NULL'
-      : 'p.translation IS NULL';
+  const hits: PassageHit[] = [];
 
-  try {
-    const rows = await db.getAllAsync<SearchRow>(
-      `SELECT p.id, p.book_id, p.chapter, p.verse_start, p.verse_end,
-              p.text, p.translation, b.title AS book_title, b.author AS book_author
-       FROM passages p
-       LEFT JOIN books b ON b.id = p.book_id
-       WHERE ${scopeClause} AND p.text LIKE ?
-       ORDER BY p.id
-       LIMIT 120;`,
-      [like]
-    );
-
-    return rows.map((r): PassageHit => {
-      let source: string;
-      if (r.translation != null) {
-        const bookName = r.book_id.replace(/^[A-Z]+_/, '').replace(/_/g, ' ');
-        source = scriptureRef(bookName, r.chapter, r.verse_start, r.verse_end);
-        if (r.translation) source = `${source} (${r.translation})`;
-      } else {
-        source = r.book_title ?? r.book_id;
-        if (r.book_author) source = `${r.book_author} — ${source}`;
+  // 1. Search user highlights & margin notes when requested
+  if (scope === 'highlights' || scope === 'all') {
+    try {
+      const hlRows = await db.getAllAsync<{
+        id: string;
+        verse_ref: string;
+        book_id: string | null;
+        color: string;
+        selected_text: string | null;
+        note_text: string | null;
+        tags_json: string | null;
+      }>(
+        `SELECT id, verse_ref, book_id, color, selected_text, note_text, tags_json
+         FROM highlights
+         ORDER BY COALESCE(updated_at, created_at) DESC
+         LIMIT 600;`
+      );
+      for (const h of hlRows) {
+        const hay = `${h.selected_text ?? ''} ${h.note_text ?? ''} ${h.verse_ref} ${h.tags_json ?? ''}`;
+        const score = scoreKeywordMatch(hay, qLower, terms.length > 0 ? terms : [qLower]);
+        if (score <= 0) continue;
+        // Parse Scripture chapter/verse from verse_ref when applicable
+        const refMatch = /^(.+?)\s+(\d+):(\d+)/.exec(h.verse_ref);
+        hits.push({
+          id: 0,
+          book_id: h.book_id ?? (refMatch ? `WEB_${refMatch[1].replace(/\s+/g, '_')}` : h.verse_ref),
+          chapter: refMatch ? parseInt(refMatch[2], 10) : null,
+          verse_start: refMatch ? parseInt(refMatch[3], 10) : null,
+          verse_end: refMatch ? parseInt(refMatch[3], 10) : null,
+          text: h.selected_text ?? h.verse_ref,
+          translation: refMatch ? 'WEB' : null,
+          source: h.verse_ref,
+          score: score + 0.5,
+          matchKind: 'highlight',
+          highlightNote: h.note_text,
+          highlightColor: h.color,
+          highlightId: h.id,
+        });
       }
-      return {
-        id: r.id,
-        book_id: r.book_id,
-        chapter: r.chapter,
-        verse_start: r.verse_start,
-        verse_end: r.verse_end,
-        text: r.text,
-        translation: r.translation,
-        source,
-      };
-    });
-  } catch {
-    return [];
+    } catch {
+      // non-fatal
+    }
   }
+
+  // 2. Search Scripture and/or Library passages with multi-word AND clauses
+  if (scope !== 'highlights') {
+    const clauses: string[] = [];
+    const params: (string | number)[] = [];
+
+    if (scope === 'scripture') {
+      clauses.push('p.translation IS NOT NULL');
+    } else if (scope === 'library') {
+      clauses.push('p.translation IS NULL');
+    }
+
+    if (options?.bookId) {
+      clauses.push('p.book_id = ?');
+      params.push(options.bookId);
+    }
+
+    const searchTokens = terms.length > 0 ? terms : [qLower];
+    for (const token of searchTokens) {
+      clauses.push('p.text LIKE ?');
+      params.push(`%${token}%`);
+    }
+
+    const whereSql = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+    const fetchLimit = Math.min(300, limit * 3);
+
+    try {
+      const rows = await db.getAllAsync<SearchRow>(
+        `SELECT p.id, p.book_id, p.chapter, p.verse_start, p.verse_end,
+                p.text, p.translation, p.division, b.title AS book_title, b.author AS book_author
+         FROM passages p
+         LEFT JOIN books b ON b.id = p.book_id
+         ${whereSql}
+         LIMIT ?;`,
+        [...params, fetchLimit]
+      );
+
+      for (const r of rows) {
+        let source: string;
+        if (r.translation != null) {
+          const bookName = r.book_id.replace(/^[A-Z]+_/, '').replace(/_/g, ' ');
+          source = scriptureRef(bookName, r.chapter, r.verse_start, r.verse_end);
+          if (r.translation) source = `${source} (${r.translation})`;
+        } else {
+          source = r.book_title ?? r.book_id;
+          if (r.book_author) source = `${r.book_author} — ${source}`;
+          if (r.division) source = `${source} · ${r.division}`;
+        }
+        hits.push({
+          id: r.id,
+          book_id: r.book_id,
+          chapter: r.chapter,
+          verse_start: r.verse_start,
+          verse_end: r.verse_end,
+          text: r.text,
+          translation: r.translation,
+          source,
+          division: r.division ?? null,
+          score: scoreKeywordMatch(r.text, qLower, searchTokens),
+          matchKind: 'keyword',
+        });
+      }
+    } catch {
+      // ignore query errors
+    }
+  }
+
+  hits.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  return hits.slice(0, limit);
 }
+

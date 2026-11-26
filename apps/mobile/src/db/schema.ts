@@ -341,6 +341,54 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 4,
+    description: 'reader v2: exact reading progress, durable highlight anchors/tags/styles, and highlight_vectors',
+    sql: `
+      ALTER TABLE highlights ADD COLUMN book_id TEXT;
+      ALTER TABLE highlights ADD COLUMN chapter_id TEXT;
+      ALTER TABLE highlights ADD COLUMN quote_prefix TEXT;
+      ALTER TABLE highlights ADD COLUMN quote_suffix TEXT;
+      ALTER TABLE highlights ADD COLUMN tags_json TEXT NOT NULL DEFAULT '[]';
+      ALTER TABLE highlights ADD COLUMN style TEXT NOT NULL DEFAULT 'fill';
+      ALTER TABLE highlights ADD COLUMN embedded_at INTEGER;
+      CREATE INDEX IF NOT EXISTS idx_highlights_book ON highlights (book_id);
+
+      ALTER TABLE bookmarks ADD COLUMN book_id TEXT;
+      ALTER TABLE bookmarks ADD COLUMN chapter_id TEXT;
+      ALTER TABLE bookmarks ADD COLUMN passage_id INTEGER;
+      CREATE INDEX IF NOT EXISTS idx_bookmarks_book ON bookmarks (book_id);
+
+      CREATE TABLE IF NOT EXISTS reading_progress (
+        book_id       TEXT PRIMARY KEY,
+        chapter_id    TEXT,
+        chapter_index INTEGER NOT NULL DEFAULT 0,
+        block_index   INTEGER NOT NULL DEFAULT 0,
+        passage_id    INTEGER,
+        verse_number  INTEGER,
+        scroll_pct    REAL NOT NULL DEFAULT 0,
+        updated_at    INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_reading_progress_updated
+        ON reading_progress (updated_at DESC);
+
+      CREATE TABLE IF NOT EXISTS highlight_vectors (
+        id           TEXT PRIMARY KEY,
+        highlight_id TEXT NOT NULL,
+        kind         TEXT NOT NULL CHECK (kind IN ('highlight', 'note')),
+        model_id     TEXT NOT NULL,
+        dim          INTEGER NOT NULL,
+        scale        REAL NOT NULL,
+        vector_int8  BLOB NOT NULL,
+        source_label TEXT,
+        updated_at   INTEGER NOT NULL,
+        UNIQUE (highlight_id, kind),
+        FOREIGN KEY (highlight_id) REFERENCES highlights (id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_highlight_vectors_hl
+        ON highlight_vectors (highlight_id, kind);
+    `,
+  },
 ];
 
 /** The current target schema version (max across migrations). */

@@ -5,6 +5,10 @@ import type {
   Highlight,
   Translation,
   SearchScope,
+  SearchMode,
+  PassageHit,
+  InBookSearchHit,
+  ReadingProgress,
   JournalSegment,
   ResonanceResult,
   EntryCluster,
@@ -19,6 +23,7 @@ import type {
   ReflectionPrompt,
   EmbeddingModelId,
 } from '@resonance/core';
+import { reconstructBookDocument, searchBlocksKeyword } from '@resonance/core';
 import { getDatabase } from '../db/database';
 import { getBooks, getChapters, getVerses, searchPassages } from '../db/queries/bibleQueries';
 import {
@@ -32,6 +37,8 @@ import {
 import type { PersonalWorkMetadataPatch } from '@resonance/core';
 import {
   getFullHighlightsForRefs,
+  getHighlightsForBook,
+  getAllFullHighlights,
   saveFullHighlight,
   updateFullHighlight,
   deleteFullHighlightById,
@@ -40,9 +47,21 @@ import {
   getBookmarks,
   getCrossReferences,
   getCrossReferencesBatch,
+  getReadingProgress,
+  saveReadingProgress,
 } from '../db/queries/readingQueries';
 import { useSettingsStore } from '../settings/settingsStore';
-import { findResonance, storeSegmentVector } from '../embedding/resonanceService';
+import {
+  findResonance,
+  findPassageEchoes,
+  searchInBookSemantic,
+  searchLibrarySemantic,
+  storeSegmentVector,
+} from '../embedding/resonanceService';
+import {
+  syncHighlightToResonance,
+  removeHighlightFromResonance,
+} from '../embedding/highlightEmbeddingService';
 import {
   clusterEntries,
   generateWeeklyRoundup,
@@ -76,6 +95,132 @@ export class MobileDataLayer implements DataLayer {
 
   async searchPassages(query: string, scope: SearchScope) {
     return searchPassages(query, scope);
+  }
+
+  async searchPassagesHybrid(
+    query: string,
+    scope: SearchScope,
+    mode: SearchMode = 'hybrid',
+    options?: { bookId?: string; limit?: number }
+  ): Promise<PassageHit[]> {
+    const limit = options?.limit ?? 60;
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+
+    if (mode === 'keyword') {
+      return searchPassages(trimmed, scope, options);
+    }
+
+    const semanticRaw = await searchLibrarySemantic(trimmed, scope, limit);
+    const semanticHits: PassageHit[] = semanticRaw.map((m) => {
+      const refMatch = m.translation ? /^(.+?)\s+(\d+):(\d+)/.exec(m.source) : null;
+      return {
+        id: m.passageId,
+        book_id: m.bookId,
+        chapter: refMatch ? parseInt(refMatch[2], 10) : null,
+        verse_start: refMatch ? parseInt(refMatch[3], 10) : null,
+        verse_end: refMatch ? parseInt(refMatch[3], 10) : null,
+        text: m.text,
+        translation: m.translation,
+        source: m.source,
+        score: m.similarity,
+        matchKind: m.library === 'highlight' ? 'highlight' : 'semantic',
+        highlightNote: m.highlightNote ?? null,
+        highlightColor: m.highlightColor ?? null,
+        highlightId: m.highlightId ?? null,
+      };
+    });
+
+    if (mode === 'semantic') {
+      return semanticHits.length > 0
+        ? semanticHits.slice(0, limit)
+        : searchPassages(trimmed, scope, options);
+    }
+
+    // Hybrid: Reciprocal Rank Fusion (RRF, k = 45) of keyword + semantic lists
+    const keywordHits = await searchPassages(trimmed, scope, { ...options, limit });
+    if (semanticHits.length === 0) return keywordHits;
+
+    const RRF_K = 45;
+    const fused = new Map<string, { hit: PassageHit; score: number; fromKw: boolean; fromSem: boolean }>();
+
+    const keyFor = (h: PassageHit) =>
+      h.highlightId ? `hl:${h.highlightId}` : `${h.book_id}:${h.id}:${h.chapter ?? ''}:${h.verse_start ?? ''}`;
+
+    keywordHits.forEach((hit, rank) => {
+      const k = keyFor(hit);
+      const rrf = 1 / (RRF_K + rank + 1);
+      fused.set(k, { hit, score: rrf, fromKw: true, fromSem: false });
+    });
+
+    semanticHits.forEach((hit, rank) => {
+      const k = keyFor(hit);
+      const rrf = 1.15 / (RRF_K + rank + 1);
+      const existing = fused.get(k);
+      if (existing) {
+        existing.score += rrf;
+        existing.fromSem = true;
+        existing.hit = {
+          ...existing.hit,
+          matchKind: existing.hit.matchKind === 'highlight' ? 'highlight' : 'hybrid',
+        };
+      } else {
+        fused.set(k, { hit, score: rrf, fromKw: false, fromSem: true });
+      }
+    });
+
+    return Array.from(fused.values())
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map((entry) => ({ ...entry.hit, score: entry.score }));
+  }
+
+  async searchInBook(
+    bookId: string,
+    query: string,
+    mode: 'keyword' | 'semantic' = 'keyword'
+  ): Promise<InBookSearchHit[]> {
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+    const passages = await getLibraryPassages(bookId);
+    const doc = reconstructBookDocument(bookId, passages);
+
+    if (mode === 'keyword') {
+      return searchBlocksKeyword(doc.blocks, doc.chapters, trimmed);
+    }
+
+    const semHits = await searchInBookSemantic(bookId, trimmed, 30);
+    if (semHits.length === 0) {
+      return searchBlocksKeyword(doc.blocks, doc.chapters, trimmed);
+    }
+
+    const blockByPassageId = new Map<number, (typeof doc.blocks)[number]>();
+    for (const blk of doc.blocks) {
+      if (blk.passageId != null && !blockByPassageId.has(blk.passageId)) {
+        blockByPassageId.set(blk.passageId, blk);
+      }
+    }
+
+    const mapped: InBookSearchHit[] = [];
+    for (const hit of semHits) {
+      const blk = blockByPassageId.get(hit.passageId);
+      if (!blk) continue;
+      const chTitle = doc.chapters[blk.chapterIndex]?.title ?? blk.division ?? `Section ${blk.chapterIndex + 1}`;
+      mapped.push({
+        blockId: blk.id,
+        anchorRef: blk.anchorRef,
+        passageId: hit.passageId,
+        chapterIndex: blk.chapterIndex,
+        chapterTitle: chTitle,
+        blockIndex: blk.blockIndex,
+        snippet: blk.text.slice(0, 140) + (blk.text.length > 140 ? '…' : ''),
+        matchStart: 0,
+        matchEnd: 0,
+        score: hit.similarity,
+        mode: 'semantic',
+      });
+    }
+    return mapped;
   }
 
   async getLibraryPackages() {
@@ -222,16 +367,40 @@ export class MobileDataLayer implements DataLayer {
     return getFullHighlightsForRefs(refs);
   }
 
+  async getBookHighlights(bookId: string): Promise<Highlight[]> {
+    return getHighlightsForBook(bookId);
+  }
+
+  async getAllHighlights(options?: {
+    color?: string;
+    tag?: string;
+    query?: string;
+  }): Promise<Highlight[]> {
+    return getAllFullHighlights(options);
+  }
+
   async saveHighlight(input: SaveHighlightInput): Promise<Highlight> {
-    return saveFullHighlight(input);
+    const saved = await saveFullHighlight(input);
+    // Fire-and-forget on-device embedding into highlight_vectors + resonance_nodes
+    void syncHighlightToResonance(saved, 'created', {
+      contextText: input.contextText,
+      sourceLabel: input.sourceLabel,
+    });
+    return saved;
   }
 
   async updateHighlight(id: string, patch: UpdateHighlightPatch): Promise<Highlight> {
-    return updateFullHighlight(id, patch);
+    const updated = await updateFullHighlight(id, patch);
+    void syncHighlightToResonance(updated, 'updated', {
+      contextText: patch.contextText,
+      sourceLabel: patch.sourceLabel,
+    });
+    return updated;
   }
 
   async deleteHighlight(id: string): Promise<void> {
-    return deleteFullHighlightById(id);
+    await deleteFullHighlightById(id);
+    void removeHighlightFromResonance(id);
   }
 
   async saveBookmark(verseRef: string, label?: string) {
@@ -300,8 +469,24 @@ export class MobileDataLayer implements DataLayer {
     }
   }
 
+  async getReadingProgress(bookId: string): Promise<ReadingProgress | null> {
+    return getReadingProgress(bookId);
+  }
+
+  async saveReadingProgress(progress: ReadingProgress): Promise<void> {
+    return saveReadingProgress(progress);
+  }
+
   async findResonance(journalText: string): Promise<ResonanceResult | null> {
     return findResonance(journalText) as Promise<ResonanceResult | null>;
+  }
+
+  async findPassageEchoes(
+    passageText: string,
+    sourceRef: string,
+    options?: { bookId?: string; excludePassageId?: number | null }
+  ): Promise<ResonanceResult | null> {
+    return findPassageEchoes(passageText, sourceRef, options);
   }
 
   async storeSegmentVector(segmentId: string, text: string): Promise<void> {
@@ -312,8 +497,9 @@ export class MobileDataLayer implements DataLayer {
     const text = source ? `"${quote}"\n\n— ${source}` : quote;
     const now = Date.now();
     const date = new Date(now).toISOString().slice(0, 10);
+    const id = `seg-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     await this.saveSegment({
-      id: `seg-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      id,
       created_at: now,
       updated_at: now,
       segment_type: 'text',
@@ -321,6 +507,7 @@ export class MobileDataLayer implements DataLayer {
       position_index: Math.floor(now / 1000),
       parent_date: date,
     });
+    void storeSegmentVector(id, text);
   }
 
   async clusterEntries(segments: JournalSegment[]): Promise<EntryCluster[]> {
