@@ -103,6 +103,8 @@ export function SettingsScreen(): ReactNode {
 function OfflineEngineSection(): ReactNode {
   const {
     phase,
+    rerankerPhase,
+    rerankerError,
     wifiOnly,
     downloadedBytes,
     totalBytes,
@@ -113,6 +115,9 @@ function OfflineEngineSection(): ReactNode {
     setWifiOnly,
     startDownload,
     pauseDownload,
+    downloadReranker,
+    pauseRerankerDownload,
+    removeReranker,
     syncCorpusManifest,
     removeOfflineEngine,
     refreshStatus,
@@ -129,6 +134,16 @@ function OfflineEngineSection(): ReactNode {
 
   const pct =
     totalBytes > 0 ? Math.min(100, Math.round((downloadedBytes / totalBytes) * 100)) : 0;
+  const rerankerPct =
+    groups.reranker.totalBytes > 0
+      ? Math.min(
+          100,
+          Math.round((groups.reranker.downloadedBytes / groups.reranker.totalBytes) * 100)
+        )
+      : 0;
+
+  const coreSizeLabel = formatBytes(totalBytes);
+  const rerankerSizeLabel = formatBytes(groups.reranker.totalBytes);
 
   const phaseLabel =
     phase === 'ready'
@@ -139,7 +154,16 @@ function OfflineEngineSection(): ReactNode {
           ? `Paused (${pct}%)`
           : phase === 'error'
             ? 'Interrupted — tap to retry'
-            : 'Not downloaded (~998 MB)';
+            : `Not downloaded (~${coreSizeLabel})`;
+
+  const rerankerLabel =
+    rerankerPhase === 'ready' || groups.reranker.ready
+      ? 'Qwen3-Reranker-0.6B · Ready'
+      : rerankerPhase === 'downloading'
+        ? `Downloading (${rerankerPct}%)`
+        : rerankerPhase === 'paused'
+          ? `Paused (${rerankerPct}%)`
+          : `Optional · ${rerankerSizeLabel}`;
 
   const totalCatalogWorks = corpusManifest.works?.length || 72;
 
@@ -178,14 +202,7 @@ function OfflineEngineSection(): ReactNode {
         }
       />
       <RowDivider />
-      <InfoRow
-        label="Reranker"
-        value={
-          groups.reranker.ready
-            ? 'Qwen3-Reranker-0.6B · Ready'
-            : `Qwen3-Reranker-0.6B · ${formatBytes(groups.reranker.totalBytes)}`
-        }
-      />
+      <InfoRow label="Reranker (optional)" value={rerankerLabel} />
       <RowDivider />
       <InfoRow
         label="Church Library"
@@ -199,7 +216,7 @@ function OfflineEngineSection(): ReactNode {
       <RowDivider />
       <ToggleRow
         label="Prefer Wi-Fi for downloads"
-        hint="Recommended for the ~998 MB one-time core engine download."
+        hint={`Recommended for the ~${coreSizeLabel} one-time core engine download.`}
         value={wifiOnly}
         onToggle={(v) => void setWifiOnly(v)}
       />
@@ -224,10 +241,34 @@ function OfflineEngineSection(): ReactNode {
         />
       ) : phase !== 'ready' ? (
         <ActionRow
-          label="Download core engine (~998 MB)"
+          label={`Download core engine (~${coreSizeLabel})`}
           onPress={() => setSheetVisible(true)}
         />
       ) : null}
+
+      <RowDivider />
+      {rerankerPhase === 'downloading' ? (
+        <ActionRow
+          label={`Pause optional reranker download (${rerankerPct}%)`}
+          onPress={() => void pauseRerankerDownload()}
+        />
+      ) : rerankerPhase === 'paused' ? (
+        <ActionRow
+          label={`Resume optional reranker (${rerankerPct}%)`}
+          onPress={() => void downloadReranker()}
+        />
+      ) : rerankerPhase === 'ready' || groups.reranker.ready ? (
+        <ActionRow
+          label={`Remove optional reranker (reclaim ~${rerankerSizeLabel})`}
+          destructive
+          onPress={() => void removeReranker()}
+        />
+      ) : (
+        <ActionRow
+          label={`Download optional reranker (~${rerankerSizeLabel})`}
+          onPress={() => void downloadReranker()}
+        />
+      )}
 
       <RowDivider />
       <ActionRow
@@ -244,7 +285,7 @@ function OfflineEngineSection(): ReactNode {
         onPress={() => void handleCheckUpdates()}
       />
 
-      {downloadedBytes > 0 || installedWorkIds.length > 0 ? (
+      {downloadedBytes > 0 || groups.reranker.downloadedBytes > 0 || installedWorkIds.length > 0 ? (
         <>
           <RowDivider />
           <ActionRow
@@ -255,6 +296,7 @@ function OfflineEngineSection(): ReactNode {
         </>
       ) : null}
 
+      {rerankerError ? <QuietNote>{rerankerError}</QuietNote> : null}
       {statusNote ? <QuietNote>{statusNote}</QuietNote> : null}
 
       <LibraryCatalogModal

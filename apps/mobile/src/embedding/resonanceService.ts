@@ -33,6 +33,7 @@ import {
   ensureEmbeddingReady,
 } from './embeddingService';
 import {
+  ensureRerankerReady,
   isRerankerReady,
   scoreCandidatePair,
 } from './rerankerService';
@@ -611,8 +612,11 @@ export async function findResonance(
     ...nonScriptureHits.slice(0, STRATIFIED_WITNESS_K),
   ];
 
-  // Stage 2: Qwen3-Reranker-0.6B pointwise scoring (when loaded)
-  const useReranker = isRerankerReady();
+  // Stage 2: Qwen3-Reranker-0.6B pointwise scoring (optional add-on; runs only if installed)
+  const useReranker =
+    isRerankerReady() ||
+    (useOfflineEngineStore.getState().groups.reranker.ready &&
+      (await ensureRerankerReady()));
   const candidates: FusionCandidate[] = [];
   const hitById = new Map<string, RawHit>();
 

@@ -16,7 +16,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { withDangerousMod } = require('@expo/config-plugins');
+const { withDangerousMod, withGradleProperties } = require('@expo/config-plugins');
 
 function resolveOrtPackageRoot(projectRoot) {
   const candidates = [
@@ -96,6 +96,27 @@ const PROGUARD_RULES = `
 module.exports = function withOnnxRuntimeFix(config) {
   // Run immediately during config evaluation so autolinking sees the patched package
   patchOnnxRuntimePackage(path.resolve(__dirname, '..'));
+
+  // Default Android ABI to arm64-v8a so preview APKs don't bundle 4 copies of
+  // React Native + Hermes + libonnxruntime.so (cuts APK ~108 MB -> ~35-40 MB).
+  // Override via REACT_NATIVE_ARCHITECTURES env var if multi-ABI is needed.
+  const targetAbis = process.env.REACT_NATIVE_ARCHITECTURES || 'arm64-v8a';
+  config = withGradleProperties(config, (modConfig) => {
+    const props = modConfig.modResults;
+    const existing = props.find(
+      (p) => p.type === 'property' && p.key === 'reactNativeArchitectures'
+    );
+    if (existing) {
+      existing.value = targetAbis;
+    } else {
+      props.push({
+        type: 'property',
+        key: 'reactNativeArchitectures',
+        value: targetAbis,
+      });
+    }
+    return modConfig;
+  });
 
   return withDangerousMod(config, [
     'android',

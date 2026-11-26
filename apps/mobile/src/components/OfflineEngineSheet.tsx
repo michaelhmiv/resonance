@@ -95,23 +95,16 @@ function OfflineEngineSheetInner(): ReactNode {
                 <Text style={styles.title}>Ready for private, offline echoes</Text>
                 <Text style={styles.subtitle}>
                   The core engine is installed on this device. Optional Church
-                  Library books and collections can be browsed and downloaded
-                  individually anytime in Word → Library.
+                  Library books and the optional reranker add-on can be managed
+                  anytime in Word → Library and Settings.
                 </Text>
 
                 <View style={styles.card}>
                   <ComponentRow
                     label="Voyage-4-Nano (512d INT8)"
-                    detail="Apache 2.0 · On-device embeddings"
+                    detail="Apache 2.0 · On-device embeddings & semantic search"
                     done={groups.embedder.ready}
                     sizeText={formatBytes(groups.embedder.totalBytes)}
-                  />
-                  <View style={styles.divider} />
-                  <ComponentRow
-                    label="Qwen3-Reranker-0.6B (INT8)"
-                    detail="Apache 2.0 · Passage judgment only"
-                    done={groups.reranker.ready}
-                    sizeText={formatBytes(groups.reranker.totalBytes)}
                   />
                   <View style={styles.divider} />
                   <ComponentRow
@@ -120,6 +113,17 @@ function OfflineEngineSheetInner(): ReactNode {
                     done={groups.corpus.ready}
                     sizeText={formatBytes(groups.corpus.totalBytes)}
                   />
+                  {groups.reranker.ready ? (
+                    <>
+                      <View style={styles.divider} />
+                      <ComponentRow
+                        label="Qwen3-Reranker-0.6B (Optional)"
+                        detail="Apache 2.0 · Passage judgment add-on installed"
+                        done
+                        sizeText={formatBytes(groups.reranker.totalBytes)}
+                      />
+                    </>
+                  ) : null}
                 </View>
 
                 <Pressable
@@ -172,13 +176,6 @@ function OfflineEngineSheetInner(): ReactNode {
                   />
                   <View style={styles.divider} />
                   <ComponentRow
-                    label="Qwen3-Reranker-0.6B (INT8)"
-                    detail={`${formatBytes(groups.reranker.downloadedBytes)} / ${formatBytes(groups.reranker.totalBytes)}`}
-                    done={groups.reranker.ready}
-                    sizeText={groups.reranker.ready ? 'Done' : ''}
-                  />
-                  <View style={styles.divider} />
-                  <ComponentRow
                     label="Bible Scripture vectors"
                     detail={`${formatBytes(groups.corpus.downloadedBytes)} / ${formatBytes(groups.corpus.totalBytes)}`}
                     done={groups.corpus.ready}
@@ -213,23 +210,16 @@ function OfflineEngineSheetInner(): ReactNode {
                 <Text style={styles.title}>Download the offline engine once</Text>
                 <Text style={styles.subtitle}>
                   Resonance runs 100% on your phone with zero cloud calls. Download
-                  the core engine once (~{formatBytes(totalBytes)}), or keep reading
+                  the core embedder once (~{formatBytes(totalBytes)}), or keep reading
                   Scripture now and set it up later in Settings.
                 </Text>
 
                 <View style={styles.card}>
                   <ComponentRow
                     label="Voyage-4-Nano (512d INT8)"
-                    detail="Finds echoes across Scripture & your books · Apache 2.0"
+                    detail="Finds echoes across Scripture, notes & your books · Apache 2.0"
                     done={groups.embedder.ready}
-                    sizeText="411 MB"
-                  />
-                  <View style={styles.divider} />
-                  <ComponentRow
-                    label="Qwen3-Reranker-0.6B (INT8)"
-                    detail="Judges passage fit — never writes advice · Apache 2.0"
-                    done={groups.reranker.ready}
-                    sizeText="583 MB"
+                    sizeText={formatBytes(groups.embedder.totalBytes)}
                   />
                   <View style={styles.divider} />
                   <ComponentRow
@@ -241,9 +231,8 @@ function OfflineEngineSheetInner(): ReactNode {
                 </View>
 
                 <Text style={styles.libraryNote}>
-                  Church Fathers, Mystics, Reformers, and other Library packs are
-                  optional — browse and pick individual books or collections anytime
-                  in Word → Library → Browse Catalog.
+                  Church Library packs and the optional Qwen3-Reranker (~583 MB) are
+                  not required — add or remove them anytime in Word → Library or Settings.
                 </Text>
 
                 <View style={styles.wifiRow}>
@@ -251,8 +240,8 @@ function OfflineEngineSheetInner(): ReactNode {
                     <Text style={styles.wifiLabel}>Prefer Wi-Fi</Text>
                     <Text style={styles.wifiHint}>
                       {wifiOnly
-                        ? 'Recommended for the one-time ~998 MB engine download.'
-                        : 'Downloading over cellular data may use ~998 MB of your plan.'}
+                        ? `Recommended for the one-time ~${formatBytes(totalBytes)} core engine download.`
+                        : `Downloading over cellular data may use ~${formatBytes(totalBytes)} of your plan.`}
                     </Text>
                   </View>
                   <Switch
@@ -276,7 +265,7 @@ function OfflineEngineSheetInner(): ReactNode {
                     accessibilityRole="button"
                   >
                     <Text style={styles.primaryBtnText}>
-                      Download core engine (~998 MB)
+                      Download core engine (~{formatBytes(totalBytes)})
                     </Text>
                   </Pressable>
                   <Pressable

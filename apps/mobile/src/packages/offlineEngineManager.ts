@@ -100,6 +100,9 @@ export interface ActiveCatalogDownload {
 export interface OfflineEngineState {
   initialized: boolean;
   phase: EnginePhase;
+  /** Optional Qwen3-Reranker-0.6B (~583 MB) add-on download state. */
+  rerankerPhase: EnginePhase;
+  rerankerError: string | null;
   promptDismissed: boolean;
   sheetVisible: boolean;
   wifiOnly: boolean;
@@ -107,7 +110,9 @@ export interface OfflineEngineState {
   manifestSyncedAt: number | null;
   manifestSyncing: boolean;
   activeArtifactLabel: string | null;
+  /** Downloaded bytes for the core engine (Voyage-4-Nano + Bible vectors). */
   downloadedBytes: number;
+  /** Total bytes for the core engine (~415 MB; excludes optional reranker). */
   totalBytes: number;
   groups: {
     embedder: GroupProgress;
@@ -131,10 +136,14 @@ export interface OfflineEngineState {
   setSheetVisible: (visible: boolean) => void;
   dismissFirstLaunchPrompt: () => Promise<void>;
   setWifiOnly: (wifiOnly: boolean) => Promise<void>;
-  /** Downloads core models + lightweight Bible vectors ONLY (not the 80-work Library). */
+  /** Downloads core Voyage-4-Nano embedder + lightweight Bible vectors ONLY (~415 MB). */
   startDownload: () => Promise<boolean>;
   pauseDownload: () => Promise<void>;
   cancelDownload: () => Promise<void>;
+  /** Optional ~583 MB Qwen3-Reranker-0.6B add-on download/pause/remove. */
+  downloadReranker: () => Promise<boolean>;
+  pauseRerankerDownload: () => Promise<void>;
+  removeReranker: () => Promise<void>;
   downloadCatalogWork: (workId: string) => Promise<boolean>;
   downloadCatalogCollection: (collectionId: CatalogCollectionId) => Promise<boolean>;
   cancelCatalogDownload: () => Promise<void>;
@@ -157,6 +166,9 @@ let activeDownloadResumable: FileSystem.DownloadResumable | null = null;
 let pauseRequested = false;
 let cancelRequested = false;
 let backgroundCheckpointRequested = false;
+
+let activeRerankerResumable: FileSystem.DownloadResumable | null = null;
+let rerankerPauseRequested = false;
 
 let activeCatalogResumable: FileSystem.DownloadResumable | null = null;
 let catalogWorkerRunning = false;
@@ -433,14 +445,17 @@ function computeCoreGroups(manifest: CorpusPacksManifest) {
 
 export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
   const initialGroups = computeCoreGroups(FALLBACK_CORPUS_MANIFEST);
+  // Core engine is Voyage-4-Nano (~411 MB) + Bible vectors (~4.2 MB).
+  // Qwen3-Reranker-0.6B (~583 MB) is an optional add-on managed separately.
   const initialTotal =
     initialGroups.embedder.totalBytes +
-    initialGroups.reranker.totalBytes +
     initialGroups.corpus.totalBytes;
 
   return {
     initialized: false,
     phase: 'not_installed',
+    rerankerPhase: 'not_installed',
+    rerankerError: null,
     promptDismissed: false,
     sheetVisible: false,
     wifiOnly: true,
@@ -649,24 +664,34 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
         }
       }
 
+      // Core engine = Voyage-4-Nano embedder (~411 MB) + Bible vectors (~4.2 MB).
+      // Qwen3-Reranker-0.6B (~583 MB) is tracked independently as an optional add-on.
       const downloadedBytes =
         groupStats.embedder.downloadedBytes +
-        groupStats.reranker.downloadedBytes +
         groupStats.corpus.downloadedBytes;
       const totalBytes =
         groupStats.embedder.totalBytes +
-        groupStats.reranker.totalBytes +
         groupStats.corpus.totalBytes;
 
       const prevEmbedderReady = get().groups.embedder.ready;
-      const modelsReady = groupStats.embedder.ready && groupStats.reranker.ready;
+      const coreReady = groupStats.embedder.ready;
       const curPhase = get().phase;
       const nextPhase: EnginePhase =
         curPhase === 'downloading'
           ? curPhase
-          : modelsReady
+          : coreReady
             ? 'ready'
             : downloadedBytes > 0
+              ? 'paused'
+              : 'not_installed';
+
+      const curRerankerPhase = get().rerankerPhase;
+      const nextRerankerPhase: EnginePhase =
+        curRerankerPhase === 'downloading'
+          ? curRerankerPhase
+          : groupStats.reranker.ready
+            ? 'ready'
+            : groupStats.reranker.downloadedBytes > 0
               ? 'paused'
               : 'not_installed';
 
@@ -677,6 +702,7 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
         installedPackIds,
         installedWorkIds,
         phase: nextPhase,
+        rerankerPhase: nextRerankerPhase,
       });
 
       if (
@@ -694,10 +720,9 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
     },
 
     /**
-     * Core Offline Engine download: downloads ONLY Voyage-4-Nano (411 MB) +
-     * Qwen3-Reranker-0.6B (583 MB) + lightweight Bible vectors (~4.2 MB).
-     * Persists auto-resume intent so closing the sheet or backgrounding the app
-     * seamlessly continues / resumes until complete.
+     * Core Offline Engine download: downloads ONLY Voyage-4-Nano (~411 MB) +
+     * lightweight World English Bible vectors (~4.2 MB). The ~583 MB
+     * Qwen3-Reranker-0.6B is an optional add-on via `downloadReranker()`.
      */
     async startDownload() {
       if (get().phase === 'downloading') return true;
@@ -713,7 +738,7 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
 
       const manifest = get().corpusManifest;
       const artifacts: DownloadArtifactSpec[] = [
-        ...OFFLINE_ENGINE_MANIFEST.modelArtifacts,
+        ...OFFLINE_ENGINE_MANIFEST.modelArtifacts.filter((a) => a.group === 'embedder'),
         ...buildBibleCoreArtifacts(manifest),
       ];
 
@@ -735,7 +760,7 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
         lastEmitAt = now;
         const groups = {
           embedder: { downloadedBytes: 0, totalBytes: 0, ready: true },
-          reranker: { downloadedBytes: 0, totalBytes: 0, ready: true },
+          reranker: get().groups.reranker,
           corpus: { downloadedBytes: 0, totalBytes: 0, ready: true },
         };
         for (const art of artifacts) {
@@ -750,11 +775,9 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
           groups,
           downloadedBytes:
             groups.embedder.downloadedBytes +
-            groups.reranker.downloadedBytes +
             groups.corpus.downloadedBytes,
           totalBytes:
             groups.embedder.totalBytes +
-            groups.reranker.totalBytes +
             groups.corpus.totalBytes,
         });
         if (!embedderReadyNotified && groups.embedder.ready) {
@@ -958,6 +981,208 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
       set({ phase: 'not_installed', activeArtifactLabel: null });
     },
 
+    // ── Optional Qwen3-Reranker-0.6B (~583 MB) Add-On ──────────────────────
+
+    async downloadReranker() {
+      if (get().rerankerPhase === 'downloading') return true;
+      rerankerPauseRequested = false;
+      set({ rerankerPhase: 'downloading', rerankerError: null });
+
+      const artifacts = OFFLINE_ENGINE_MANIFEST.modelArtifacts.filter(
+        (a) => a.group === 'reranker'
+      );
+      const totalRerankerBytes = artifacts.reduce((acc, a) => acc + a.sizeBytes, 0);
+      const perArtifactBytes = new Map<string, number>();
+
+      for (const art of artifacts) {
+        const localPath = localPathForArtifact(art.relativePath);
+        const existing = await getFileSize(localPath);
+        perArtifactBytes.set(
+          art.id,
+          art.sizeBytes > 0 ? Math.min(existing, art.sizeBytes) : existing
+        );
+      }
+
+      let lastEmitAt = 0;
+      const emitRerankerProgress = (force = false) => {
+        const now = Date.now();
+        if (!force && now - lastEmitAt < PROGRESS_THROTTLE_MS) return;
+        lastEmitAt = now;
+        let dl = 0;
+        let ready = true;
+        for (const art of artifacts) {
+          const b = perArtifactBytes.get(art.id) ?? 0;
+          dl += b;
+          if (art.sizeBytes > 0 && b < art.sizeBytes * 0.99) ready = false;
+        }
+        set((s) => ({
+          groups: {
+            ...s.groups,
+            reranker: {
+              downloadedBytes: dl,
+              totalBytes: totalRerankerBytes,
+              ready,
+            },
+          },
+        }));
+      };
+
+      emitRerankerProgress(true);
+
+      for (const art of artifacts) {
+        if (rerankerPauseRequested) break;
+        const localPath = localPathForArtifact(art.relativePath);
+        const existingSize = await getFileSize(localPath);
+        if (art.sizeBytes > 0 && existingSize >= art.sizeBytes * 0.99) {
+          perArtifactBytes.set(art.id, art.sizeBytes);
+          emitRerankerProgress(true);
+          continue;
+        }
+
+        await ensureParentDir(localPath);
+        const savedResume = await getSavedResumeData(art.id);
+        await upsertDownloadRow({
+          artifactId: art.id,
+          groupName: 'reranker',
+          url: art.url,
+          localPath,
+          expectedBytes: art.sizeBytes,
+          downloadedBytes: existingSize,
+          expectedSha256: art.sha256,
+          status: 'downloading',
+          error: null,
+        });
+
+        try {
+          const onProg = (p: FileSystem.DownloadProgressData) => {
+            perArtifactBytes.set(art.id, p.totalBytesWritten);
+            emitRerankerProgress(false);
+          };
+
+          let resumable: FileSystem.DownloadResumable;
+          if (savedResume) {
+            try {
+              const parsed = JSON.parse(savedResume) as FileSystem.DownloadPauseState;
+              resumable = new FileSystem.DownloadResumable(
+                parsed.url,
+                parsed.fileUri,
+                parsed.options,
+                onProg,
+                parsed.resumeData
+              );
+            } catch {
+              resumable = FileSystem.createDownloadResumable(art.url, localPath, {}, onProg);
+            }
+          } else {
+            resumable = FileSystem.createDownloadResumable(art.url, localPath, {}, onProg);
+          }
+
+          activeRerankerResumable = resumable;
+          const result = savedResume
+            ? await resumable.resumeAsync()
+            : await resumable.downloadAsync();
+          activeRerankerResumable = null;
+
+          if (rerankerPauseRequested) break;
+          if (!result || (result.status !== 200 && result.status !== 206)) {
+            throw new Error(`Failed downloading ${art.label} (HTTP ${result?.status ?? 'error'})`);
+          }
+
+          const finalSize = await getFileSize(localPath);
+          perArtifactBytes.set(
+            art.id,
+            art.sizeBytes > 0 ? Math.min(finalSize, art.sizeBytes) : finalSize
+          );
+          await upsertDownloadRow({
+            artifactId: art.id,
+            groupName: 'reranker',
+            url: art.url,
+            localPath,
+            expectedBytes: art.sizeBytes,
+            downloadedBytes: finalSize,
+            expectedSha256: art.sha256,
+            status: 'complete',
+            resumeData: null,
+          });
+          emitRerankerProgress(true);
+        } catch (err) {
+          activeRerankerResumable = null;
+          if (rerankerPauseRequested) {
+            set({ rerankerPhase: 'paused' });
+            return false;
+          }
+          const msg = err instanceof Error ? err.message : 'Download interrupted';
+          await upsertDownloadRow({
+            artifactId: art.id,
+            groupName: 'reranker',
+            url: art.url,
+            localPath,
+            expectedBytes: art.sizeBytes,
+            downloadedBytes: perArtifactBytes.get(art.id) ?? 0,
+            expectedSha256: art.sha256,
+            status: 'paused',
+            error: msg,
+          });
+          set({ rerankerPhase: 'paused', rerankerError: msg });
+          return false;
+        }
+      }
+
+      if (rerankerPauseRequested) {
+        set({ rerankerPhase: 'paused' });
+        return false;
+      }
+
+      set({ rerankerPhase: 'ready', rerankerError: null });
+      await get().refreshStatus();
+      return get().rerankerPhase === 'ready';
+    },
+
+    async pauseRerankerDownload() {
+      rerankerPauseRequested = true;
+      if (activeRerankerResumable) {
+        try {
+          const savable = await activeRerankerResumable.pauseAsync();
+          const resumeJson = JSON.stringify(savable);
+          const db = getDatabase();
+          if (db) {
+            await db.runAsync(
+              `UPDATE offline_downloads SET status = 'paused', resume_data = ?, updated_at = ?
+               WHERE group_name = 'reranker' AND status = 'downloading';`,
+              [resumeJson, Date.now()]
+            );
+          }
+        } catch {
+          // ignore
+        }
+        activeRerankerResumable = null;
+      }
+      set({ rerankerPhase: 'paused' });
+    },
+
+    async removeReranker() {
+      await get().pauseRerankerDownload();
+      try {
+        const dirPath = localPathForArtifact('models/qwen3-reranker-0.6b');
+        const info = await FileSystem.getInfoAsync(dirPath);
+        if (info.exists) {
+          await FileSystem.deleteAsync(dirPath, { idempotent: true });
+        }
+      } catch {
+        // non-fatal
+      }
+      const db = getDatabase();
+      if (db) {
+        try {
+          await db.runAsync(`DELETE FROM offline_downloads WHERE group_name = 'reranker';`);
+        } catch {
+          // ignore
+        }
+      }
+      set({ rerankerPhase: 'not_installed', rerankerError: null });
+      await get().refreshStatus();
+    },
+
     // ── Optional Per-Book & Per-Collection Catalog Downloads (Persisted Queue) ──
 
     async downloadCatalogWork(workId: string) {
@@ -1095,6 +1320,7 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
 
     async removeOfflineEngine() {
       await get().cancelDownload();
+      await get().pauseRerankerDownload();
       await get().cancelCatalogDownload();
       try {
         const info = await FileSystem.getInfoAsync(OFFLINE_ENGINE_ROOT);
