@@ -14,6 +14,7 @@ import {
   extractDocumentFromBytes,
   computeContentFingerprint,
   detectPersonalFormatFromMime,
+  detectPersonalFormatFromHeaderBytes,
   detectPersonalFormatFromBytes,
 } from '../packages/core/src/document-parsers.ts';
 import {
@@ -266,5 +267,12 @@ const driveEpubProc = processPersonalDocument(
 );
 assert.equal(driveEpubProc.suggestedTitle, 'The Practice of the Presence of God');
 assert.equal(driveEpubProc.format, 'epub');
+
+assert.equal(detectPersonalFormatFromHeaderBytes(epubBytes.subarray(0, 128)), 'epub');
+assert.equal(detectPersonalFormatFromHeaderBytes(pdfBytes.subarray(0, 64)), 'pdf');
+assert.equal(
+  detectPersonalFormatFromHeaderBytes(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00])),
+  null
+);
 
 console.log('✓ All offline 512d int8 & Personal Library verification checks passed.');

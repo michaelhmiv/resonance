@@ -9,7 +9,11 @@
  * built-in Library.
  */
 
-import { Directory as ExpoDirectory, File as ExpoFile } from 'expo-file-system';
+import {
+  Directory as ExpoDirectory,
+  File as ExpoFile,
+  FileMode,
+} from 'expo-file-system';
 import * as FileSystem from 'expo-file-system/legacy';
 import { create } from 'zustand';
 import {
@@ -20,6 +24,7 @@ import {
   computeContentFingerprint,
   detectPersonalFormat,
   detectPersonalFormatFromBytes,
+  detectPersonalFormatFromHeaderBytes,
   detectPersonalFormatFromMime,
   extractDocumentFromBytes,
   processPersonalDocument,
@@ -118,11 +123,14 @@ export interface PersonalLibraryState {
   connectDeviceFolder: () => Promise<boolean>;
   disconnectDeviceFolder: () => Promise<void>;
   scanFolders: () => Promise<DiscoveredFolderFile[]>;
-  inspectFile: (file: DiscoveredFolderFile) => Promise<InspectedDocument>;
+  inspectFile: (
+    file: DiscoveredFolderFile,
+    options?: { onStage?: (stage: 'downloading' | 'extracting') => void }
+  ) => Promise<InspectedDocument>;
   commitImport: (
     inspected: InspectedDocument,
     meta: PersonalImportMetadataForm,
-    options?: { replaceExistingBookId?: string }
+    options?: { replaceExistingBookId?: string; deferEmbedding?: boolean }
   ) => Promise<PersonalWorkMetadata>;
   importPastedText: (
     rawText: string,
@@ -285,21 +293,80 @@ function makePersonalBookId(titleOrFilename: string): string {
   return `personal_${slug || 'work'}_${suffix}`;
 }
 
-async function readUriBytes(uri: string): Promise<Uint8Array> {
+const READ_TIMEOUT_MS = 45_000;
+const MAX_HEADER_PEEKS_PER_SCAN = 80;
+
+function normalizeSafDirUri(uri: string): string {
+  // Android SAF `content://` tree/document URIs break if Expo appends a trailing `/`,
+  // while iOS `file://` directories require their trailing `/`.
+  if (uri.startsWith('content://')) {
+    return uri.replace(/\/+$/, '');
+  }
+  return uri;
+}
+
+function isGenericBinaryMime(mimeType: string | null | undefined): boolean {
+  if (!mimeType) return true;
+  const clean = mimeType.toLowerCase().split(';')[0].trim();
+  return (
+    clean === '' ||
+    clean === 'application/octet-stream' ||
+    clean === 'application/zip' ||
+    clean === 'application/x-zip-compressed' ||
+    clean === 'binary/octet-stream'
+  );
+}
+
+function peekHeaderFormat(entry: ExpoFile): PersonalSourceFormat | null {
   try {
-    const file = new ExpoFile(uri);
-    const raw = await file.bytes();
-    return raw instanceof Uint8Array ? raw : new Uint8Array(raw);
-  } catch (modernErr) {
-    // Fallback for any legacy file:// URI if ExpoFile fails
+    const handle = entry.open(FileMode.ReadOnly);
     try {
-      const b64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      return base64ToBytes(b64);
-    } catch {
-      throw modernErr;
+      const header = handle.readBytes(256);
+      const bytes = header instanceof Uint8Array ? header : new Uint8Array(header);
+      return detectPersonalFormatFromHeaderBytes(bytes);
+    } finally {
+      handle.close();
     }
+  } catch {
+    return null;
+  }
+}
+
+async function readUriBytes(uri: string): Promise<Uint8Array> {
+  const provider = providerLabelFromUri(uri);
+  const timeoutErr = new Error(
+    provider
+      ? `Timed out downloading from ${provider}. Check your connection or try importing fewer files at once.`
+      : 'Timed out reading file from storage.'
+  );
+
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(timeoutErr), READ_TIMEOUT_MS);
+  });
+
+  const readPromise = (async (): Promise<Uint8Array> => {
+    try {
+      const file = new ExpoFile(uri);
+      const raw = await file.bytes();
+      return raw instanceof Uint8Array ? raw : new Uint8Array(raw);
+    } catch (modernErr) {
+      // Fallback for any legacy file:// URI if ExpoFile fails
+      try {
+        const b64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        return base64ToBytes(b64);
+      } catch {
+        throw modernErr;
+      }
+    }
+  })();
+
+  try {
+    return await Promise.race([readPromise, timeoutPromise]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -572,14 +639,17 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           relativePath: string;
           depth: number;
         }
+        const rootUri = normalizeSafDirUri(folderUri);
         const queue: QueueItem[] = [
-          { dir: new ExpoDirectory(folderUri), relativePath: '', depth: 0 },
+          { dir: new ExpoDirectory(rootUri), relativePath: '', depth: 0 },
         ];
-        const visitedDirUris = new Set<string>([folderUri]);
+        const visitedDirUris = new Set<string>([rootUri]);
         let foldersScanned = 0;
         let folderFilesFound = 0;
         let fallbackFileIdx = 1;
         let fallbackFolderIdx = 1;
+        let headerPeeksUsed = 0;
+        let skippedGoogleDocs = 0;
         let hitLimit = false;
         let failedSubfolders = 0;
 
@@ -617,14 +687,14 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           // `dir.info().files` queries Android DocumentFile.name for real display names.
           // Calling it only on leaf folders (no subdirs) keeps it shallow & fast.
           let resolvedNames: string[] | null = null;
-          if (hasOpaqueEntry && !hasSubdirs && entries.length > 0 && entries.length <= 100) {
+          if (hasOpaqueEntry && !hasSubdirs && entries.length > 0 && entries.length <= 150) {
             try {
               const info = current.dir.info();
               if (Array.isArray(info.files) && info.files.length === entries.length) {
                 resolvedNames = info.files;
               }
             } catch {
-              // Fall back to MIME detection + clean placeholder names
+              // Fall back to MIME/header detection + clean placeholder names
             }
           }
 
@@ -632,14 +702,15 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
             const entry = entries[i];
 
             if (entry instanceof ExpoDirectory) {
+              const cleanSubUri = normalizeSafDirUri(entry.uri);
               if (
                 current.depth < MAX_SCAN_DEPTH &&
-                !visitedDirUris.has(entry.uri) &&
+                !visitedDirUris.has(cleanSubUri) &&
                 foldersScanned + queue.length < MAX_SCAN_FOLDERS
               ) {
-                visitedDirUris.add(entry.uri);
+                visitedDirUris.add(cleanSubUri);
                 const resolvedDirName = resolvedNames?.[i]?.trim() || '';
-                const uriLeaf = extractFilenameFromUri(entry.uri);
+                const uriLeaf = extractFilenameFromUri(cleanSubUri);
                 const folderName =
                   resolvedDirName && !isOpaqueProviderName(resolvedDirName)
                     ? resolvedDirName
@@ -650,7 +721,8 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
                   ? `${current.relativePath}/${folderName}`
                   : folderName;
                 queue.push({
-                  dir: entry,
+                  dir:
+                    cleanSubUri === entry.uri ? entry : new ExpoDirectory(cleanSubUri),
                   relativePath: nextRelative,
                   depth: current.depth + 1,
                 });
@@ -682,9 +754,29 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
               mimeType = null;
             }
 
-            const format =
+            if (mimeType?.toLowerCase().startsWith('application/vnd.google-apps.')) {
+              if (mimeType.toLowerCase() === 'application/vnd.google-apps.document') {
+                skippedGoogleDocs++;
+              }
+              continue;
+            }
+
+            let format =
               (candidateName ? detectPersonalFormat(candidateName) : null) ??
               detectPersonalFormatFromMime(mimeType);
+
+            // Google Drive frequently reports `.epub` and `.md` as `application/octet-stream`
+            // or `application/zip`. Peek the first 256 bytes to catch them cleanly.
+            if (
+              !format &&
+              !candidateName &&
+              isGenericBinaryMime(mimeType) &&
+              headerPeeksUsed < MAX_HEADER_PEEKS_PER_SCAN
+            ) {
+              headerPeeksUsed++;
+              format = peekHeaderFormat(entry);
+            }
+
             if (!format) continue;
 
             seenUris.add(uri);
@@ -724,11 +816,22 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           await new Promise((resolve) => setTimeout(resolve, 0));
         }
 
+        const notices: string[] = [];
         if (hitLimit) {
-          scanNotice = `Showing the first ${folderFilesFound} books across ${foldersScanned} folders. For massive cloud trees, link a more specific subfolder or use "Choose files".`;
+          notices.push(
+            `Showing the first ${folderFilesFound} books across ${foldersScanned} folders. For massive cloud trees, link a more specific subfolder or use "Choose files".`
+          );
         } else if (failedSubfolders > 0) {
-          scanNotice = `Scanned ${foldersScanned} folder${foldersScanned === 1 ? '' : 's'} (${failedSubfolders} subfolder${failedSubfolders === 1 ? '' : 's'} could not be opened).`;
+          notices.push(
+            `Scanned ${foldersScanned} folder${foldersScanned === 1 ? '' : 's'} (${failedSubfolders} subfolder${failedSubfolders === 1 ? '' : 's'} could not be opened).`
+          );
         }
+        if (skippedGoogleDocs > 0) {
+          notices.push(
+            `Skipped ${skippedGoogleDocs} native Google Doc${skippedGoogleDocs === 1 ? '' : 's'} (export as EPUB, PDF, or DOCX to import).`
+          );
+        }
+        scanNotice = notices.length > 0 ? notices.join(' ') : null;
       } catch (err) {
         if (activeScanRunId !== runId) {
           return get().discoveredFiles;
@@ -791,8 +894,13 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
     return sorted;
   },
 
-  async inspectFile(file) {
+  async inspectFile(file, options) {
+    options?.onStage?.('downloading');
     const rawBytes = await readUriBytes(file.uri);
+    options?.onStage?.('extracting');
+    // Yield a frame so progress UI repaints before synchronous parsing runs
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     const fileHash = computeContentFingerprint(rawBytes);
     const duplicateWork = await findPersonalWorkByHash(fileHash);
     const extraction = extractDocumentFromBytes(rawBytes, file.filename, file.format);
@@ -830,15 +938,20 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
     const ext = inspected.file.format;
     const localFilePath = `${PERSONAL_FILES_DIR}${bookId}.${ext}`;
 
-    // Save a local managed copy so the book never breaks if moved in external storage
+    // Save a local managed copy natively (fast Uint8Array write, no JS base64 loop)
     try {
-      await FileSystem.writeAsStringAsync(
-        localFilePath,
-        bytesToBase64(inspected.rawBytes),
-        { encoding: FileSystem.EncodingType.Base64 }
-      );
+      const destFile = new ExpoFile(localFilePath);
+      destFile.write(inspected.rawBytes);
     } catch {
-      // Non-fatal: SQLite already holds the extracted passages
+      try {
+        await FileSystem.writeAsStringAsync(
+          localFilePath,
+          bytesToBase64(inspected.rawBytes),
+          { encoding: FileSystem.EncodingType.Base64 }
+        );
+      } catch {
+        // Non-fatal: SQLite already holds the extracted passages
+      }
     }
 
     const saved = await savePersonalWork({
@@ -886,8 +999,11 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
     clearLibraryVectors();
     await get().refreshWorks();
 
-    // Kick off on-device embedding queue in background (gracefully stays pending if engine not ready)
-    void get().processEmbeddingQueue();
+    // Defer on-device embedding until a batch finishes so SQLite transactions and
+    // ONNX inference never collide with active file downloads/parses.
+    if (!options.deferEmbedding) {
+      void get().processEmbeddingQueue();
+    }
     return saved;
   },
 

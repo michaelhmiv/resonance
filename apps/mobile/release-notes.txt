@@ -1,7 +1,7 @@
-Resonance — Recursive Subfolder Scanning, Import Search/Filter/Select & Catalog UI Fix.
+Resonance — Reliable Google Drive EPUB Discovery & Live Batch Import Progress.
 
 What's in this build:
-• Recursive subfolder scanning for Connected Folders (device storage, Google Drive, iCloud) — discovers books nested inside subfolders with live scan progress and subfolder labels
-• Search, filter (All / New / In Library, file type, subfolder), sort (New first, A→Z, Z→A, Folder, Format, Largest), checkboxes, Select all / Select new, and a sticky batch Import footer in Add to Your Library
-• Fixed pinched / vertically clipped filter pills ("Downloaded", "Church Fathers", etc.) at the top of the Browse Library Catalog sheet, plus added a clear-search button
-• Individual & multi-file import ("Choose files") remains 100% local after import
+• Catches missing Google Drive EPUBs inside subfolders: normalizes Android SAF subfolder URIs and peeks 256-byte file headers when Drive reports EPUBs as application/octet-stream or application/zip
+• Fixes stalled / colliding batch imports: defers on-device ONNX embedding until the entire batch finishes (preventing SQLite transaction contention & CPU thrashing) and writes local copies natively without JS base64 loops
+• Adds a pinned Batch Import Progress Card with live progress bar, current book name, active stage (Downloading → Extracting chapters → Saving), running imported/skipped/failed counts, Stop button, and clear error details
+• Adds a 45-second timeout per file so a stalled cloud file can never freeze an entire batch

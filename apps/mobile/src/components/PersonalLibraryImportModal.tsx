@@ -10,7 +10,7 @@
  * Resonance toggle, re-embed, delete).
  */
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -67,6 +67,16 @@ type ModalStep = 'folder' | 'paste' | 'review' | 'edit';
 type StatusFilter = 'all' | 'new' | 'imported';
 type SortKey = 'new_first' | 'name_asc' | 'name_desc' | 'folder' | 'format' | 'size_desc';
 
+interface BatchImportProgress {
+  currentIndex: number;
+  total: number;
+  currentFilename: string;
+  stage: 'downloading' | 'extracting' | 'saving';
+  imported: number;
+  skipped: number;
+  failed: number;
+}
+
 const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
   { key: 'new_first', label: 'New first' },
   { key: 'name_asc', label: 'A → Z' },
@@ -102,6 +112,7 @@ export function PersonalLibraryImportModal({
     removeWork,
     reembedWork,
     processEmbeddingQueue,
+    pauseEmbeddingQueue,
   } = usePersonalLibraryStore();
 
   const enginePhase = useOfflineEngineStore((s) => s.phase);
@@ -112,9 +123,9 @@ export function PersonalLibraryImportModal({
   const [inspectingFile, setInspectingFile] = useState<string | null>(null);
   const [inspected, setInspected] = useState<InspectedDocument | null>(null);
   const [batchImporting, setBatchImporting] = useState(false);
-  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(
-    null
-  );
+  const [batchProgress, setBatchProgress] = useState<BatchImportProgress | null>(null);
+  const [batchSummary, setBatchSummary] = useState<string | null>(null);
+  const batchCancelRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -152,6 +163,7 @@ export function PersonalLibraryImportModal({
   useEffect(() => {
     if (!visible) return;
     setLocalError(null);
+    setBatchSummary(null);
     setSelectedUris(new Set());
     setSearchQuery('');
     setStatusFilter('all');
@@ -397,50 +409,140 @@ export function PersonalLibraryImportModal({
 
   const handleBatchImportFiles = async (targets: DiscoveredFolderFile[]) => {
     if (targets.length === 0) return;
+    batchCancelRef.current = false;
+    pauseEmbeddingQueue();
     setBatchImporting(true);
-    setBatchProgress({ done: 0, total: targets.length });
+    setBatchSummary(null);
     setLocalError(null);
+    setBatchProgress({
+      currentIndex: 1,
+      total: targets.length,
+      currentFilename: targets[0].filename,
+      stage: 'downloading',
+      imported: 0,
+      skipped: 0,
+      failed: 0,
+    });
+
     let importedCount = 0;
     let skippedDupes = 0;
     let failedCount = 0;
+    const errorSamples: string[] = [];
     let lastBookId: string | null = null;
+    let cancelled = false;
+
     try {
       for (let i = 0; i < targets.length; i++) {
+        if (batchCancelRef.current) {
+          cancelled = true;
+          break;
+        }
         const file = targets[i];
-        setBatchProgress({ done: i + 1, total: targets.length });
+        setBatchProgress({
+          currentIndex: i + 1,
+          total: targets.length,
+          currentFilename: file.filename,
+          stage: 'downloading',
+          imported: importedCount,
+          skipped: skippedDupes,
+          failed: failedCount,
+        });
+        // Yield 1 frame so the progress banner paints before reading the file
+        await new Promise((resolve) => setTimeout(resolve, 16));
+
         try {
-          const result = await inspectFile(file);
+          const result = await inspectFile(file, {
+            onStage: (stage) => {
+              setBatchProgress({
+                currentIndex: i + 1,
+                total: targets.length,
+                currentFilename: file.filename,
+                stage,
+                imported: importedCount,
+                skipped: skippedDupes,
+                failed: failedCount,
+              });
+            },
+          });
+
           if (result.duplicateWork) {
             skippedDupes++;
             continue;
           }
           if (result.processed.chunks.length === 0) {
             failedCount++;
+            if (errorSamples.length < 2) {
+              errorSamples.push(
+                `${file.filename}: ${result.processed.ocrRequired ? 'scanned image PDF (no text layer)' : 'no readable text found'}`
+              );
+            }
             continue;
           }
-          const saved = await commitImport(result, {
-            title: result.processed.suggestedTitle,
-            author: result.processed.suggestedAuthor,
-            era: result.processed.suggestedEra || 'Personal',
-            collection: 'Personal Library',
-            tags: result.processed.suggestedTags,
-            notes: result.processed.suggestedNotes,
-            includeInResonance: !result.processed.ocrRequired,
+
+          setBatchProgress({
+            currentIndex: i + 1,
+            total: targets.length,
+            currentFilename: result.processed.suggestedTitle || file.filename,
+            stage: 'saving',
+            imported: importedCount,
+            skipped: skippedDupes,
+            failed: failedCount,
           });
+          await new Promise((resolve) => setTimeout(resolve, 0));
+
+          const saved = await commitImport(
+            result,
+            {
+              title: result.processed.suggestedTitle,
+              author: result.processed.suggestedAuthor,
+              era: result.processed.suggestedEra || 'Personal',
+              collection: 'Personal Library',
+              tags: result.processed.suggestedTags,
+              notes: result.processed.suggestedNotes,
+              includeInResonance: !result.processed.ocrRequired,
+            },
+            { deferEmbedding: true }
+          );
           importedCount++;
           lastBookId = saved.bookId;
-        } catch {
+        } catch (err) {
           failedCount++;
+          const msg = err instanceof Error ? err.message : 'Unknown error';
+          if (errorSamples.length < 2) {
+            errorSamples.push(`${file.filename}: ${msg}`);
+          }
         }
       }
+
       setSelectedUris(new Set());
+
+      // Kick off on-device embedding once after the entire batch finishes
+      if (importedCount > 0) {
+        void processEmbeddingQueue();
+      }
+
       if (importedCount === 0) {
-        if (skippedDupes > 0 && failedCount === 0) {
-          setLocalError(
+        if (cancelled) {
+          setBatchSummary('Import canceled before any books were saved.');
+        } else if (skippedDupes > 0 && failedCount === 0) {
+          setBatchSummary(
             `All ${skippedDupes} selected file${skippedDupes === 1 ? ' is' : 's are'} already in your Library.`
           );
         } else {
-          setLocalError('No new readable passages were found in the selected files.');
+          setLocalError(
+            errorSamples.length > 0
+              ? `Could not import selected files (${errorSamples.join('; ')}).`
+              : 'No new readable passages were found in the selected files.'
+          );
+        }
+      } else if (failedCount > 0 || cancelled) {
+        const parts = [`Imported ${importedCount} book${importedCount === 1 ? '' : 's'}`];
+        if (skippedDupes > 0) parts.push(`${skippedDupes} already in Library`);
+        if (failedCount > 0) parts.push(`${failedCount} failed`);
+        if (cancelled) parts.push('stopped early');
+        setBatchSummary(parts.join(' · ') + '.');
+        if (errorSamples.length > 0) {
+          setLocalError(errorSamples.join(' · '));
         }
       } else {
         onClose();
@@ -451,6 +553,7 @@ export function PersonalLibraryImportModal({
     } finally {
       setBatchImporting(false);
       setBatchProgress(null);
+      batchCancelRef.current = false;
     }
   };
 
@@ -598,6 +701,72 @@ export function PersonalLibraryImportModal({
             </View>
           ) : null}
 
+          {/* Pinned Batch Import Progress Banner (always visible during batch import) */}
+          {batchImporting && batchProgress ? (
+            <View style={styles.batchBanner}>
+              <View style={styles.batchBannerTop}>
+                <ActivityIndicator size="small" color={colors.accent} />
+                <View style={styles.flexOne}>
+                  <Text style={styles.batchBannerTitle} numberOfLines={1}>
+                    Importing {batchProgress.currentIndex} of {batchProgress.total} (
+                    {Math.round(
+                      ((batchProgress.imported +
+                        batchProgress.skipped +
+                        batchProgress.failed) /
+                        Math.max(1, batchProgress.total)) *
+                        100
+                    )}
+                    %)
+                  </Text>
+                  <Text style={styles.batchBannerSub} numberOfLines={1}>
+                    {batchProgress.stage === 'downloading'
+                      ? 'Downloading'
+                      : batchProgress.stage === 'extracting'
+                        ? 'Extracting chapters'
+                        : 'Saving to Library'}
+                    : {batchProgress.currentFilename}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => {
+                    batchCancelRef.current = true;
+                  }}
+                  style={styles.batchCancelBtn}
+                >
+                  <Text style={styles.batchCancelText}>Stop</Text>
+                </Pressable>
+              </View>
+              <View style={styles.batchTrack}>
+                <View
+                  style={[
+                    styles.batchFill,
+                    {
+                      width: `${Math.max(
+                        4,
+                        Math.min(
+                          100,
+                          Math.round(
+                            ((batchProgress.imported +
+                              batchProgress.skipped +
+                              batchProgress.failed +
+                              0.35) /
+                              Math.max(1, batchProgress.total)) *
+                              100
+                          )
+                        )
+                      )}%`,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={styles.batchCounts}>
+                {batchProgress.imported} imported
+                {batchProgress.skipped > 0 ? ` · ${batchProgress.skipped} already in Library` : ''}
+                {batchProgress.failed > 0 ? ` · ${batchProgress.failed} failed` : ''}
+              </Text>
+            </View>
+          ) : null}
+
           <ScrollView
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -606,6 +775,12 @@ export function PersonalLibraryImportModal({
             {localError || scanError ? (
               <View style={styles.warningBox}>
                 <Text style={styles.warningText}>{localError ?? scanError}</Text>
+              </View>
+            ) : null}
+
+            {batchSummary && step === 'folder' ? (
+              <View style={styles.infoBox}>
+                <Text style={styles.infoText}>{batchSummary}</Text>
               </View>
             ) : null}
 
@@ -1425,7 +1600,7 @@ export function PersonalLibraryImportModal({
               <View style={styles.selectionFooterLeft}>
                 <Text style={styles.selectionFooterCount}>
                   {batchImporting && batchProgress
-                    ? `Importing ${batchProgress.done} of ${batchProgress.total}…`
+                    ? `Importing ${batchProgress.currentIndex} of ${batchProgress.total}…`
                     : `${selectedFiles.length} selected`}
                 </Text>
                 {!batchImporting ? (
@@ -1700,6 +1875,58 @@ const styles = StyleSheet.create({
   },
   modeTabTextActive: {
     color: colors.surface,
+  },
+  batchBanner: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.accent,
+    padding: spacing.md,
+    gap: spacing.xs + 2,
+    marginBottom: spacing.sm,
+  },
+  batchBannerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  batchBannerTitle: {
+    fontFamily: fontFamilies.sansSemibold,
+    fontSize: 13.5,
+    color: colors.textPrimary,
+  },
+  batchBannerSub: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 1,
+  },
+  batchCancelBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radii.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  batchCancelText: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  batchTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.background,
+    overflow: 'hidden',
+  },
+  batchFill: {
+    height: '100%',
+    backgroundColor: colors.accent,
+  },
+  batchCounts: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 11.5,
+    color: colors.textTertiary,
   },
   scrollBody: {
     gap: spacing.md,

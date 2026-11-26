@@ -1499,7 +1499,15 @@ export function detectPersonalFormatFromMime(
 ): PersonalSourceFormat | null {
   if (!mimeType) return null;
   const clean = mimeType.toLowerCase().split(';')[0].trim();
-  if (clean === 'application/epub+zip' || clean === 'application/epub') return 'epub';
+  if (
+    clean === 'application/epub+zip' ||
+    clean === 'application/epub' ||
+    clean === 'application/x-epub' ||
+    clean === 'application/vnd.epub+zip' ||
+    clean === 'application/oebps-package+xml'
+  ) {
+    return 'epub';
+  }
   if (clean === 'application/pdf') return 'pdf';
   if (
     clean === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -1507,9 +1515,69 @@ export function detectPersonalFormatFromMime(
     return 'docx';
   }
   if (clean === 'text/html' || clean === 'application/xhtml+xml') return 'html';
-  if (clean === 'text/markdown' || clean === 'text/x-markdown') return 'md';
+  if (
+    clean === 'text/markdown' ||
+    clean === 'text/x-markdown' ||
+    clean === 'text/md'
+  ) {
+    return 'md';
+  }
   if (clean === 'text/plain') return 'txt';
   return null;
+}
+
+/**
+ * Fast header-only format sniffer for partial reads (e.g. first 256 bytes of
+ * a cloud/Google Drive file with `application/octet-stream` or `application/zip`).
+ * Does NOT require the full file or ZIP End of Central Directory.
+ */
+export function detectPersonalFormatFromHeaderBytes(
+  headerBytes: Uint8Array
+): PersonalSourceFormat | null {
+  if (headerBytes.length < 4) return null;
+
+  const headAscii = decodeLatin1(
+    headerBytes.subarray(0, Math.min(headerBytes.length, 256))
+  );
+  if (headAscii.includes('%PDF-')) return 'pdf';
+
+  // ZIP local file header: PK\x03\x04
+  if (
+    headerBytes[0] === 0x50 &&
+    headerBytes[1] === 0x4b &&
+    (headerBytes[2] === 0x03 || headerBytes[2] === 0x05) &&
+    (headerBytes[3] === 0x04 || headerBytes[3] === 0x06)
+  ) {
+    const lower = headAscii.toLowerCase();
+    // Per EPUB spec, `mimetype` containing `application/epub+zip` is the first stored entry
+    if (
+      lower.includes('application/epub') ||
+      lower.includes('meta-inf/container.xml') ||
+      lower.includes('mimetype')
+    ) {
+      return 'epub';
+    }
+    if (lower.includes('[content_types].xml') || lower.includes('word/')) {
+      return 'docx';
+    }
+    return null;
+  }
+
+  // Reject binary payloads
+  const sampleLen = Math.min(headerBytes.length, 256);
+  let ctrlCount = 0;
+  for (let i = 0; i < sampleLen; i++) {
+    const b = headerBytes[i];
+    if (b === 0) return null;
+    if (b < 0x20 && b !== 0x09 && b !== 0x0a && b !== 0x0d) ctrlCount++;
+  }
+  if (ctrlCount / sampleLen > 0.05) return null;
+
+  const text = decodeUtf8(headerBytes).replace(/^\uFEFF/, '').trimStart();
+  if (!text) return null;
+  if (/^(<!doctype\s+html\b|<html\b|<head\b|<body\b)/i.test(text)) return 'html';
+  if (/^---\r?\n/.test(text) || /^#{1,3}\s+\S/m.test(text)) return 'md';
+  return 'txt';
 }
 
 export function detectPersonalFormatFromBytes(
