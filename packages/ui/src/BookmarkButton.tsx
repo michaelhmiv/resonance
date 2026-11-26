@@ -26,7 +26,8 @@ export function BookmarkButton({
   return (
     <Pressable
       onPress={onPress}
-      hitSlop={12}
+      hitSlop={8}
+      style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
       accessibilityRole="button"
       accessibilityLabel={bookmarked ? 'Remove bookmark' : 'Add bookmark'}
       accessibilityState={{ checked: bookmarked }}
@@ -34,6 +35,7 @@ export function BookmarkButton({
       <BookmarkIcon
         size={20}
         color={bookmarked ? colors.accent : tint}
+        filled={bookmarked}
       />
     </Pressable>
   );

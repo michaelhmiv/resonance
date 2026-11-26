@@ -10,7 +10,9 @@
 
 import { type ReactNode, useState, useEffect } from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -69,7 +71,15 @@ export function NoteModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.backdrop}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.backdrop}
+      >
+        <Pressable
+          style={styles.dismissArea}
+          onPress={onClose}
+          accessibilityLabel="Close note modal"
+        />
         <View style={styles.sheet}>
           {/* Header */}
           <View style={styles.header}>
@@ -138,7 +148,7 @@ export function NoteModal({
             </Pressable>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -148,6 +158,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(58, 53, 48, 0.4)',
     justifyContent: 'flex-end',
+  },
+  dismissArea: {
+    flex: 1,
   },
   sheet: {
     backgroundColor: colors.background,

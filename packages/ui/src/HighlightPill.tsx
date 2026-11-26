@@ -15,7 +15,7 @@
 
 import { type ReactNode } from 'react';
 import { Pressable, View, StyleSheet } from 'react-native';
-import { HighlighterPenIcon, NoteIcon, XIcon } from './icons';
+import { HighlighterPenIcon, NoteIcon, TrashIcon, XIcon } from './icons';
 import { colors, highlightPalette, radii, spacing } from '@resonance/theme';
 
 interface HighlightPillProps {
@@ -27,6 +27,12 @@ interface HighlightPillProps {
   onSelectColor: (color: string) => void;
   /** Open annotation modal for the targeted verse. */
   onAnnotate: () => void;
+  /** Whether a verse is currently targeted for note/removal actions. */
+  hasSelection?: boolean;
+  /** Whether the targeted verse currently has a highlight that can be removed. */
+  hasHighlight?: boolean;
+  /** Remove highlight from the targeted verse. */
+  onDeleteHighlight?: () => void;
   /** Exit highlight mode entirely. */
   onDismiss: () => void;
 }
@@ -36,6 +42,9 @@ export function HighlightPill({
   activeColor,
   onSelectColor,
   onAnnotate,
+  hasSelection = true,
+  hasHighlight = false,
+  onDeleteHighlight,
   onDismiss,
 }: HighlightPillProps): ReactNode {
   if (!active) {
@@ -56,7 +65,7 @@ export function HighlightPill({
     );
   }
 
-  // ── Expanded — swatches + annotate + dismiss inline ──────────────
+  // ── Expanded — swatches + annotate + optional remove + dismiss inline ──
   return (
     <View style={styles.expanded}>
       {highlightPalette.map((tone) => {
@@ -65,7 +74,7 @@ export function HighlightPill({
           <Pressable
             key={tone}
             onPress={() => onSelectColor(tone)}
-            hitSlop={8}
+            hitSlop={6}
             accessibilityRole="button"
             accessibilityLabel={`Highlight color ${tone}`}
             style={({ pressed }) => [
@@ -88,17 +97,38 @@ export function HighlightPill({
 
       <Pressable
         onPress={onAnnotate}
-        hitSlop={8}
+        disabled={!hasSelection}
+        hitSlop={6}
         accessibilityRole="button"
-        accessibilityLabel="Add note"
-        style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+        accessibilityLabel={hasSelection ? 'Add or edit note' : 'Select a verse first to add a note'}
+        accessibilityState={{ disabled: !hasSelection }}
+        style={({ pressed }) => [
+          styles.iconBtn,
+          !hasSelection && styles.disabledBtn,
+          pressed && hasSelection && styles.pressed,
+        ]}
       >
-        <NoteIcon size={18} color={colors.textSecondary} />
+        <NoteIcon
+          size={18}
+          color={hasSelection ? colors.accent : colors.textTertiary}
+        />
       </Pressable>
+
+      {hasHighlight && onDeleteHighlight ? (
+        <Pressable
+          onPress={onDeleteHighlight}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="Remove highlight"
+          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+        >
+          <TrashIcon size={17} color={colors.textSecondary} />
+        </Pressable>
+      ) : null}
 
       <Pressable
         onPress={onDismiss}
-        hitSlop={8}
+        hitSlop={6}
         accessibilityRole="button"
         accessibilityLabel="Exit highlight mode"
         style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
@@ -192,5 +222,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  disabledBtn: {
+    opacity: 0.35,
   },
 });

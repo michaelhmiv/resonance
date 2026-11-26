@@ -12,23 +12,36 @@ interface VoicePassage {
   verse_end?: number | null;
   text: string;
   chunk_id?: number | null;
+  division?: string | null;
 }
 
-let cachedVoicePassages: VoicePassage[] | null = null;
+let cachedByBookId: Map<string, VoicePassage[]> | null = null;
 let cachedPassagesMtime = 0;
 let cachedPassagesPath = '';
 
-function loadVoicePassages(): VoicePassage[] {
-  // Prefer the Railway volume; fall back to bundled copy
+function loadPassagesByBook(): Map<string, VoicePassage[]> {
   const path = existsSync(VOLUME_PASSAGES) ? VOLUME_PASSAGES : BUNDLED_PASSAGES;
   const mtimeMs = statSync(path).mtimeMs;
-  if (cachedVoicePassages && path === cachedPassagesPath && mtimeMs === cachedPassagesMtime) {
-    return cachedVoicePassages;
+  if (cachedByBookId && path === cachedPassagesPath && mtimeMs === cachedPassagesMtime) {
+    return cachedByBookId;
   }
-  cachedVoicePassages = JSON.parse(readFileSync(path, 'utf-8')) as VoicePassage[];
+  const all = JSON.parse(readFileSync(path, 'utf-8')) as VoicePassage[];
+  const byBook = new Map<string, VoicePassage[]>();
+  for (const p of all) {
+    let list = byBook.get(p.book_id);
+    if (!list) {
+      list = [];
+      byBook.set(p.book_id, list);
+    }
+    list.push(p);
+  }
+  for (const list of byBook.values()) {
+    list.sort((a, b) => a.id - b.id);
+  }
+  cachedByBookId = byBook;
   cachedPassagesMtime = mtimeMs;
   cachedPassagesPath = path;
-  return cachedVoicePassages;
+  return cachedByBookId;
 }
 
 export async function GET(request: NextRequest) {
@@ -38,19 +51,17 @@ export async function GET(request: NextRequest) {
     if (!bookId) {
       return NextResponse.json({ error: 'bookId required' }, { status: 400 });
     }
-    const passages = loadVoicePassages()
-      .filter((p) => p.book_id === bookId)
-      .sort((a, b) => a.id - b.id)
-      .map((p) => ({
-        id: p.id,
-        book_id: p.book_id,
-        chapter: p.chapter ?? null,
-        verse_start: p.verse_start ?? null,
-        verse_end: p.verse_end ?? null,
-        text: p.text,
-        translation: null,
-        chunk_id: p.chunk_id ?? null,
-      }));
+    const passages = (loadPassagesByBook().get(bookId) ?? []).map((p) => ({
+      id: p.id,
+      book_id: p.book_id,
+      chapter: p.chapter ?? null,
+      verse_start: p.verse_start ?? null,
+      verse_end: p.verse_end ?? null,
+      text: p.text,
+      translation: null,
+      chunk_id: p.chunk_id ?? null,
+      division: p.division ?? null,
+    }));
     return NextResponse.json({ passages });
   } catch (err) {
     return NextResponse.json(

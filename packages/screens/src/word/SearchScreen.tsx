@@ -1,26 +1,28 @@
 /**
  * Search screen — one search field with Scripture/Library scope toggle.
  *
- * Results render as PassageCards. Tapping "Read in Word" opens the
- * passage in the reading surface.
- *
- * (design spec §6.4: search — one field, scope toggles, passage cards)
+ * Results render as PassageCards. Tapping "Read in Word" opens the exact
+ * Scripture verse or Library book in the reading surface.
  */
 
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type ReactNode,
 } from 'react';
 import {
+  ActivityIndicator,
+  BackHandler,
   FlatList,
+  Keyboard,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
-  Keyboard,
 } from 'react-native';
 
 import {
@@ -31,15 +33,21 @@ import {
   radii,
   spacing,
 } from '@resonance/theme';
-import { type SearchScope, type PassageHit } from '@resonance/core';
+import {
+  resolveBibleBookName,
+  type PassageHit,
+  type SearchScope,
+} from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
-import { PassageCard } from '@resonance/ui';
+import { PassageCard, XIcon } from '@resonance/ui';
 
 interface SearchScreenProps {
   onCancel: () => void;
-  onOpenScripture: (bookName: string, chapter: number) => void;
+  onOpenScripture: (bookName: string, chapter: number, verse?: number) => void;
   onOpenLibrary?: (bookId: string) => void;
 }
+
+const ResultSeparator = () => <View style={styles.separator} />;
 
 export function SearchScreen({
   onCancel,
@@ -50,19 +58,53 @@ export function SearchScreen({
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<SearchScope>('scripture');
   const [results, setResults] = useState<PassageHit[]>([]);
+  const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seqRef = useRef(0);
+
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  // Android hardware back exits search
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onCancel();
+      return true;
+    });
+    return () => sub.remove();
+  }, [onCancel]);
 
   const runSearch = useCallback(
     async (q: string, s: SearchScope) => {
-      if (q.trim().length === 0) {
+      const seq = ++seqRef.current;
+      const trimmed = q.trim();
+      if (trimmed.length === 0) {
         setResults([]);
         setSearched(false);
+        setLoading(false);
         return;
       }
-      const hits = await dataLayer.searchPassages(q, s);
-      setResults(hits);
-      setSearched(true);
+      setLoading(true);
+      try {
+        const hits = await dataLayer.searchPassages(trimmed, s);
+        if (seq !== seqRef.current) return; // Discard stale response
+        setResults(hits);
+        setSearched(true);
+      } catch {
+        if (seq !== seqRef.current) return;
+        setResults([]);
+        setSearched(true);
+      } finally {
+        if (seq === seqRef.current) {
+          setLoading(false);
+        }
+      }
     },
     [dataLayer]
   );
@@ -71,33 +113,50 @@ export function SearchScreen({
     (text: string) => {
       setQuery(text);
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (text.trim().length === 0) {
+        seqRef.current += 1;
+        setResults([]);
+        setSearched(false);
+        setLoading(false);
+        return;
+      }
       debounceRef.current = setTimeout(() => {
         void runSearch(text, scope);
-      }, 300);
+      }, 280);
     },
     [scope, runSearch]
   );
 
+  const handleClear = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    seqRef.current += 1;
+    setQuery('');
+    setResults([]);
+    setSearched(false);
+    setLoading(false);
+  }, []);
+
   const handleScopeChange = useCallback(
     (next: SearchScope) => {
       setScope(next);
-      void runSearch(query, next);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (query.trim().length > 0) {
+        void runSearch(query, next);
+      }
     },
     [query, runSearch]
   );
 
   const handleOpenHit = useCallback(
     (hit: PassageHit) => {
-      // Scripture hits: navigate to book + chapter
       if (hit.translation != null && hit.chapter != null) {
-        const bookName = hit.book_id
-          .replace(/^[A-Z]+_/, '')
-          .replace(/_/g, ' ');
-        onOpenScripture(bookName, hit.chapter);
+        const bookName =
+          resolveBibleBookName(hit.book_id) ??
+          hit.book_id.replace(/^[A-Za-z]+_/, '').replace(/_/g, ' ');
+        onOpenScripture(bookName, hit.chapter, hit.verse_start ?? undefined);
         return;
       }
-      // Library hits: open library reading surface
-      if (hit.translation == null && onOpenLibrary) {
+      if (hit.book_id && onOpenLibrary) {
         onOpenLibrary(hit.book_id);
       }
     },
@@ -108,19 +167,34 @@ export function SearchScreen({
     <View style={styles.container}>
       {/* ── Search bar ────────────────────────────────────────────── */}
       <View style={styles.searchBar}>
-        <TextInput
-          style={styles.input}
-          value={query}
-          onChangeText={handleChangeText}
-          placeholder="Search Scripture and Library…"
-          placeholderTextColor={colors.placeholder}
-          autoFocus
-          returnKeyType="search"
-          onSubmitEditing={() => {
-            void runSearch(query, scope);
-            Keyboard.dismiss();
-          }}
-        />
+        <View style={styles.inputWrap}>
+          <TextInput
+            style={styles.input}
+            value={query}
+            onChangeText={handleChangeText}
+            placeholder="Search Scripture and Library…"
+            placeholderTextColor={colors.placeholder}
+            autoFocus
+            returnKeyType="search"
+            onSubmitEditing={() => {
+              if (debounceRef.current) clearTimeout(debounceRef.current);
+              void runSearch(query, scope);
+              Keyboard.dismiss();
+            }}
+          />
+          {query.length > 0 ? (
+            <Pressable
+              onPress={handleClear}
+              hitSlop={8}
+              style={styles.clearBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
+              <XIcon size={15} color={colors.textTertiary} />
+            </Pressable>
+          ) : null}
+        </View>
+
         <Pressable
           onPress={onCancel}
           hitSlop={8}
@@ -158,34 +232,35 @@ export function SearchScreen({
       </View>
 
       {/* ── Results ───────────────────────────────────────────────── */}
-      {searched && results.length === 0 ? (
+      {loading ? (
+        <View style={styles.emptyWrap}>
+          <ActivityIndicator color={colors.accentMuted} />
+        </View>
+      ) : searched && results.length === 0 ? (
         <View style={styles.emptyWrap}>
           <Text style={styles.emptyText}>
-            {query.trim().length > 0
-              ? 'No passages found.'
-              : 'Type to search.'}
+            {query.trim().length > 0 ? 'No passages found.' : 'Type to search.'}
           </Text>
         </View>
       ) : (
         <FlatList
           data={results}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={listContentContainer}
+          keyExtractor={(item, idx) => `${item.book_id}-${item.id}-${idx}`}
+          contentContainerStyle={[listContentContainer, styles.resultsContent]}
           keyboardShouldPersistTaps="handled"
-          renderItem={({ item: hit }) => (
-            <PassageCard
-              text={hit.text}
-              source={hit.source}
-              onPressRead={
-                hit.translation != null
-                  ? () => handleOpenHit(hit)
-                  : undefined
-              }
-            />
-          )}
-          ItemSeparatorComponent={() => (
-            <View style={{ height: spacing.md }} />
-          )}
+          renderItem={({ item: hit }) => {
+            const canOpen =
+              (hit.translation != null && hit.chapter != null) ||
+              (hit.translation == null && Boolean(hit.book_id) && Boolean(onOpenLibrary));
+            return (
+              <PassageCard
+                text={hit.text}
+                source={hit.source}
+                onPressRead={canOpen ? () => handleOpenHit(hit) : undefined}
+              />
+            );
+          }}
+          ItemSeparatorComponent={ResultSeparator}
         />
       )}
     </View>
@@ -204,17 +279,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPaddingX,
     paddingTop: spacing.md,
   },
+  inputWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.sm,
+  },
   input: {
     flex: 1,
     fontFamily: fontFamilies.serif,
     fontSize: 17,
     color: colors.textPrimary,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+  },
+  clearBtn: {
+    padding: 6,
   },
   cancelText: {
     fontFamily: fontFamilies.sansMedium,
@@ -246,6 +330,12 @@ const styles = StyleSheet.create({
   },
   scopePillTextActive: {
     color: colors.surface,
+  },
+  resultsContent: {
+    paddingBottom: spacing.xxl,
+  },
+  separator: {
+    height: spacing.md,
   },
   emptyWrap: {
     flex: 1,

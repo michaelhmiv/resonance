@@ -329,9 +329,14 @@ export interface SavePersonalWorkInput {
   chunks: ChunkedPassage[];
 }
 
+function sqlLiteral(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
 /**
  * Persist a newly imported personal work and all its chunks into `books`,
- * `passages`, and `personal_books` inside a single SQLite transaction.
+ * `passages`, and `personal_books` using 400-row batched multi-value INSERTs
+ * so large books import in milliseconds without holding a long SQLite lock.
  */
 export async function savePersonalWork(
   input: SavePersonalWorkInput
@@ -359,17 +364,19 @@ export async function savePersonalWork(
     await db.runAsync(`DELETE FROM passage_vectors WHERE book_id = ?;`, [input.bookId]);
     await db.runAsync(`DELETE FROM passages WHERE book_id = ?;`, [input.bookId]);
 
-    for (const chunk of input.chunks) {
-      await db.runAsync(
-        `INSERT INTO passages (book_id, chapter, verse_start, verse_end, text, translation, chunk_id, division)
-         VALUES (?, ?, NULL, NULL, ?, NULL, ?, ?);`,
-        [
-          input.bookId,
-          chunk.chapter,
-          chunk.text,
-          chunk.chunkIndex,
-          chunk.division,
-        ]
+    const BATCH = 400;
+    const bookIdSql = sqlLiteral(input.bookId);
+    for (let start = 0; start < input.chunks.length; start += BATCH) {
+      const slice = input.chunks.slice(start, start + BATCH);
+      const values = slice
+        .map((chunk) => {
+          const ch = chunk.chapter ?? 1;
+          const divSql = chunk.division ? sqlLiteral(chunk.division) : 'NULL';
+          return `(${bookIdSql}, ${ch}, NULL, NULL, ${sqlLiteral(chunk.text)}, NULL, ${chunk.chunkIndex}, ${divSql})`;
+        })
+        .join(', ');
+      await db.execAsync(
+        `INSERT INTO passages (book_id, chapter, verse_start, verse_end, text, translation, chunk_id, division) VALUES ${values};`
       );
     }
 
@@ -563,3 +570,22 @@ export async function clearPersonalWorkVectors(bookId: string): Promise<void> {
     );
   });
 }
+
+/** Return the set of passage IDs already embedded for a book + model so embedding resumes from checkpoint. */
+export async function getEmbeddedPassageIdsForBook(
+  bookId: string,
+  modelId: string
+): Promise<Set<number>> {
+  const db = getDatabase();
+  if (!db) return new Set();
+  try {
+    const rows = await db.getAllAsync<{ passage_id: number }>(
+      `SELECT passage_id FROM passage_vectors WHERE book_id = ? AND model_id = ?;`,
+      [bookId, modelId]
+    );
+    return new Set(rows.map((r) => r.passage_id));
+  } catch {
+    return new Set();
+  }
+}
+

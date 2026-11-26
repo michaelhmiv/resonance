@@ -162,6 +162,7 @@ export interface DataLayer {
   getActiveEmbeddingModel(): Promise<EmbeddingModelId>;
   setActiveEmbeddingModel(id: EmbeddingModelId): Promise<void>;
   getSettings(): Promise<Record<string, string>>;
+  setSetting?(key: string, value: string): Promise<void>;
 }
 
 /**

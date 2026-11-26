@@ -1,68 +1,23 @@
 /**
- * GET /api/bible/chapter — return the verses of a single Bible chapter.
- *
- * Query params:
- *   book        = Genesis            (default: Genesis)
- *   chapter     = 1                  (default: 1)
- *   translation = web | kjv | asv    (default: web)
- *
- * Response:
- *   { book, chapter, translation, verses: [{ id, verseStart, verseEnd, text }] }
+ * GET /api/bible/chapter — O(1) lookup of verses for a single Bible chapter.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync } from 'fs';
-
-const BIBLE_PASSAGES = './data/seeded_library/bible_passages.json';
-
-interface Passage {
-  id: number;
-  book: string;
-  chapter: number;
-  verse_start: number;
-  verse_end: number;
-  text: string;
-  translation: string;
-  chunk_id?: number;
-  [key: string]: unknown;
-}
-
-// Module-level cache (lazy loaded on first request).
-let cachedPassages: Passage[] | null = null;
-
-function loadPassages(): Passage[] {
-  if (!cachedPassages) {
-    cachedPassages = JSON.parse(readFileSync(BIBLE_PASSAGES, 'utf-8'));
-  }
-  return cachedPassages as Passage[];
-}
+import { getBibleChapterVerses } from '../../../../lib/bible-store';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const book = searchParams.get('book') || 'Genesis';
     const chapter = Number(searchParams.get('chapter') || 1);
-    const translation = searchParams.get('translation') || 'web';
+    const translation = (searchParams.get('translation') || 'web').toLowerCase();
 
-    const passages = loadPassages();
-
-    const verses = passages
-      .filter(
-        (p) =>
-          p.translation.toLowerCase() === translation.toLowerCase() &&
-          p.book === book &&
-          p.chapter === chapter,
-      )
-      .sort((a, b) => {
-        if (a.verse_start !== b.verse_start) return a.verse_start - b.verse_start;
-        return (a.chunk_id ?? 0) - (b.chunk_id ?? 0);
-      })
-      .map((p) => ({
-        id: p.id,
-        verseStart: p.verse_start,
-        verseEnd: p.verse_end,
-        text: p.text,
-      }));
+    const verses = getBibleChapterVerses(translation, book, chapter).map((p) => ({
+      id: p.id,
+      verseStart: p.verse_start,
+      verseEnd: p.verse_end,
+      text: p.text,
+    }));
 
     return NextResponse.json({ book, chapter, translation, verses });
   } catch (err) {

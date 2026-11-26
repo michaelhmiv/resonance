@@ -19,7 +19,7 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 
 export type TabParamList = {
   Journal: undefined;
-  Word: undefined;
+  Word: { bookId?: string; chapter?: number; verse?: number } | undefined;
   Patterns: undefined;
 };
 

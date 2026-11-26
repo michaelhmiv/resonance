@@ -153,6 +153,7 @@ interface WebBookRow {
 
 interface WebSearchRow {
   id: number;
+  bookId?: string | null;
   book: string | null;
   chapter: number | null;
   verseStart: number | null;
@@ -211,7 +212,9 @@ export class WebDataLayer implements DataLayer {
     const data = await api<{ results: WebSearchRow[] }>(`/api/bible/search?q=${encodeURIComponent(query)}&scope=${scope}`);
     return data.results.map((r) => ({
       id: r.id,
-      book_id: r.translation ? bibleBookId(r.book ?? '', r.translation.toUpperCase() as Translation) : r.book ?? '',
+      book_id: r.translation
+        ? bibleBookId(r.book ?? '', r.translation.toUpperCase() as Translation)
+        : r.bookId ?? r.book ?? '',
       chapter: r.chapter,
       verse_start: r.verseStart,
       verse_end: r.verseEnd,
@@ -228,6 +231,7 @@ export class WebDataLayer implements DataLayer {
     const byPackage = new Map<string, LibraryPackage>();
 
     for (const book of data.books) {
+      if (book.enabled === false) continue;
       const packageId = book.packageId;
       const existing = byPackage.get(packageId) ?? {
         package_id: packageId,
@@ -302,10 +306,12 @@ export class WebDataLayer implements DataLayer {
   }
 
   async setLibraryBookEnabled(bookId: string, enabled: boolean): Promise<{ enabledList: string[] }> {
-    return api<{ bookId: string; enabled: boolean; enabledList: string[] }>(
+    const res = await api<{ bookId: string; enabled: boolean; enabledList: string[] }>(
       `/api/library/books/${encodeURIComponent(bookId)}`,
       { method: 'PUT', body: JSON.stringify({ enabled }) },
-    ).then((r) => ({ enabledList: r.enabledList }));
+    );
+    invalidateCache('/api/library/books');
+    return { enabledList: res.enabledList };
   }
 
   /**
@@ -409,9 +415,14 @@ export class WebDataLayer implements DataLayer {
 
   async getHighlightsForRefs(refs: string[]): Promise<Highlight[]> {
     if (refs.length === 0) return [];
-    const prefix = refs[0].replace(/:\d+.*$/, '');
-    const data = await cachedApi<{ highlights: Highlight[] }>(`/api/reading/highlights?verseRef=${encodeURIComponent(prefix)}`);
     const wanted = new Set(refs);
+    // Scripture refs share a "Book Chapter" prefix before ":" (e.g. "Matthew 5:1");
+    // Library passage refs are opaque numeric IDs without ":", so fetch all and filter.
+    const isScriptureChapter = refs[0].includes(':');
+    const url = isScriptureChapter
+      ? `/api/reading/highlights?verseRef=${encodeURIComponent(refs[0].replace(/:\d+.*$/, ''))}`
+      : '/api/reading/highlights';
+    const data = await cachedApi<{ highlights: Highlight[] }>(url);
     return (data.highlights || []).filter((h) => wanted.has(h.verse_ref));
   }
 
@@ -440,16 +451,18 @@ export class WebDataLayer implements DataLayer {
 
   async saveBookmark(verseRef: string, label?: string): Promise<void> {
     await api('/api/reading/bookmarks', { method: 'POST', body: JSON.stringify({ verseRef, label }) });
+    invalidateCache('/api/reading/bookmarks');
   }
 
   async removeBookmark(verseRef: string): Promise<void> {
     const data = await api<{ bookmarks: { id: string; verse_ref: string }[] }>('/api/reading/bookmarks');
     const existing = data.bookmarks.find((b) => b.verse_ref === verseRef);
-    if (existing) await fetch(`/api/reading/bookmarks/${existing.id}`, { method: 'DELETE' });
+    if (existing) await fetch(`/api/reading/bookmarks/${existing.id}`, { method: 'DELETE', credentials: 'same-origin' });
+    invalidateCache('/api/reading/bookmarks');
   }
 
   async getBookmarks(): Promise<Bookmark[]> {
-    const data = await api<{ bookmarks: Bookmark[] }>('/api/reading/bookmarks');
+    const data = await cachedApi<{ bookmarks: Bookmark[] }>('/api/reading/bookmarks');
     return data.bookmarks;
   }
 
@@ -636,5 +649,13 @@ export class WebDataLayer implements DataLayer {
       const data = await cachedApi<Record<string, string>>('/api/settings');
       return data || {};
     } catch { return {}; }
+  }
+
+  async setSetting(key: string, value: string): Promise<void> {
+    await api('/api/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ key, value }),
+    });
+    invalidateCache('/api/settings');
   }
 }

@@ -67,16 +67,6 @@ type ModalStep = 'folder' | 'paste' | 'review' | 'edit';
 type StatusFilter = 'all' | 'new' | 'imported';
 type SortKey = 'new_first' | 'name_asc' | 'name_desc' | 'folder' | 'format' | 'size_desc';
 
-interface BatchImportProgress {
-  currentIndex: number;
-  total: number;
-  currentFilename: string;
-  stage: 'downloading' | 'extracting' | 'saving';
-  imported: number;
-  skipped: number;
-  failed: number;
-}
-
 const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
   { key: 'new_first', label: 'New first' },
   { key: 'name_asc', label: 'A → Z' },
@@ -96,9 +86,14 @@ export function PersonalLibraryImportModal({
     connectedFolderLabel,
     discoveredFiles,
     scanning,
+    lastScannedAt,
     scanProgress,
     scanNotice,
     scanError,
+    batchImporting,
+    batchProgress,
+    batchSummary,
+    batchError,
     embeddingActiveBookId,
     initialize,
     pickFiles,
@@ -107,6 +102,9 @@ export function PersonalLibraryImportModal({
     scanFolders,
     inspectFile,
     commitImport,
+    startBatchImport,
+    cancelBatchImport,
+    clearBatchBanner,
     importPastedText,
     updateMetadata,
     removeWork,
@@ -122,10 +120,6 @@ export function PersonalLibraryImportModal({
   const [pickingFiles, setPickingFiles] = useState(false);
   const [inspectingFile, setInspectingFile] = useState<string | null>(null);
   const [inspected, setInspected] = useState<InspectedDocument | null>(null);
-  const [batchImporting, setBatchImporting] = useState(false);
-  const [batchProgress, setBatchProgress] = useState<BatchImportProgress | null>(null);
-  const [batchSummary, setBatchSummary] = useState<string | null>(null);
-  const batchCancelRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -163,15 +157,22 @@ export function PersonalLibraryImportModal({
   useEffect(() => {
     if (!visible) return;
     setLocalError(null);
-    setBatchSummary(null);
     setSelectedUris(new Set());
     setSearchQuery('');
     setStatusFilter('all');
     setFormatFilter('all');
     setSubfolderFilter('all');
     setSortBy('new_first');
+
     void initialize().then(() => {
-      if (!editingWork) {
+      if (editingWork) return;
+      const store = usePersonalLibraryStore.getState();
+      // Never re-walk folders while a batch import is actively running or when scanned recently
+      const isFresh =
+        store.lastScannedAt !== null &&
+        Date.now() - store.lastScannedAt < 2 * 60_000 &&
+        store.discoveredFiles.length > 0;
+      if (!store.batchImporting && !store.scanning && !isFresh) {
         void scanFolders();
       }
     });
@@ -409,152 +410,10 @@ export function PersonalLibraryImportModal({
 
   const handleBatchImportFiles = async (targets: DiscoveredFolderFile[]) => {
     if (targets.length === 0) return;
-    batchCancelRef.current = false;
-    pauseEmbeddingQueue();
-    setBatchImporting(true);
-    setBatchSummary(null);
     setLocalError(null);
-    setBatchProgress({
-      currentIndex: 1,
-      total: targets.length,
-      currentFilename: targets[0].filename,
-      stage: 'downloading',
-      imported: 0,
-      skipped: 0,
-      failed: 0,
-    });
-
-    let importedCount = 0;
-    let skippedDupes = 0;
-    let failedCount = 0;
-    const errorSamples: string[] = [];
-    let lastBookId: string | null = null;
-    let cancelled = false;
-
-    try {
-      for (let i = 0; i < targets.length; i++) {
-        if (batchCancelRef.current) {
-          cancelled = true;
-          break;
-        }
-        const file = targets[i];
-        setBatchProgress({
-          currentIndex: i + 1,
-          total: targets.length,
-          currentFilename: file.filename,
-          stage: 'downloading',
-          imported: importedCount,
-          skipped: skippedDupes,
-          failed: failedCount,
-        });
-        // Yield 1 frame so the progress banner paints before reading the file
-        await new Promise((resolve) => setTimeout(resolve, 16));
-
-        try {
-          const result = await inspectFile(file, {
-            onStage: (stage) => {
-              setBatchProgress({
-                currentIndex: i + 1,
-                total: targets.length,
-                currentFilename: file.filename,
-                stage,
-                imported: importedCount,
-                skipped: skippedDupes,
-                failed: failedCount,
-              });
-            },
-          });
-
-          if (result.duplicateWork) {
-            skippedDupes++;
-            continue;
-          }
-          if (result.processed.chunks.length === 0) {
-            failedCount++;
-            if (errorSamples.length < 2) {
-              errorSamples.push(
-                `${file.filename}: ${result.processed.ocrRequired ? 'scanned image PDF (no text layer)' : 'no readable text found'}`
-              );
-            }
-            continue;
-          }
-
-          setBatchProgress({
-            currentIndex: i + 1,
-            total: targets.length,
-            currentFilename: result.processed.suggestedTitle || file.filename,
-            stage: 'saving',
-            imported: importedCount,
-            skipped: skippedDupes,
-            failed: failedCount,
-          });
-          await new Promise((resolve) => setTimeout(resolve, 0));
-
-          const saved = await commitImport(
-            result,
-            {
-              title: result.processed.suggestedTitle,
-              author: result.processed.suggestedAuthor,
-              era: result.processed.suggestedEra || 'Personal',
-              collection: 'Personal Library',
-              tags: result.processed.suggestedTags,
-              notes: result.processed.suggestedNotes,
-              includeInResonance: !result.processed.ocrRequired,
-            },
-            { deferEmbedding: true }
-          );
-          importedCount++;
-          lastBookId = saved.bookId;
-        } catch (err) {
-          failedCount++;
-          const msg = err instanceof Error ? err.message : 'Unknown error';
-          if (errorSamples.length < 2) {
-            errorSamples.push(`${file.filename}: ${msg}`);
-          }
-        }
-      }
-
-      setSelectedUris(new Set());
-
-      // Kick off on-device embedding once after the entire batch finishes
-      if (importedCount > 0) {
-        void processEmbeddingQueue();
-      }
-
-      if (importedCount === 0) {
-        if (cancelled) {
-          setBatchSummary('Import canceled before any books were saved.');
-        } else if (skippedDupes > 0 && failedCount === 0) {
-          setBatchSummary(
-            `All ${skippedDupes} selected file${skippedDupes === 1 ? ' is' : 's are'} already in your Library.`
-          );
-        } else {
-          setLocalError(
-            errorSamples.length > 0
-              ? `Could not import selected files (${errorSamples.join('; ')}).`
-              : 'No new readable passages were found in the selected files.'
-          );
-        }
-      } else if (failedCount > 0 || cancelled) {
-        const parts = [`Imported ${importedCount} book${importedCount === 1 ? '' : 's'}`];
-        if (skippedDupes > 0) parts.push(`${skippedDupes} already in Library`);
-        if (failedCount > 0) parts.push(`${failedCount} failed`);
-        if (cancelled) parts.push('stopped early');
-        setBatchSummary(parts.join(' · ') + '.');
-        if (errorSamples.length > 0) {
-          setLocalError(errorSamples.join(' · '));
-        }
-      } else {
-        onClose();
-        if (lastBookId && importedCount === 1) {
-          onImportedBook?.(lastBookId);
-        }
-      }
-    } finally {
-      setBatchImporting(false);
-      setBatchProgress(null);
-      batchCancelRef.current = false;
-    }
+    clearBatchBanner();
+    setSelectedUris(new Set());
+    void startBatchImport(targets);
   };
 
   const handleCommitReviewedImport = async (replaceExistingBookId?: string) => {
@@ -728,9 +587,7 @@ export function PersonalLibraryImportModal({
                   </Text>
                 </View>
                 <Pressable
-                  onPress={() => {
-                    batchCancelRef.current = true;
-                  }}
+                  onPress={() => cancelBatchImport()}
                   style={styles.batchCancelBtn}
                 >
                   <Text style={styles.batchCancelText}>Stop</Text>
@@ -763,6 +620,7 @@ export function PersonalLibraryImportModal({
                 {batchProgress.imported} imported
                 {batchProgress.skipped > 0 ? ` · ${batchProgress.skipped} already in Library` : ''}
                 {batchProgress.failed > 0 ? ` · ${batchProgress.failed} failed` : ''}
+                {' · Continues in background if closed'}
               </Text>
             </View>
           ) : null}
@@ -772,9 +630,11 @@ export function PersonalLibraryImportModal({
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.scrollBody}
           >
-            {localError || scanError ? (
+            {localError || batchError || scanError ? (
               <View style={styles.warningBox}>
-                <Text style={styles.warningText}>{localError ?? scanError}</Text>
+                <Text style={styles.warningText}>
+                  {localError ?? batchError ?? scanError}
+                </Text>
               </View>
             ) : null}
 

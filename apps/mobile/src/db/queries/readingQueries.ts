@@ -272,46 +272,359 @@ export async function isBookmarked(verseRef: string): Promise<boolean> {
   }
 }
 
-// ── Cross-references ────────────────────────────────────────────────────────
+// ── Full Highlights (Migration v2: offsets + notes) ─────────────────────────
 
-/** Reads the cross-reference array from app_settings (written at bootstrap). */
-async function loadCrossRefs(): Promise<CrossReference[]> {
+export interface FullHighlightRow {
+  id: string;
+  verse_ref: string;
+  color: string;
+  start_offset: number | null;
+  end_offset: number | null;
+  selected_text: string | null;
+  note_text: string | null;
+  note_updated_at: number | null;
+  created_at: number;
+  updated_at: number | null;
+}
+
+function toIso(ts: number | null | undefined): string {
+  if (typeof ts !== 'number' || !Number.isFinite(ts)) {
+    return new Date().toISOString();
+  }
+  const ms = ts > 10_000_000_000 ? ts : ts * 1000;
+  return new Date(ms).toISOString();
+}
+
+export async function getFullHighlightsForRefs(
+  verseRefs: string[]
+): Promise<
+  Array<{
+    id: string;
+    verse_ref: string;
+    color: string;
+    start_offset: number | null;
+    end_offset: number | null;
+    selected_text: string | null;
+    note_text: string | null;
+    note_updated_at: string | null;
+    created_at: string;
+    updated_at: string;
+  }>
+> {
   const db = getDatabase();
-  if (!db) return [];
+  if (!db || verseRefs.length === 0) return [];
+  const results: Array<{
+    id: string;
+    verse_ref: string;
+    color: string;
+    start_offset: number | null;
+    end_offset: number | null;
+    selected_text: string | null;
+    note_text: string | null;
+    note_updated_at: string | null;
+    created_at: string;
+    updated_at: string;
+  }> = [];
+
+  for (let i = 0; i < verseRefs.length; i += 400) {
+    const chunk = verseRefs.slice(i, i + 400);
+    const placeholders = chunk.map(() => '?').join(', ');
+    try {
+      const rows = await db.getAllAsync<FullHighlightRow>(
+        `SELECT id, verse_ref, color, start_offset, end_offset, selected_text,
+                note_text, note_updated_at, created_at, updated_at
+         FROM highlights
+         WHERE verse_ref IN (${placeholders})
+         ORDER BY created_at ASC;`,
+        chunk
+      );
+      for (const r of rows) {
+        results.push({
+          id: r.id,
+          verse_ref: r.verse_ref,
+          color: r.color,
+          start_offset: r.start_offset ?? null,
+          end_offset: r.end_offset ?? null,
+          selected_text: r.selected_text ?? null,
+          note_text: r.note_text ?? null,
+          note_updated_at: r.note_updated_at != null ? toIso(r.note_updated_at) : null,
+          created_at: toIso(r.created_at),
+          updated_at: toIso(r.updated_at ?? r.created_at),
+        });
+      }
+    } catch {
+      // Fall back to legacy columns if migration v2 hasn't run
+      const legacy = await getHighlightsForRefs(chunk);
+      for (const [verse_ref, color] of Object.entries(legacy)) {
+        const iso = new Date().toISOString();
+        results.push({
+          id: `legacy-${verse_ref}`,
+          verse_ref,
+          color,
+          start_offset: null,
+          end_offset: null,
+          selected_text: null,
+          note_text: null,
+          note_updated_at: null,
+          created_at: iso,
+          updated_at: iso,
+        });
+      }
+    }
+  }
+  return results;
+}
+
+export async function saveFullHighlight(input: {
+  verseRef: string;
+  color: string;
+  startOffset: number;
+  endOffset: number;
+  selectedText: string;
+  noteText?: string | null;
+}): Promise<{
+  id: string;
+  verse_ref: string;
+  color: string;
+  start_offset: number | null;
+  end_offset: number | null;
+  selected_text: string | null;
+  note_text: string | null;
+  note_updated_at: string | null;
+  created_at: string;
+  updated_at: string;
+}> {
+  const db = getDatabase();
+  const ts = now();
+  const id = makeId();
+  const cleanedNote =
+    input.noteText && input.noteText.trim().length > 0 ? input.noteText.trim() : null;
+  const noteTs = cleanedNote ? ts : null;
+
+  if (db) {
+    try {
+      await db.runAsync(`DELETE FROM highlights WHERE verse_ref = ?;`, [input.verseRef]);
+      await db.runAsync(
+        `INSERT INTO highlights (
+           id, verse_ref, color, start_offset, end_offset, selected_text,
+           note_text, note_updated_at, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        [
+          id,
+          input.verseRef,
+          input.color,
+          input.startOffset,
+          input.endOffset,
+          input.selectedText,
+          cleanedNote,
+          noteTs,
+          ts,
+          ts,
+        ]
+      );
+    } catch {
+      await saveHighlight(input.verseRef, input.color);
+    }
+  }
+
+  return {
+    id,
+    verse_ref: input.verseRef,
+    color: input.color,
+    start_offset: input.startOffset,
+    end_offset: input.endOffset,
+    selected_text: input.selectedText,
+    note_text: cleanedNote,
+    note_updated_at: noteTs ? toIso(noteTs) : null,
+    created_at: toIso(ts),
+    updated_at: toIso(ts),
+  };
+}
+
+export async function updateFullHighlight(
+  id: string,
+  patch: {
+    color?: string;
+    startOffset?: number;
+    endOffset?: number;
+    selectedText?: string;
+    noteText?: string | null;
+  }
+): Promise<{
+  id: string;
+  verse_ref: string;
+  color: string;
+  start_offset: number | null;
+  end_offset: number | null;
+  selected_text: string | null;
+  note_text: string | null;
+  note_updated_at: string | null;
+  created_at: string;
+  updated_at: string;
+}> {
+  const db = getDatabase();
+  const ts = now();
+
+  if (db) {
+    try {
+      const existing = await db.getFirstAsync<FullHighlightRow>(
+        `SELECT id, verse_ref, color, start_offset, end_offset, selected_text,
+                note_text, note_updated_at, created_at, updated_at
+         FROM highlights
+         WHERE id = ?;`,
+        [id]
+      );
+      if (existing) {
+        const nextColor = patch.color ?? existing.color;
+        const nextStart = patch.startOffset ?? existing.start_offset;
+        const nextEnd = patch.endOffset ?? existing.end_offset;
+        const nextText = patch.selectedText ?? existing.selected_text;
+        const nextNote =
+          patch.noteText !== undefined
+            ? patch.noteText && patch.noteText.trim().length > 0
+              ? patch.noteText.trim()
+              : null
+            : existing.note_text;
+        const nextNoteTs =
+          patch.noteText !== undefined
+            ? nextNote
+              ? ts
+              : null
+            : existing.note_updated_at;
+
+        await db.runAsync(
+          `UPDATE highlights
+           SET color = ?, start_offset = ?, end_offset = ?, selected_text = ?,
+               note_text = ?, note_updated_at = ?, updated_at = ?
+           WHERE id = ?;`,
+          [nextColor, nextStart, nextEnd, nextText, nextNote, nextNoteTs, ts, id]
+        );
+
+        return {
+          id: existing.id,
+          verse_ref: existing.verse_ref,
+          color: nextColor,
+          start_offset: nextStart,
+          end_offset: nextEnd,
+          selected_text: nextText,
+          note_text: nextNote,
+          note_updated_at: nextNoteTs != null ? toIso(nextNoteTs) : null,
+          created_at: toIso(existing.created_at),
+          updated_at: toIso(ts),
+        };
+      }
+    } catch {
+      // fall through to best-effort return
+    }
+  }
+
+  const fallbackRef = id.replace(/^mobile-/, '').replace(/^legacy-/, '');
+  if (patch.color) await saveHighlight(fallbackRef, patch.color);
+  return {
+    id,
+    verse_ref: fallbackRef,
+    color: patch.color ?? '#d4a574',
+    start_offset: patch.startOffset ?? null,
+    end_offset: patch.endOffset ?? null,
+    selected_text: patch.selectedText ?? null,
+    note_text: patch.noteText ?? null,
+    note_updated_at: patch.noteText ? toIso(ts) : null,
+    created_at: toIso(ts),
+    updated_at: toIso(ts),
+  };
+}
+
+export async function deleteFullHighlightById(id: string): Promise<void> {
+  const db = getDatabase();
+  if (!db) return;
   try {
-    const row = await db.getFirstAsync<{ value: string | null }>(
-      `SELECT value FROM app_settings WHERE key = 'cross_references';`
-    );
-    if (!row?.value) return [];
-    const parsed = JSON.parse(row.value) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (item): item is CrossReference =>
-        typeof item === 'object' &&
-        item !== null &&
-        typeof (item as CrossReference).from_ref === 'string' &&
-        typeof (item as CrossReference).to_ref === 'string'
-    );
+    await db.runAsync(`DELETE FROM highlights WHERE id = ?;`, [id]);
   } catch {
-    return [];
+    const fallbackRef = id.replace(/^mobile-/, '').replace(/^legacy-/, '');
+    await removeHighlight(fallbackRef);
   }
 }
 
-/**
- * Cross-reference targets for a single verse reference, normalized so minor
- * formatting differences (e.g. "John 3:16" vs "Joh 3:16") still match.
- */
-export async function getCrossReferences(
-  verseRef: string
-): Promise<string[]> {
-  const refs = await loadCrossRefs();
-  if (refs.length === 0) return [];
-  const norm = (s: string): string =>
-    s.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const target = norm(verseRef);
-  const out = refs
-    .filter((r) => norm(r.from_ref) === target)
-    .map((r) => r.to_ref);
-  // Deduplicate while preserving order.
-  return Array.from(new Set(out));
+// ── Cross-references (cached O(1) in-memory Map index) ──────────────────────
+
+let cachedCrossRefIndex: Map<string, string[]> | null = null;
+let crossRefLoadPromise: Promise<Map<string, string[]>> | null = null;
+
+function normRef(s: string): string {
+  return s
+    .replace(/^Exodus\b/i, 'Exod')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
 }
+
+/** Loads and indexes the cross-reference map ONCE per app session. */
+async function loadCrossRefIndex(): Promise<Map<string, string[]>> {
+  if (cachedCrossRefIndex) return cachedCrossRefIndex;
+  if (crossRefLoadPromise) return crossRefLoadPromise;
+
+  crossRefLoadPromise = (async () => {
+    const map = new Map<string, string[]>();
+    const db = getDatabase();
+    if (!db) return map;
+    try {
+      const row = await db.getFirstAsync<{ value: string | null }>(
+        `SELECT value FROM app_settings WHERE key = 'cross_references';`
+      );
+      if (!row?.value) {
+        cachedCrossRefIndex = map;
+        return map;
+      }
+      const parsed = JSON.parse(row.value) as unknown;
+      if (!Array.isArray(parsed)) {
+        cachedCrossRefIndex = map;
+        return map;
+      }
+      for (let i = 0; i < parsed.length; i++) {
+        const item = parsed[i] as Partial<CrossReference> | null;
+        if (!item || typeof item.from_ref !== 'string' || typeof item.to_ref !== 'string') {
+          continue;
+        }
+        const key = normRef(item.from_ref);
+        let arr = map.get(key);
+        if (!arr) {
+          arr = [item.to_ref];
+          map.set(key, arr);
+        } else if (!arr.includes(item.to_ref)) {
+          arr.push(item.to_ref);
+        }
+      }
+      cachedCrossRefIndex = map;
+      return map;
+    } catch {
+      cachedCrossRefIndex = map;
+      return map;
+    } finally {
+      crossRefLoadPromise = null;
+    }
+  })();
+
+  return crossRefLoadPromise;
+}
+
+/** O(1) cross-reference targets for a single verse reference. */
+export async function getCrossReferences(verseRef: string): Promise<string[]> {
+  const index = await loadCrossRefIndex();
+  return index.get(normRef(verseRef)) ?? [];
+}
+
+/** O(N) single-pass batched cross-reference lookup using the cached index. */
+export async function getCrossReferencesBatch(
+  verseRefs: string[]
+): Promise<Record<string, string[]>> {
+  if (verseRefs.length === 0) return {};
+  const index = await loadCrossRefIndex();
+  const result: Record<string, string[]> = {};
+  for (const ref of verseRefs) {
+    const targets = index.get(normRef(ref));
+    if (targets && targets.length > 0) {
+      result[ref] = targets;
+    }
+  }
+  return result;
+}
+

@@ -33,8 +33,11 @@ export function PatternsScreen(): ReactNode {
   }, [navigation]);
 
   const handleNavigateToBook = useCallback(
-    (_bookId: string, _chapter?: number, _verse?: number) => {
-      navigation.navigate('Word' as never);
+    (bookId: string, chapter?: number, verse?: number) => {
+      (navigation as { navigate: (name: string, params?: unknown) => void }).navigate(
+        'Word',
+        { bookId, chapter, verse }
+      );
     },
     [navigation],
   );

@@ -44,10 +44,13 @@ export function WindIcon(props: IconProps): ReactNode {
   );
 }
 
-export function BookmarkIcon(props: IconProps): ReactNode {
+export function BookmarkIcon({ filled, ...props }: IconProps & { filled?: boolean }): ReactNode {
   return (
     <SvgWrap {...props}>
-      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+      <path
+        d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"
+        fill={filled ? (props.color ?? '#3a3530') : 'none'}
+      />
     </SvgWrap>
   );
 }
@@ -56,6 +59,22 @@ export function ChevronDownIcon(props: IconProps): ReactNode {
   return (
     <SvgWrap {...props}>
       <polyline points="6 9 12 15 18 9" />
+    </SvgWrap>
+  );
+}
+
+export function ChevronUpIcon(props: IconProps): ReactNode {
+  return (
+    <SvgWrap {...props}>
+      <polyline points="18 15 12 9 6 15" />
+    </SvgWrap>
+  );
+}
+
+export function ChevronLeftIcon(props: IconProps): ReactNode {
+  return (
+    <SvgWrap {...props}>
+      <polyline points="15 18 9 12 15 6" />
     </SvgWrap>
   );
 }

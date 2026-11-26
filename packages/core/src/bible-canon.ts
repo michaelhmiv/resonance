@@ -126,3 +126,108 @@ export function buildBookSpine(
     };
   });
 }
+
+const BIBLE_BOOK_ALIASES: Record<string, string> = {
+  gen: 'Genesis',
+  exod: 'Exodus',
+  exo: 'Exodus',
+  lev: 'Leviticus',
+  num: 'Numbers',
+  deut: 'Deuteronomy',
+  deu: 'Deuteronomy',
+  josh: 'Joshua',
+  jos: 'Joshua',
+  judg: 'Judges',
+  jdg: 'Judges',
+  '1sam': '1 Samuel',
+  '2sam': '2 Samuel',
+  '1kgs': '1 Kings',
+  '2kgs': '2 Kings',
+  '1chr': '1 Chronicles',
+  '2chr': '2 Chronicles',
+  neh: 'Nehemiah',
+  est: 'Esther',
+  ps: 'Psalms',
+  psa: 'Psalms',
+  psalm: 'Psalms',
+  prov: 'Proverbs',
+  pro: 'Proverbs',
+  eccl: 'Ecclesiastes',
+  ecc: 'Ecclesiastes',
+  song: 'Song of Solomon',
+  songofsongs: 'Song of Solomon',
+  sos: 'Song of Solomon',
+  isa: 'Isaiah',
+  jer: 'Jeremiah',
+  lam: 'Lamentations',
+  ezek: 'Ezekiel',
+  eze: 'Ezekiel',
+  dan: 'Daniel',
+  hos: 'Hosea',
+  obad: 'Obadiah',
+  mic: 'Micah',
+  nah: 'Nahum',
+  hab: 'Habakkuk',
+  zeph: 'Zephaniah',
+  hag: 'Haggai',
+  zech: 'Zechariah',
+  mal: 'Malachi',
+  matt: 'Matthew',
+  mat: 'Matthew',
+  mk: 'Mark',
+  lk: 'Luke',
+  jn: 'John',
+  joh: 'John',
+  rom: 'Romans',
+  '1cor': '1 Corinthians',
+  '2cor': '2 Corinthians',
+  gal: 'Galatians',
+  eph: 'Ephesians',
+  phil: 'Philippians',
+  php: 'Philippians',
+  col: 'Colossians',
+  '1thess': '1 Thessalonians',
+  '2thess': '2 Thessalonians',
+  '1tim': '1 Timothy',
+  '2tim': '2 Timothy',
+  tit: 'Titus',
+  phlm: 'Philemon',
+  phm: 'Philemon',
+  heb: 'Hebrews',
+  jas: 'James',
+  '1pet': '1 Peter',
+  '2pet': '2 Peter',
+  '1jn': '1 John',
+  '2jn': '2 John',
+  '3jn': '3 John',
+  rev: 'Revelation',
+};
+
+const CANONICAL_BY_NORM: Map<string, string> = (() => {
+  const map = new Map<string, string>();
+  for (const b of BIBLE_BOOKS) {
+    map.set(normalize(b.name), b.name);
+  }
+  for (const [alias, canonical] of Object.entries(BIBLE_BOOK_ALIASES)) {
+    map.set(alias, canonical);
+  }
+  return map;
+})();
+
+/**
+ * Resolve any Bible book identifier ("WEB_Matthew", "web_1_Corinthians",
+ * "Exod", "Psalms", etc.) to its canonical name in `BIBLE_BOOKS`, or return
+ * `null` if the identifier does not correspond to a canonical Bible book
+ * (e.g., a Library or Personal work slug like "augustine-confessions").
+ */
+export function resolveBibleBookName(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const stripped = trimmed
+    .replace(/^(web|kjv|asv|esv|niv|nrsv)[_\s]+/i, '')
+    .replace(/_/g, ' ')
+    .trim();
+  return CANONICAL_BY_NORM.get(normalize(stripped)) ?? null;
+}
+

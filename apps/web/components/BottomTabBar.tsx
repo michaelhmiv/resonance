@@ -1,33 +1,23 @@
 /**
- * BottomTabBar — persistent bottom navigation for mobile.
+ * BottomTabBar — persistent bottom navigation for web.
  *
- * WEB-ONLY: this component uses next/link + next/navigation. It lived in
- * @resonance/ui until Phase 1 (issue #53, P1-01); its only consumer is the
- * web app, so it now lives here and the shared UI barrel no longer exports
- * it into React Native bundles.
- *
- * URL-aware: derives `activeTab` from the current pathname and navigates
- * with `next/link` so the other two tabs are auto-prefetched on mount.
- * Designed to be mounted once at the layout level so every authenticated
- * page inherits the bar.
- *
- * Visibility is driven by a JavaScript media-query check (not CSS) because
- * RN-Web's inline `style.display` wins over a CSS `.bottom-tab-bar` rule,
- * and the `className` prop is not preserved through RN-Web. On desktop
- * we render nothing.
- *
- * Tap targets are 48px (slightly above Apple HIG 44px) to give thumb
- * reach comfortable margins.
+ * Uses native Next.js <Link> navigation directly (no manual e.preventDefault()
+ * + startViewTransition interception that could drop/stall tab switches),
+ * plain CSSProperties on DOM <a> elements (never RNW StyleSheet.create objects),
+ * and a fixed 60px height shared with MobileChrome & ReadingView so the
+ * action bar docks flush above the nav bar with zero gap.
  */
 
 'use client';
 
-import { type ReactNode } from 'react';
+import { type CSSProperties, type ReactNode } from 'react';
 import { Text, View, StyleSheet } from 'react-native';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { colors, fontFamilies, spacing, radii } from '@resonance/theme';
 import { SearchIcon, LibraryIcon, WindIcon } from '@resonance/ui';
+
+export const BOTTOM_TAB_BAR_HEIGHT = 60;
 
 export type TabId = 'journal' | 'word' | 'patterns';
 
@@ -44,6 +34,15 @@ const TABS: { id: TabId; label: string; Icon: typeof WindIcon; href: string }[] 
   { id: 'patterns', label: 'Patterns', Icon: LibraryIcon, href: '/patterns' },
 ];
 
+const LINK_STYLE: CSSProperties = {
+  flex: 1,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  textDecoration: 'none',
+  height: '100%',
+};
+
 /** Map a pathname prefix to the active tab. /word (incl. /word?...) → word. */
 function tabFromPath(pathname: string | null): TabId {
   if (!pathname) return 'journal';
@@ -54,26 +53,13 @@ function tabFromPath(pathname: string | null): TabId {
 
 export function BottomTabBar({ activeTab: activeOverride, onSelect }: BottomTabBarProps = {}): ReactNode {
   const pathname = usePathname();
-  const router = useRouter();
   const active = activeOverride ?? tabFromPath(pathname);
 
-  const handlePress = (href: string, e: React.MouseEvent) => {
-    // next/link handles navigation. This callback lets a parent override
-    // behavior (e.g. analytics, or forced remount) without reimplementing
-    // the link itself.
-    if (onSelect) onSelect(tabFromPath(href));
-
-    // Wrap the soft navigation in a View Transition for a gentle
-    // cross-fade. next/link's experimental viewTransition flag is
-    // unreliable in 14.x/15.x, so we trigger it ourselves. Falls through
-    // to the default <a> navigation on browsers without the API.
-    if (typeof document !== 'undefined' && 'startViewTransition' in document) {
-      e.preventDefault();
-      const transition = (document as any).startViewTransition(() => {
-        router.push(href);
-      });
-      // Suppress unhandled-promise warning from the optional ready callback.
-      void transition?.ready?.catch(() => {});
+  const handlePress = (tabId: TabId) => {
+    if (onSelect) onSelect(tabId);
+    // Tapping the already-active Word tab returns from ReadingView/Search to browse.
+    if (tabId === 'word' && active === 'word' && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('resonance:word-reset'));
     }
   };
 
@@ -87,8 +73,8 @@ export function BottomTabBar({ activeTab: activeOverride, onSelect }: BottomTabB
             key={tab.id}
             href={tab.href}
             prefetch={true}
-            style={styles.linkReset}
-            onClick={(e) => handlePress(tab.href, e)}
+            style={LINK_STYLE}
+            onClick={() => handlePress(tab.id)}
             aria-label={tab.label}
             aria-current={isActive ? 'page' : undefined}
           >
@@ -110,33 +96,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingVertical: spacing.xs,
-    paddingBottom: spacing.sm,
+    height: BOTTOM_TAB_BAR_HEIGHT,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
     backgroundColor: colors.background,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     position: 'fixed' as any,
     bottom: 0,
     left: 0,
     right: 0,
-    zIndex: 250, // below reading chrome (z 300) so chrome sits above on /word
+    zIndex: 250,
   },
-  // next/link renders an <a> — strip the default underline / inline display.
-  linkReset: {
-    flex: 1,
-    textDecorationLine: 'none',
-  } as any,
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.xs,
     minHeight: 48,
+    gap: 2,
     borderRadius: radii.sm,
   },
-  tabActive: {
-    // Active indicator via label color + icon color
-  },
+  tabActive: {},
   label: {
     fontFamily: fontFamilies.sans,
     fontSize: 11,
