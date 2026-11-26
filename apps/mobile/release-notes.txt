@@ -1,8 +1,7 @@
-Resonance — Reader v2 Overhaul (Typography, Chapters, In-Book Search, Annotations & Highlight Embeddings).
+Resonance — Automatic On-Device Embedding for Added Files + Settings Toggle.
 
 What's in this build:
-• Book-grade formatting & typography: reconstructs chapter headings, paragraphs, blockquotes, lists, dividers, and tappable Scripture references, with an in-reader `Aa` typography sheet (typeface, 14–28px text size, line spacing, margins, alignment) and Scripture Reader Flow vs. Verse-by-Verse Study mode
-• Real Chapters, TOC Drawer & Resume Position: native EPUB3/EPUB2 chapter outlines plus inferred book/chapter hierarchy in a tabbed Book Drawer (Contents · Notes · Bookmarks), seamless continuous vertical scroll with live chapter indicator, reading progress, and exact per-book position resume
-• In-Book Search & Upgraded Global Search: search inside the current book in Exact or Meaning (semantic) mode with chapter-grouped hits and match highlights; global Search adds Smart Reference Jump ("Rom 8:28", "Ps 23"), Keyword/Hybrid/Meaning modes, and a dedicated Highlights & Notes scope
-• Zero-mode Highlighting, Margin Notes & Commonplace Book: tap any paragraph or verse to highlight with word/sentence-snapping range handles, 4 semantic colors (Insight / Practice / Question / Theology), Fill or Underline styles, collapsible margin notes with #tags, and a new Highlights & Notes tab with tag/color filters and Markdown export
-• Highlights & Notes Wired into Resonance: highlights and margin notes are embedded on-device (with background backfill) so your own annotations surface in Journal Resonance cards and the new bidirectional `Echoes ✦` sheet right inside the reader
+• Automatic embedding for newly added files (on by default): books, documents, and pasted notes added to your Personal Library now embed automatically in the background without requiring you to tap "Embed"
+• Reliable background queue: fixes race conditions where adding new books mid-embedding or finishing a batch import could leave books queued; automatically begins embedding as soon as the Voyage-4-Nano embedder finishes downloading and recovers paused/interrupted works
+• New Settings → Personal Library toggle ("Auto-embed added files"): enabled by default, with an option to disable automatic embedding and embed manually on demand instead
+• Cleaner Personal Library status: removes unnecessary "Embed now" prompts while auto-embedding is enabled and shows live background embedding progress

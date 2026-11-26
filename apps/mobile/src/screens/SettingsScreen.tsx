@@ -288,7 +288,14 @@ function PersonalLibrarySection(): ReactNode {
     initialize,
     scanFolders,
     processEmbeddingQueue,
+    pauseEmbeddingQueue,
   } = usePersonalLibraryStore();
+
+  const autoEmbedPersonalFiles = useSettingsStore((s) => s.autoEmbedPersonalFiles);
+  const setAutoEmbedPersonalFiles = useSettingsStore((s) => s.setAutoEmbedPersonalFiles);
+  const embedderReady = useOfflineEngineStore(
+    (s) => s.phase === 'ready' || s.groups.embedder.ready
+  );
 
   const [importVisible, setImportVisible] = useState(false);
 
@@ -298,8 +305,41 @@ function PersonalLibrarySection(): ReactNode {
 
   const readyCount = works.filter((w) => w.embeddingStatus === 'ready').length;
   const pendingCount = works.filter(
-    (w) => w.embeddingStatus === 'pending' || w.embeddingStatus === 'embedding'
+    (w) =>
+      w.totalChunks > 0 &&
+      !w.ocrRequired &&
+      (w.embeddingStatus === 'pending' || w.embeddingStatus === 'embedding')
   ).length;
+  const errorCount = works.filter(
+    (w) => w.totalChunks > 0 && !w.ocrRequired && w.embeddingStatus === 'error'
+  ).length;
+
+  // If auto-embed is enabled and the embedder is ready, kick off any queued works automatically.
+  useEffect(() => {
+    if (autoEmbedPersonalFiles && embedderReady && pendingCount > 0 && !embeddingActiveBookId) {
+      void processEmbeddingQueue();
+    }
+  }, [
+    autoEmbedPersonalFiles,
+    embedderReady,
+    pendingCount,
+    embeddingActiveBookId,
+    processEmbeddingQueue,
+  ]);
+
+  const handleToggleAutoEmbed = useCallback(
+    (enabled: boolean) => {
+      setAutoEmbedPersonalFiles(enabled);
+      if (enabled) {
+        void processEmbeddingQueue({ force: true, retryErrors: true });
+      } else {
+        pauseEmbeddingQueue();
+      }
+    },
+    [setAutoEmbedPersonalFiles, processEmbeddingQueue, pauseEmbeddingQueue]
+  );
+
+  const manualEmbedCount = pendingCount + errorCount;
 
   return (
     <Section
@@ -323,6 +363,13 @@ function PersonalLibrarySection(): ReactNode {
         }
       />
       <RowDivider />
+      <ToggleRow
+        label="Auto-embed added files"
+        hint="Automatically embed newly imported books and notes on-device for Resonance echoes and semantic search."
+        value={autoEmbedPersonalFiles}
+        onToggle={handleToggleAutoEmbed}
+      />
+      <RowDivider />
       <ActionRow
         label="Import files or manage folder"
         onPress={() => setImportVisible(true)}
@@ -332,16 +379,44 @@ function PersonalLibrarySection(): ReactNode {
         label={scanning ? 'Scanning folder…' : 'Scan folder for new books'}
         onPress={() => void scanFolders()}
       />
-      {pendingCount > 0 ? (
+      {embeddingActiveBookId ? (
+        <>
+          <RowDivider />
+          <InfoRow
+            label="Embedding status"
+            value="Embedding automatically in background…"
+          />
+        </>
+      ) : pendingCount > 0 && autoEmbedPersonalFiles ? (
+        <>
+          <RowDivider />
+          <InfoRow
+            label="Embedding queue"
+            value={
+              embedderReady
+                ? `${pendingCount} queued (starting automatically)`
+                : `${pendingCount} waiting for Offline Engine`
+            }
+          />
+        </>
+      ) : manualEmbedCount > 0 && !autoEmbedPersonalFiles ? (
         <>
           <RowDivider />
           <ActionRow
-            label={
-              embeddingActiveBookId
-                ? 'Embedding personal works…'
-                : `Embed ${pendingCount} pending work${pendingCount === 1 ? '' : 's'} now`
+            label={`Embed ${manualEmbedCount} pending work${manualEmbedCount === 1 ? '' : 's'} now`}
+            onPress={() =>
+              void processEmbeddingQueue({ force: true, retryErrors: true })
             }
-            onPress={() => void processEmbeddingQueue()}
+          />
+        </>
+      ) : errorCount > 0 ? (
+        <>
+          <RowDivider />
+          <ActionRow
+            label={`Retry ${errorCount} paused work${errorCount === 1 ? '' : 's'}`}
+            onPress={() =>
+              void processEmbeddingQueue({ force: true, retryErrors: true })
+            }
           />
         </>
       ) : null}

@@ -57,11 +57,15 @@ function AppContent(): ReactNode {
     openDatabase()
       .then((db) => {
         setReady(db);
-        // Load persisted user preferences now that the connection is live,
-        // so accessibility/text-scale choices take effect from first paint.
-        void useSettingsStore.getState().load();
-        void useOfflineEngineStore.getState().initialize();
-        void usePersonalLibraryStore.getState().initialize();
+        // Load persisted user preferences before personal library background work
+        // so auto-embed & accessibility choices take effect from first paint.
+        void useSettingsStore
+          .getState()
+          .load()
+          .finally(() => {
+            void useOfflineEngineStore.getState().initialize();
+            void usePersonalLibraryStore.getState().initialize();
+          });
         return db;
       })
       .catch((err) => {

@@ -462,6 +462,16 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
 
     registerOnReady(cb) {
       set((s) => ({ onReadyListeners: [...s.onReadyListeners, cb] }));
+      const st = get();
+      if (st.phase === 'ready' || st.groups.embedder.ready) {
+        void Promise.resolve().then(() => {
+          try {
+            cb();
+          } catch {
+            // isolate listener errors
+          }
+        });
+      }
       return () => {
         set((s) => ({
           onReadyListeners: s.onReadyListeners.filter((fn) => fn !== cb),
@@ -648,6 +658,7 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
         groupStats.reranker.totalBytes +
         groupStats.corpus.totalBytes;
 
+      const prevEmbedderReady = get().groups.embedder.ready;
       const modelsReady = groupStats.embedder.ready && groupStats.reranker.ready;
       const curPhase = get().phase;
       const nextPhase: EnginePhase =
@@ -667,6 +678,19 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
         installedWorkIds,
         phase: nextPhase,
       });
+
+      if (
+        (groupStats.embedder.ready && !prevEmbedderReady) ||
+        (nextPhase === 'ready' && curPhase !== 'ready')
+      ) {
+        for (const cb of get().onReadyListeners) {
+          try {
+            cb();
+          } catch {
+            // isolate listener errors
+          }
+        }
+      }
     },
 
     /**
@@ -703,6 +727,7 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
         );
       }
 
+      let embedderReadyNotified = get().groups.embedder.ready;
       let lastEmitAt = 0;
       const emitProgress = (activeLabel: string | null, force = false) => {
         const now = Date.now();
@@ -732,6 +757,16 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
             groups.reranker.totalBytes +
             groups.corpus.totalBytes,
         });
+        if (!embedderReadyNotified && groups.embedder.ready) {
+          embedderReadyNotified = true;
+          for (const cb of get().onReadyListeners) {
+            try {
+              cb();
+            } catch {
+              // isolate listener errors
+            }
+          }
+        }
       };
 
       emitProgress('Checking existing files…', true);

@@ -47,6 +47,8 @@ export interface Settings {
   reduceMotion: boolean;
   /** App lock (biometric) — stub for now. */
   appLockEnabled: boolean;
+  /** Automatically embed newly added Personal Library files on-device (default on). */
+  autoEmbedPersonalFiles: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -59,9 +61,12 @@ export const DEFAULT_SETTINGS: Settings = {
   textScale: 'medium',
   reduceMotion: false,
   appLockEnabled: false,
+  autoEmbedPersonalFiles: true,
 };
 
 // ── DB keys (columns are TEXT — primitives are serialized as strings) ─────
+
+export const AUTO_EMBED_PERSONAL_FILES_KEY = 'auto_embed_personal_files';
 
 const KEYS = {
   embeddingModel: 'embedding_model',
@@ -73,6 +78,7 @@ const KEYS = {
   textScale: 'text_scale',
   reduceMotion: 'reduce_motion',
   appLockEnabled: 'app_lock_enabled',
+  autoEmbedPersonalFiles: AUTO_EMBED_PERSONAL_FILES_KEY,
 } as const;
 
 // ── Store ─────────────────────────────────────────────────────────────────
@@ -92,6 +98,7 @@ interface SettingsStoreState extends Settings {
   setTextScale: (s: TextScale) => void;
   setReduceMotion: (v: boolean) => void;
   setAppLockEnabled: (v: boolean) => void;
+  setAutoEmbedPersonalFiles: (v: boolean) => void;
 }
 
 // ── Persistence helpers ───────────────────────────────────────────────────
@@ -219,6 +226,10 @@ export const useSettingsStore = create<SettingsStoreState>((set, get) => ({
           map.get(KEYS.appLockEnabled),
           DEFAULT_SETTINGS.appLockEnabled
         ),
+        autoEmbedPersonalFiles: parseBool(
+          map.get(KEYS.autoEmbedPersonalFiles),
+          DEFAULT_SETTINGS.autoEmbedPersonalFiles
+        ),
         loaded: true,
       });
     } catch {
@@ -258,5 +269,9 @@ export const useSettingsStore = create<SettingsStoreState>((set, get) => ({
   setAppLockEnabled(v) {
     set({ appLockEnabled: v });
     persist(KEYS.appLockEnabled, v ? 'true' : 'false');
+  },
+  setAutoEmbedPersonalFiles(v) {
+    set({ autoEmbedPersonalFiles: v });
+    persist(KEYS.autoEmbedPersonalFiles, v ? 'true' : 'false');
   },
 }));

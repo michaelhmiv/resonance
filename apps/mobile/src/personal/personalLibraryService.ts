@@ -54,6 +54,10 @@ import {
 } from '../embedding/embeddingService';
 import { clearLibraryVectors } from '../embedding/resonanceService';
 import { useOfflineEngineStore } from '../packages/offlineEngineManager';
+import {
+  AUTO_EMBED_PERSONAL_FILES_KEY,
+  useSettingsStore,
+} from '../settings/settingsStore';
 
 // ── Managed directories ─────────────────────────────────────────────────────
 
@@ -167,7 +171,10 @@ export interface PersonalLibraryState {
   ) => Promise<PersonalWorkMetadata | null>;
   removeWork: (bookId: string) => Promise<boolean>;
   reembedWork: (bookId: string) => Promise<void>;
-  processEmbeddingQueue: () => Promise<void>;
+  processEmbeddingQueue: (options?: {
+    force?: boolean;
+    retryErrors?: boolean;
+  }) => Promise<void>;
   pauseEmbeddingQueue: () => void;
 }
 
@@ -175,6 +182,10 @@ export interface PersonalLibraryState {
 
 let embeddingLoopRunning = false;
 let embeddingPauseFlag = false;
+let embeddingRescanRequested = false;
+let embeddingForceRequested = false;
+let embeddingRetryErrorsRequested = false;
+const sessionRetriedErrorBooks = new Set<string>();
 let batchLoopRunning = false;
 let batchCancelFlag = false;
 let activeScanRunId = 0;
@@ -230,6 +241,21 @@ async function writeSetting(key: string, value: string | null): Promise<void> {
   } catch {
     // ignore
   }
+}
+
+/**
+ * Returns whether newly added Personal Library files should be embedded
+ * automatically on-device. Defaults to `true` unless the user explicitly
+ * disabled it in Settings → Personal Library.
+ */
+async function isAutoEmbedEnabled(): Promise<boolean> {
+  const settings = useSettingsStore.getState();
+  if (settings.loaded) {
+    return settings.autoEmbedPersonalFiles;
+  }
+  const raw = await readSetting(AUTO_EMBED_PERSONAL_FILES_KEY);
+  if (raw === null) return true;
+  return raw === 'true';
 }
 
 function isPickerCancelledError(err: unknown): boolean {
@@ -472,9 +498,9 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
       works,
     });
 
-    // Automatically embed pending personal books once the Offline Engine finishes downloading
+    // Automatically embed pending personal books once the Offline Engine / embedder is ready
     useOfflineEngineStore.getState().registerOnReady(() => {
-      void get().processEmbeddingQueue();
+      void get().processEmbeddingQueue({ retryErrors: true });
     });
 
     // Resume any interrupted personal batch imports or pending embeddings right away
@@ -1287,11 +1313,6 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
         await writeSetting(KEY_BATCH_QUEUE, null);
       }
 
-      // Kick off background on-device embedding once the batch finishes
-      if (importedCount > 0) {
-        void get().processEmbeddingQueue();
-      }
-
       if (importedCount === 0) {
         if (cancelled) {
           set({ batchSummary: 'Import stopped before any books were saved.' });
@@ -1308,12 +1329,18 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           });
         }
       } else {
+        const autoEmbed = await isAutoEmbedEnabled();
+        const embedderReady =
+          isEmbeddingReady() || useOfflineEngineStore.getState().groups.embedder.ready;
         const parts = [
           `Imported ${importedCount} book${importedCount === 1 ? '' : 's'}`,
         ];
         if (skippedDupes > 0) parts.push(`${skippedDupes} already in Library`);
         if (failedCount > 0) parts.push(`${failedCount} failed`);
         if (cancelled) parts.push('stopped early');
+        if (autoEmbed && embedderReady) {
+          parts.push('embedding automatically in background');
+        }
         set({
           batchSummary: parts.join(' · ') + '.',
           batchError: errorSamples.length > 0 ? errorSamples.join(' · ') : null,
@@ -1328,6 +1355,9 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
         batchImporting: false,
         batchProgress: null,
       });
+      // Always kick off / resume background auto-embedding once the batch finishes
+      // (respects the user's auto-embed setting and resumes any work paused at batch start).
+      void get().processEmbeddingQueue();
     }
   },
 
@@ -1348,16 +1378,19 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
       }
     }
 
-    // 2. Resume any pending/interrupted on-device book embeddings
-    if (!embeddingLoopRunning && !batchLoopRunning) {
+    // 2. Resume any pending/interrupted on-device book embeddings when auto-embed is on
+    if (!batchLoopRunning && (await isAutoEmbedEnabled())) {
       const works = await getPersonalWorks();
       const hasPending = works.some(
         (w) =>
           w.totalChunks > 0 &&
-          (w.embeddingStatus === 'pending' || w.embeddingStatus === 'embedding')
+          !w.ocrRequired &&
+          (w.embeddingStatus === 'pending' ||
+            w.embeddingStatus === 'embedding' ||
+            (w.embeddingStatus === 'error' && !sessionRetriedErrorBooks.has(w.bookId)))
       );
       if (hasPending) {
-        void get().processEmbeddingQueue();
+        void get().processEmbeddingQueue({ retryErrors: true });
       }
     }
   },
@@ -1435,10 +1468,11 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
   },
 
   async reembedWork(bookId) {
+    sessionRetriedErrorBooks.delete(bookId);
     await clearPersonalWorkVectors(bookId);
     clearLibraryVectors();
     await get().refreshWorks();
-    void get().processEmbeddingQueue();
+    void get().processEmbeddingQueue({ force: true, retryErrors: true });
   },
 
   pauseEmbeddingQueue() {
@@ -1446,128 +1480,194 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
     set({ embeddingPaused: true });
   },
 
-  async processEmbeddingQueue() {
-    if (embeddingLoopRunning) return;
+  async processEmbeddingQueue(options) {
+    const force = options?.force === true;
+    const retryErrors = options?.retryErrors === true;
+
+    if (!force && !(await isAutoEmbedEnabled())) {
+      return;
+    }
+
+    // Never collide with an active batch file import unless forced; batch finish auto-triggers us.
+    if (!force && batchLoopRunning) {
+      return;
+    }
+
+    if (embeddingLoopRunning) {
+      // Do NOT drop newly added books when a pass is already running or unwinding a pause.
+      embeddingRescanRequested = true;
+      if (force) embeddingForceRequested = true;
+      if (retryErrors) embeddingRetryErrorsRequested = true;
+      embeddingPauseFlag = false;
+      set({ embeddingPaused: false });
+      return;
+    }
+
     embeddingLoopRunning = true;
     embeddingPauseFlag = false;
+    embeddingRescanRequested = false;
+    embeddingForceRequested = force;
+    embeddingRetryErrorsRequested = retryErrors;
     set({ embeddingPaused: false });
 
     try {
-      // Ensure Voyage-4-Nano ONNX session is ready (no-op if not downloaded yet)
-      if (!isEmbeddingReady()) {
-        const ok = await initEmbeddingModel(DEFAULT_LOCAL_EMBEDDING_MODEL);
-        if (!ok) {
-          return; // Keep works readable in Library as 'pending' until engine is downloaded
-        }
-      }
+      while (!embeddingPauseFlag) {
+        const passForce = embeddingForceRequested;
+        const passRetryErrors = embeddingRetryErrorsRequested;
+        embeddingRescanRequested = false;
+        embeddingForceRequested = false;
+        embeddingRetryErrorsRequested = false;
 
-      const works = await getPersonalWorks();
-      const pending = works.filter(
-        (w) =>
-          w.totalChunks > 0 &&
-          (w.embeddingStatus === 'pending' || w.embeddingStatus === 'embedding')
-      );
-
-      for (const work of pending) {
-        if (embeddingPauseFlag) break;
-
-        set({ embeddingActiveBookId: work.bookId });
-        const [passages, alreadyEmbeddedIds] = await Promise.all([
-          getLibraryPassages(work.bookId),
-          getEmbeddedPassageIdsForBook(work.bookId, DEFAULT_LOCAL_EMBEDDING_MODEL),
-        ]);
-
-        let embedded = alreadyEmbeddedIds.size;
-        let failed = false;
-
-        await updatePersonalEmbeddingState(work.bookId, {
-          status: 'embedding',
-          embeddedChunks: embedded,
-          totalChunks: passages.length,
-          modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
-          error: null,
-        });
-
-        for (let i = 0; i < passages.length; i++) {
-          if (embeddingPauseFlag) break;
-          const p = passages[i];
-
-          // Checkpoint resume: skip chunks already embedded in passage_vectors
-          if (alreadyEmbeddedIds.has(p.id)) continue;
-
-          // Cooperatively yield to UI thread before each chunk so taps/modals stay instant
-          await yieldToUi();
-          if (embeddingPauseFlag) break;
-
-          const titleCtx = [work.title, work.author, p.division]
-            .filter(Boolean)
-            .join(' — ');
-          const vec = await embedPassage(p.text, titleCtx);
-          if (!vec) {
-            failed = true;
-            break;
-          }
-          const { quantized, scale } = quantizeVectorInt8(vec, EMBEDDING_DIM);
-          await savePassageVectorInt8({
-            passageId: p.id,
-            bookId: work.bookId,
-            modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
-            dim: EMBEDDING_DIM,
-            scale,
-            quantized,
-          });
-          alreadyEmbeddedIds.add(p.id);
-          embedded = alreadyEmbeddedIds.size;
-
-          // Throttle UI/SQLite progress updates every 5 chunks or at the end
-          if (embedded % 5 === 0 || embedded === passages.length) {
-            await updatePersonalEmbeddingState(work.bookId, {
-              status: 'embedding',
-              embeddedChunks: embedded,
-              totalChunks: passages.length,
-              modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
-            });
-            const latest = await getPersonalWork(work.bookId);
-            if (latest) {
-              set((s) => ({
-                works: s.works.map((w) => (w.bookId === work.bookId ? latest : w)),
-              }));
-            }
-          }
-        }
-
-        if (embeddingPauseFlag) {
-          await updatePersonalEmbeddingState(work.bookId, {
-            status: 'pending',
-            embeddedChunks: embedded,
-            totalChunks: passages.length,
-            modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
-          });
+        if (!passForce && !(await isAutoEmbedEnabled())) {
           break;
         }
 
-        if (failed) {
+        // Ensure Voyage-4-Nano ONNX session is ready (no-op if not downloaded yet)
+        if (!isEmbeddingReady()) {
+          const ok = await initEmbeddingModel(DEFAULT_LOCAL_EMBEDDING_MODEL);
+          if (!ok) {
+            break; // Keep works readable in Library as 'pending' until embedder is downloaded
+          }
+        }
+
+        const works = await getPersonalWorks();
+        const pending = works.filter((w) => {
+          if (w.totalChunks <= 0 || w.ocrRequired) return false;
+          if (w.embeddingStatus === 'pending' || w.embeddingStatus === 'embedding') {
+            return true;
+          }
+          if (w.embeddingStatus === 'error' && passRetryErrors) {
+            return passForce || !sessionRetriedErrorBooks.has(w.bookId);
+          }
+          return false;
+        });
+
+        if (pending.length === 0) {
+          if (embeddingRescanRequested) continue;
+          break;
+        }
+
+        for (const work of pending) {
+          if (embeddingPauseFlag) break;
+
+          if (work.embeddingStatus === 'error') {
+            sessionRetriedErrorBooks.add(work.bookId);
+          }
+
+          set({ embeddingActiveBookId: work.bookId });
+          const [passages, alreadyEmbeddedIds] = await Promise.all([
+            getLibraryPassages(work.bookId),
+            getEmbeddedPassageIdsForBook(work.bookId, DEFAULT_LOCAL_EMBEDDING_MODEL),
+          ]);
+
+          let embedded = alreadyEmbeddedIds.size;
+          let failed = false;
+          let interrupted = false;
+
           await updatePersonalEmbeddingState(work.bookId, {
-            status: 'error',
+            status: 'embedding',
             embeddedChunks: embedded,
-            totalChunks: passages.length,
-            modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
-            error: 'On-device embedding paused before finishing. Tap Re-embed to retry.',
-          });
-        } else {
-          await updatePersonalEmbeddingState(work.bookId, {
-            status: 'ready',
-            embeddedChunks: passages.length,
             totalChunks: passages.length,
             modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
             error: null,
           });
-          clearLibraryVectors();
+          const startedWork = await getPersonalWork(work.bookId);
+          if (startedWork) {
+            set((s) => ({
+              works: s.works.map((w) => (w.bookId === work.bookId ? startedWork : w)),
+            }));
+          }
+
+          for (let i = 0; i < passages.length; i++) {
+            if (embeddingPauseFlag) break;
+            const p = passages[i];
+
+            // Checkpoint resume: skip chunks already embedded in passage_vectors
+            if (alreadyEmbeddedIds.has(p.id)) continue;
+
+            // Cooperatively yield to UI thread before each chunk so taps/modals stay instant
+            await yieldToUi();
+            if (embeddingPauseFlag) break;
+
+            const titleCtx = [work.title, work.author, p.division]
+              .filter(Boolean)
+              .join(' — ');
+            const vec = await embedPassage(p.text, titleCtx);
+            if (!vec) {
+              if (!isEmbeddingReady()) {
+                interrupted = true;
+              } else {
+                failed = true;
+              }
+              break;
+            }
+            const { quantized, scale } = quantizeVectorInt8(vec, EMBEDDING_DIM);
+            await savePassageVectorInt8({
+              passageId: p.id,
+              bookId: work.bookId,
+              modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
+              dim: EMBEDDING_DIM,
+              scale,
+              quantized,
+            });
+            alreadyEmbeddedIds.add(p.id);
+            embedded = alreadyEmbeddedIds.size;
+
+            // Throttle UI/SQLite progress updates every 5 chunks or at the end
+            if (embedded % 5 === 0 || embedded === passages.length) {
+              await updatePersonalEmbeddingState(work.bookId, {
+                status: 'embedding',
+                embeddedChunks: embedded,
+                totalChunks: passages.length,
+                modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
+              });
+              const latest = await getPersonalWork(work.bookId);
+              if (latest) {
+                set((s) => ({
+                  works: s.works.map((w) => (w.bookId === work.bookId ? latest : w)),
+                }));
+              }
+            }
+          }
+
+          if (embeddingPauseFlag || interrupted) {
+            await updatePersonalEmbeddingState(work.bookId, {
+              status: 'pending',
+              embeddedChunks: embedded,
+              totalChunks: passages.length,
+              modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
+            });
+            await get().refreshWorks();
+            break;
+          }
+
+          if (failed) {
+            await updatePersonalEmbeddingState(work.bookId, {
+              status: 'error',
+              embeddedChunks: embedded,
+              totalChunks: passages.length,
+              modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
+              error: 'On-device embedding paused before finishing. Tap Retry to resume.',
+            });
+          } else {
+            sessionRetriedErrorBooks.delete(work.bookId);
+            await updatePersonalEmbeddingState(work.bookId, {
+              status: 'ready',
+              embeddedChunks: passages.length,
+              totalChunks: passages.length,
+              modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
+              error: null,
+            });
+            clearLibraryVectors();
+          }
+          await get().refreshWorks();
         }
-        await get().refreshWorks();
       }
     } finally {
       embeddingLoopRunning = false;
+      embeddingRescanRequested = false;
+      embeddingForceRequested = false;
+      embeddingRetryErrorsRequested = false;
       set({ embeddingActiveBookId: null });
     }
   },
