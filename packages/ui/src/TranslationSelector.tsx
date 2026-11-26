@@ -22,12 +22,15 @@ interface TranslationSelectorProps {
   onChange: (next: Translation) => void;
   /** Optional accent color for the label; defaults to the muted accent. */
   tint?: string;
+  /** Anchor the popover near the top header or bottom reading chrome. */
+  placement?: 'top' | 'bottom';
 }
 
 export function TranslationSelector({
   value,
   onChange,
   tint = colors.accent,
+  placement = 'top',
 }: TranslationSelectorProps): ReactNode {
   const [open, setOpen] = useState(false);
 
@@ -55,7 +58,7 @@ export function TranslationSelector({
           onPress={() => setOpen(false)}
           accessibilityLabel="Close translation selector"
         />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, placement === 'bottom' ? styles.sheetBottom : styles.sheetTop]}>
           <Text style={styles.title}>Translation</Text>
           {TRANSLATIONS.map((t) => {
             const selected = t === value;
@@ -97,8 +100,10 @@ const styles = StyleSheet.create({
   trigger: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 2,
-    paddingVertical: 2,
+    paddingHorizontal: 6,
+    minHeight: 36,
   },
   label: {
     fontFamily: fontFamilies.sansMedium,
@@ -111,7 +116,6 @@ const styles = StyleSheet.create({
   },
   sheet: {
     position: 'absolute',
-    top: 96,
     right: spacing.lg,
     width: 168,
     backgroundColor: colors.surface,
@@ -119,6 +123,12 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     paddingVertical: spacing.sm,
+  },
+  sheetTop: {
+    top: 96,
+  },
+  sheetBottom: {
+    bottom: 120,
   },
   title: {
     fontFamily: fontFamilies.sansSemibold,

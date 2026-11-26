@@ -1,25 +1,24 @@
 /**
  * CrossRefInline — compact inline cross-reference marker.
  *
- * Shows [N] pinned right after the verse text. Tap to expand
- * the ref list inline. Much tighter than the old block-level version.
+ * Shows [N] after the verse text. Tap to expand the ref list inline.
  * Only renders if the verse has cross-references.
  */
 
-import { useCallback, useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Pressable, Text, View, StyleSheet, ActivityIndicator } from 'react-native';
 import { colors, fontFamilies, spacing } from '@resonance/theme';
 
 interface CrossRefInlineProps {
   verseRef: string;
-  cache: Record<string, string[]>;
+  refs?: string[];
   loadRefs: (refs: string[]) => Promise<Record<string, string[]>>;
   onNavigate: (ref: string) => void;
 }
 
-export function CrossRefInline({
+export const CrossRefInline = memo(function CrossRefInline({
   verseRef,
-  cache,
+  refs: cachedRefs,
   loadRefs,
   onNavigate,
 }: CrossRefInlineProps): ReactNode {
@@ -27,7 +26,12 @@ export function CrossRefInline({
   const [loading, setLoading] = useState(false);
   const [localRefs, setLocalRefs] = useState<string[] | null>(null);
 
-  const refs = localRefs ?? cache[verseRef];
+  useEffect(() => {
+    setExpanded(false);
+    setLocalRefs(null);
+  }, [verseRef]);
+
+  const refs = localRefs ?? cachedRefs;
   const hasRefs = refs != null;
   const refCount = hasRefs ? refs.length : undefined;
 
@@ -49,30 +53,26 @@ export function CrossRefInline({
     }
   }, [expanded, verseRef, hasRefs, loadRefs]);
 
-  // Don't render anything if no refs and nothing loaded
-  if (!hasRefs && localRefs === null && !cache[verseRef]) return null;
-  // If we loaded and got empty, show nothing
-  if (hasRefs && refs.length === 0) return null;
+  if (!hasRefs || refs.length === 0) return null;
 
   return (
     <View style={styles.inline}>
-      {/* Marker — sits right after verse text */}
-      <Text style={styles.text}>
-        {' '}
-        <Text
-          style={[styles.marker, expanded && styles.markerActive]}
-          onPress={handleToggle}
-        >
-          [{refCount ?? '...'}]
+      <Pressable
+        onPress={handleToggle}
+        hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel={`${expanded ? 'Hide' : 'Show'} ${refCount} cross-references`}
+      >
+        <Text style={[styles.marker, expanded && styles.markerActive]}>
+          [{refCount}]
         </Text>
-      </Text>
+      </Pressable>
 
-      {/* Expanded ref list — appears below when tapped */}
       {expanded && (
         <View style={styles.refList}>
           {loading ? (
             <ActivityIndicator size="small" color={colors.accentMuted} />
-          ) : hasRefs ? (
+          ) : (
             refs.map((ref) => (
               <Pressable
                 key={ref}
@@ -84,24 +84,20 @@ export function CrossRefInline({
                 <Text style={styles.link}>↳ {ref}</Text>
               </Pressable>
             ))
-          ) : (
-            <Text style={styles.empty}>None found.</Text>
           )}
         </View>
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   inline: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'baseline',
-    gap: 0,
-  },
-  text: {
-    // inherit from parent
+    alignItems: 'center',
+    marginLeft: 28,
+    marginTop: 2,
   },
   marker: {
     fontFamily: fontFamilies.sans,
@@ -115,23 +111,17 @@ const styles = StyleSheet.create({
   },
   refList: {
     width: '100%',
-    paddingLeft: spacing.md,
+    paddingLeft: spacing.sm,
     marginTop: spacing.xs,
-    gap: 2,
+    gap: 4,
   },
   refRow: {
-    paddingVertical: 1,
+    paddingVertical: 2,
   },
   link: {
     fontFamily: fontFamilies.sans,
-    fontSize: 12,
-    color: colors.accentMuted,
+    fontSize: 12.5,
+    color: colors.accent,
     letterSpacing: 0.2,
-  },
-  empty: {
-    fontFamily: fontFamilies.sans,
-    fontSize: 12,
-    fontStyle: 'italic',
-    color: colors.textTertiary,
   },
 });

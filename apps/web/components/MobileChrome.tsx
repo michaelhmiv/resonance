@@ -14,9 +14,9 @@
 
 import { type ReactNode } from 'react';
 import { View } from 'react-native-web';
-import { BottomTabBar } from './BottomTabBar';
+import { BOTTOM_TAB_BAR_HEIGHT, BottomTabBar } from './BottomTabBar';
 
-const MOBILE_BAR_RESERVE = 60; // matches .bottom-tab-bar height in globals.css
+const MOBILE_BAR_RESERVE = BOTTOM_TAB_BAR_HEIGHT;
 
 export function MobileChrome({ children }: { children: ReactNode }) {
   return (

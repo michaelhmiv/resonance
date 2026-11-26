@@ -1,4 +1,5 @@
 export { WordScreen } from './word/WordScreen';
+export type { WordBackgroundStatus } from './word/WordScreen';
 export { ReadingView } from './word/ReadingView';
 export type { ReadingMode } from './word/ReadingView';
 export { ScriptureBrowser } from './word/ScriptureBrowser';

@@ -170,12 +170,41 @@ export function scriptureRef(
   return ref.trim();
 }
 
+const bookIdsCache = new Map<string, string[]>();
+
+async function getAvailableBibleBookIds(
+  db: SQLiteDatabase,
+  translation: Translation
+): Promise<string[]> {
+  const cached = bookIdsCache.get(translation);
+  if (cached && cached.length > 0) return cached;
+  try {
+    // Query the tiny `books` table first (66 rows vs 31,102 rows in `passages`)
+    const bookRows = await db.getAllAsync<{ id: string }>(
+      `SELECT id FROM books WHERE type = 'bible' AND translation = ?;`,
+      [translation]
+    );
+    if (bookRows.length > 0) {
+      const ids = bookRows.map((r) => r.id);
+      bookIdsCache.set(translation, ids);
+      return ids;
+    }
+    const passageRows = await db.getAllAsync<{ book_id: string }>(
+      `SELECT DISTINCT book_id FROM passages WHERE translation = ?;`,
+      [translation]
+    );
+    const ids = passageRows.map((r) => r.book_id);
+    if (ids.length > 0) bookIdsCache.set(translation, ids);
+    return ids;
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Returns the actual passages.book_id values in the DB that correspond to the
- * given book name for a translation. Bible passages store
- * `"<TRANSLATION>_<BookName>"`, so we match by normalized name (robust to minor
- * formatting/punctuation differences). Returns the constructed id as a fallback
- * so browsing still works against an empty or partially-seeded DB.
+ * given book name for a translation, using an in-memory cache so chapter and
+ * verse reads never trigger a 31k-row DISTINCT scan.
  */
 async function resolveBookIds(
   db: SQLiteDatabase,
@@ -184,19 +213,14 @@ async function resolveBookIds(
 ): Promise<string[]> {
   const constructed = bibleBookId(bookName, translation);
   try {
-    const rows = await db.getAllAsync<{ book_id: string }>(
-      `SELECT DISTINCT book_id FROM passages WHERE translation = ?;`,
-      [translation]
-    );
+    const allIds = await getAvailableBibleBookIds(db, translation);
     const target = normalize(bookName);
-    const matches = rows
-      .map((r) => r.book_id)
-      .filter((id) => {
-        const stripped = id.startsWith(`${translation}_`)
-          ? id.slice(translation.length + 1)
-          : id;
-        return normalize(stripped) === target;
-      });
+    const matches = allIds.filter((id) => {
+      const stripped = id.startsWith(`${translation}_`)
+        ? id.slice(translation.length + 1)
+        : id;
+      return normalize(stripped) === target;
+    });
     return matches.length > 0 ? matches : [constructed];
   } catch {
     return [constructed];
@@ -220,16 +244,9 @@ export async function getBooks(
   const db = getDatabase();
   const availableIds = new Set<string>();
   if (db) {
-    try {
-      const rows = await db.getAllAsync<{ book_id: string }>(
-        `SELECT DISTINCT book_id FROM passages WHERE translation = ?;`,
-        [translation]
-      );
-      for (const r of rows) {
-        availableIds.add(normalize(r.book_id));
-      }
-    } catch {
-      // ignore — treat as nothing available
+    const ids = await getAvailableBibleBookIds(db, translation);
+    for (const id of ids) {
+      availableIds.add(normalize(id));
     }
   }
 

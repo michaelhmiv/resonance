@@ -94,6 +94,7 @@ export interface ActiveCatalogDownload {
   totalWorks: number;
   bytesWritten: number;
   totalBytes: number;
+  stage?: 'downloading' | 'indexing';
 }
 
 export interface OfflineEngineState {
@@ -116,6 +117,8 @@ export interface OfflineEngineState {
   installedPackIds: string[];
   installedWorkIds: string[];
   activeCatalogDownload: ActiveCatalogDownload | null;
+  /** Remaining queued catalog work IDs (persisted so backgrounding/closing never loses them). */
+  catalogQueueIds: string[];
   catalogError: string | null;
   /** Monotonic revision bumped whenever catalog works are installed/removed. */
   catalogRevision: number;
@@ -124,7 +127,7 @@ export interface OfflineEngineState {
 
   initialize: () => Promise<void>;
   refreshStatus: () => Promise<void>;
-  syncCorpusManifest: () => Promise<CorpusPacksManifest>;
+  syncCorpusManifest: (force?: boolean) => Promise<CorpusPacksManifest>;
   setSheetVisible: (visible: boolean) => void;
   dismissFirstLaunchPrompt: () => Promise<void>;
   setWifiOnly: (wifiOnly: boolean) => Promise<void>;
@@ -135,6 +138,8 @@ export interface OfflineEngineState {
   downloadCatalogWork: (workId: string) => Promise<boolean>;
   downloadCatalogCollection: (collectionId: CatalogCollectionId) => Promise<boolean>;
   cancelCatalogDownload: () => Promise<void>;
+  resumePendingDownloads: () => Promise<void>;
+  handleAppStateChange: (nextState: string) => void;
   removeCatalogWork: (workId: string) => Promise<boolean>;
   removeCatalogCollection: (collectionId: CatalogCollectionId) => Promise<void>;
   removeOfflineEngine: () => Promise<void>;
@@ -143,12 +148,24 @@ export interface OfflineEngineState {
 
 // ── Internal helpers ────────────────────────────────────────────────────────
 
+const KEY_ENGINE_AUTO_RESUME = 'offline_engine_auto_resume';
+const KEY_CATALOG_QUEUE = 'catalog_download_queue_v1';
+const MANIFEST_TTL_MS = 5 * 60_000;
+const PROGRESS_THROTTLE_MS = 200;
+
 let activeDownloadResumable: FileSystem.DownloadResumable | null = null;
 let pauseRequested = false;
 let cancelRequested = false;
+let backgroundCheckpointRequested = false;
 
 let activeCatalogResumable: FileSystem.DownloadResumable | null = null;
+let catalogWorkerRunning = false;
 let catalogCancelRequested = false;
+let catalogBackgroundPaused = false;
+
+function yieldToUi(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
 
 function sqlString(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
@@ -278,8 +295,8 @@ async function getFileSize(path: string): Promise<number> {
 
 /**
  * Fast batched SQLite ingestion for a single downloaded catalog work.
- * Uses 400-row multi-value INSERTs (matching `libraryLoader.ts`) so a typical
- * book installs in ~100 ms without stalling the UI thread.
+ * Uses 400-row multi-value INSERTs with cooperative UI-thread yields so
+ * decompression, JSONL parsing, and SQLite writes never stall taps or closing modals.
  */
 async function ingestCatalogWorkIntoSqlite(work: CatalogWorkEntry): Promise<boolean> {
   const db = getDatabase();
@@ -292,8 +309,11 @@ async function ingestCatalogWorkIntoSqlite(work: CatalogWorkEntry): Promise<bool
     const b64 = await FileSystem.readAsStringAsync(passagesPath, {
       encoding: FileSystem.EncodingType.Base64,
     });
+    await yieldToUi();
     const compressed = base64ToBytes(b64);
+    await yieldToUi();
     const jsonl = decodeUtf8(gunzipBytes(compressed));
+    await yieldToUi();
     const lines = jsonl.split('\n');
 
     interface WorkPassageLine {
@@ -304,13 +324,16 @@ async function ingestCatalogWorkIntoSqlite(work: CatalogWorkEntry): Promise<bool
     }
 
     const parsedRows: WorkPassageLine[] = [];
-    for (const line of lines) {
-      const trimmed = line.trim();
+    for (let i = 0; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
       if (!trimmed) continue;
       try {
         parsedRows.push(JSON.parse(trimmed) as WorkPassageLine);
       } catch {
         // skip malformed line
+      }
+      if (i > 0 && i % 400 === 0) {
+        await yieldToUi();
       }
     }
 
@@ -354,6 +377,7 @@ async function ingestCatalogWorkIntoSqlite(work: CatalogWorkEntry): Promise<bool
         [`work:${work.id}`, '1.0.0', 'voyage-4-nano', Date.now()]
       );
     });
+    await yieldToUi();
 
     return true;
   } catch {
@@ -430,6 +454,7 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
     installedPackIds: [],
     installedWorkIds: [],
     activeCatalogDownload: null,
+    catalogQueueIds: [],
     catalogError: null,
     catalogRevision: 0,
     errorMessage: null,
@@ -460,10 +485,11 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
 
     async initialize() {
       if (get().initialized) return;
-      const [dismissedVal, wifiVal, cachedManifestRaw] = await Promise.all([
+      const [dismissedVal, wifiVal, cachedManifestRaw, savedQueueRaw] = await Promise.all([
         getSetting('offline_engine_prompt_dismissed'),
         getSetting('offline_engine_wifi_only'),
         getSetting('corpus_manifest_cache'),
+        getSetting(KEY_CATALOG_QUEUE),
       ]);
 
       let corpusManifest = FALLBACK_CORPUS_MANIFEST;
@@ -478,10 +504,23 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
         }
       }
 
+      let savedQueueIds: string[] = [];
+      if (savedQueueRaw) {
+        try {
+          const parsed = JSON.parse(savedQueueRaw) as unknown;
+          if (Array.isArray(parsed)) {
+            savedQueueIds = parsed.filter((x): x is string => typeof x === 'string');
+          }
+        } catch {
+          // ignore malformed queue
+        }
+      }
+
       set({
         promptDismissed: dismissedVal === 'true',
         wifiOnly: wifiVal === null ? true : wifiVal === 'true',
         corpusManifest,
+        catalogQueueIds: savedQueueIds,
         initialized: true,
       });
 
@@ -492,9 +531,24 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
       if (state.phase === 'not_installed' && !state.promptDismissed) {
         set({ sheetVisible: true });
       }
+
+      // Automatically resume any interrupted engine or catalog downloads in background
+      void get().resumePendingDownloads();
     },
 
-    async syncCorpusManifest() {
+    async syncCorpusManifest(force = false) {
+      const state = get();
+      if (state.manifestSyncing) return state.corpusManifest;
+      // Avoid redundant network + 85-file disk scans when modal is reopened quickly
+      if (
+        !force &&
+        state.manifestSyncedAt !== null &&
+        Date.now() - state.manifestSyncedAt < MANIFEST_TTL_MS &&
+        (state.corpusManifest.works?.length ?? 0) > 0
+      ) {
+        return state.corpusManifest;
+      }
+
       set({ manifestSyncing: true, catalogError: null });
       try {
         const res = await fetch(CORPUS_PACKS_MANIFEST_URL, {
@@ -517,7 +571,10 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
             catalogError: null,
           });
           await setSetting('corpus_manifest_cache', JSON.stringify(remote));
-          await get().refreshStatus();
+          // Avoid 85-file disk scan while a catalog download is actively streaming
+          if (!catalogWorkerRunning) {
+            await get().refreshStatus();
+          }
           return remote;
         }
       } catch {
@@ -615,14 +672,17 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
     /**
      * Core Offline Engine download: downloads ONLY Voyage-4-Nano (411 MB) +
      * Qwen3-Reranker-0.6B (583 MB) + lightweight Bible vectors (~4.2 MB).
-     * Never downloads the optional 80-work Church Library here.
+     * Persists auto-resume intent so closing the sheet or backgrounding the app
+     * seamlessly continues / resumes until complete.
      */
     async startDownload() {
       if (get().phase === 'downloading') return true;
 
       pauseRequested = false;
       cancelRequested = false;
+      backgroundCheckpointRequested = false;
       set({ phase: 'downloading', errorMessage: null });
+      await setSetting(KEY_ENGINE_AUTO_RESUME, 'true');
 
       // Best-effort refresh so bible-web URL/SHA is current if published
       await get().syncCorpusManifest();
@@ -643,7 +703,11 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
         );
       }
 
-      const emitProgress = (activeLabel: string | null) => {
+      let lastEmitAt = 0;
+      const emitProgress = (activeLabel: string | null, force = false) => {
+        const now = Date.now();
+        if (!force && now - lastEmitAt < PROGRESS_THROTTLE_MS) return;
+        lastEmitAt = now;
         const groups = {
           embedder: { downloadedBytes: 0, totalBytes: 0, ready: true },
           reranker: { downloadedBytes: 0, totalBytes: 0, ready: true },
@@ -670,21 +734,21 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
         });
       };
 
-      emitProgress('Checking existing files…');
+      emitProgress('Checking existing files…', true);
 
       for (const art of artifacts) {
-        if (pauseRequested || cancelRequested) break;
+        if (pauseRequested || cancelRequested || backgroundCheckpointRequested) break;
 
         const localPath = localPathForArtifact(art.relativePath);
         const existingSize = await getFileSize(localPath);
         if (art.sizeBytes > 0 && existingSize >= art.sizeBytes * 0.99) {
           perArtifactBytes.set(art.id, art.sizeBytes);
-          emitProgress(art.label);
+          emitProgress(art.label, true);
           continue;
         }
 
         await ensureParentDir(localPath);
-        emitProgress(art.label);
+        emitProgress(art.label, true);
 
         const savedResume = await getSavedResumeData(art.id);
         await upsertDownloadRow({
@@ -721,10 +785,9 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
             : await resumable.downloadAsync();
           activeDownloadResumable = null;
 
-          if (pauseRequested || cancelRequested) break;
+          if (pauseRequested || cancelRequested || backgroundCheckpointRequested) break;
 
           if (!result || (result.status !== 200 && result.status !== 206)) {
-            // If bible-web release isn't published yet, don't fail the core models!
             if (art.group === 'corpus') {
               await upsertDownloadRow({
                 artifactId: art.id,
@@ -758,9 +821,14 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
             status: 'complete',
             resumeData: null,
           });
-          emitProgress(art.label);
+          emitProgress(art.label, true);
         } catch (err) {
           activeDownloadResumable = null;
+          if (backgroundCheckpointRequested) {
+            // Keep KEY_ENGINE_AUTO_RESUME='true' so returning to foreground resumes automatically
+            set({ phase: 'paused', activeArtifactLabel: null });
+            return false;
+          }
           if (pauseRequested) {
             set({ phase: 'paused', activeArtifactLabel: null });
             return false;
@@ -778,14 +846,19 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
             expectedBytes: art.sizeBytes,
             downloadedBytes: perArtifactBytes.get(art.id) ?? 0,
             expectedSha256: art.sha256,
-            status: 'error',
+            status: 'paused',
             error: msg,
           });
-          set({ phase: 'error', errorMessage: msg, activeArtifactLabel: null });
+          // Keep auto-resume enabled so transient background socket drops recover on foreground
+          set({ phase: 'paused', errorMessage: msg, activeArtifactLabel: null });
           return false;
         }
       }
 
+      if (backgroundCheckpointRequested) {
+        set({ phase: 'paused', activeArtifactLabel: null });
+        return false;
+      }
       if (pauseRequested) {
         set({ phase: 'paused', activeArtifactLabel: null });
         return false;
@@ -795,7 +868,7 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
         return false;
       }
 
-      // Mark models ready once embedder + reranker are verified on disk
+      await setSetting(KEY_ENGINE_AUTO_RESUME, 'false');
       set({ phase: 'ready', activeArtifactLabel: null, promptDismissed: true });
       await get().refreshStatus();
       await setSetting('offline_engine_prompt_dismissed', 'true');
@@ -815,6 +888,7 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
 
     async pauseDownload() {
       pauseRequested = true;
+      await setSetting(KEY_ENGINE_AUTO_RESUME, 'false');
       if (activeDownloadResumable) {
         try {
           const savable = await activeDownloadResumable.pauseAsync();
@@ -837,6 +911,7 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
 
     async cancelDownload() {
       cancelRequested = true;
+      await setSetting(KEY_ENGINE_AUTO_RESUME, 'false');
       if (activeDownloadResumable) {
         try {
           await activeDownloadResumable.pauseAsync();
@@ -848,7 +923,7 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
       set({ phase: 'not_installed', activeArtifactLabel: null });
     },
 
-    // ── Optional Per-Book & Per-Collection Catalog Downloads ────────────────
+    // ── Optional Per-Book & Per-Collection Catalog Downloads (Persisted Queue) ──
 
     async downloadCatalogWork(workId: string) {
       const works = get().corpusManifest.works ?? [];
@@ -857,16 +932,11 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
         set({ catalogError: 'Book not found in catalog. Tap Refresh to sync.' });
         return false;
       }
-
-      catalogCancelRequested = false;
-      set({ catalogError: null });
-      const ok = await downloadSingleWorkInternal(work, 1, 1, set);
-      await get().refreshStatus();
-      set((s) => ({
-        activeCatalogDownload: null,
-        catalogRevision: ok ? s.catalogRevision + 1 : s.catalogRevision,
-      }));
-      return ok;
+      const existing = get().catalogQueueIds;
+      const nextQueue = existing.includes(workId) ? existing : [...existing, workId];
+      set({ catalogQueueIds: nextQueue, catalogError: null });
+      await setSetting(KEY_CATALOG_QUEUE, JSON.stringify(nextQueue));
+      return drainCatalogQueue(get, set);
     },
 
     async downloadCatalogCollection(collectionId: CatalogCollectionId) {
@@ -874,36 +944,28 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
         (w) => w.collectionId === collectionId
       );
       const installed = new Set(get().installedWorkIds);
-      const remaining = works.filter((w) => !installed.has(w.id));
-      if (remaining.length === 0) return true;
+      const remainingIds = works
+        .filter((w) => !installed.has(w.id))
+        .map((w) => w.id);
+      if (remainingIds.length === 0) return true;
 
-      catalogCancelRequested = false;
-      set({ catalogError: null });
-      let anyInstalled = false;
-
-      for (let i = 0; i < remaining.length; i++) {
-        if (catalogCancelRequested) break;
-        const ok = await downloadSingleWorkInternal(
-          remaining[i],
-          i + 1,
-          remaining.length,
-          set
-        );
-        if (ok) {
-          anyInstalled = true;
-          await get().refreshStatus();
-          set((s) => ({ catalogRevision: s.catalogRevision + 1 }));
-        } else if (catalogCancelRequested) {
-          break;
+      const existingSet = new Set(get().catalogQueueIds);
+      const nextQueue = [...get().catalogQueueIds];
+      for (const id of remainingIds) {
+        if (!existingSet.has(id)) {
+          existingSet.add(id);
+          nextQueue.push(id);
         }
       }
 
-      set({ activeCatalogDownload: null });
-      return anyInstalled;
+      set({ catalogQueueIds: nextQueue, catalogError: null });
+      await setSetting(KEY_CATALOG_QUEUE, JSON.stringify(nextQueue));
+      return drainCatalogQueue(get, set);
     },
 
     async cancelCatalogDownload() {
       catalogCancelRequested = true;
+      catalogBackgroundPaused = false;
       if (activeCatalogResumable) {
         try {
           await activeCatalogResumable.pauseAsync();
@@ -912,15 +974,71 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
         }
         activeCatalogResumable = null;
       }
-      set({ activeCatalogDownload: null });
+      set({ activeCatalogDownload: null, catalogQueueIds: [] });
+      await setSetting(KEY_CATALOG_QUEUE, '[]');
+    },
+
+    async resumePendingDownloads() {
+      const state = get();
+      // 1. Resume core engine download if it was active before background/restart
+      const engineAutoResume = await getSetting(KEY_ENGINE_AUTO_RESUME);
+      if (
+        engineAutoResume === 'true' &&
+        state.phase !== 'ready' &&
+        state.phase !== 'downloading'
+      ) {
+        void get().startDownload();
+      }
+
+      // 2. Resume persisted catalog book/collection download queue
+      const queue = get().catalogQueueIds;
+      if (queue.length > 0 && !catalogWorkerRunning) {
+        if ((get().corpusManifest.works?.length ?? 0) === 0) {
+          await get().syncCorpusManifest();
+        }
+        void drainCatalogQueue(get, set);
+      }
+    },
+
+    handleAppStateChange(nextState: string) {
+      if (nextState === 'background') {
+        // Checkpoint active engine resumable without disabling auto-resume
+        if (activeDownloadResumable) {
+          backgroundCheckpointRequested = true;
+          const res = activeDownloadResumable;
+          void res
+            .pauseAsync()
+            .then(async (savable) => {
+              const db = getDatabase();
+              if (db) {
+                await db.runAsync(
+                  `UPDATE offline_downloads SET status = 'paused', resume_data = ?, updated_at = ?
+                   WHERE status = 'downloading';`,
+                  [JSON.stringify(savable), Date.now()]
+                );
+              }
+            })
+            .catch(() => {});
+        }
+        // Let catalog downloads know background interruption should preserve queue
+        if (catalogWorkerRunning) {
+          catalogBackgroundPaused = true;
+        }
+      } else if (nextState === 'active') {
+        backgroundCheckpointRequested = false;
+        catalogBackgroundPaused = false;
+        void get().resumePendingDownloads();
+      }
     },
 
     async removeCatalogWork(workId: string) {
       const work = (get().corpusManifest.works ?? []).find((w) => w.id === workId);
       if (!work) return false;
       const ok = await deleteCatalogWorkFromSqliteAndDisk(work);
-      await get().refreshStatus();
-      set((s) => ({ catalogRevision: s.catalogRevision + 1 }));
+      set((s) => ({
+        installedWorkIds: s.installedWorkIds.filter((id) => id !== workId),
+        catalogRevision: s.catalogRevision + 1,
+      }));
       return ok;
     },
 
@@ -928,11 +1046,16 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
       const works = (get().corpusManifest.works ?? []).filter(
         (w) => w.collectionId === collectionId
       );
+      const removedIds = new Set<string>();
       for (const w of works) {
         await deleteCatalogWorkFromSqliteAndDisk(w);
+        removedIds.add(w.id);
+        await yieldToUi();
       }
-      await get().refreshStatus();
-      set((s) => ({ catalogRevision: s.catalogRevision + 1 }));
+      set((s) => ({
+        installedWorkIds: s.installedWorkIds.filter((id) => !removedIds.has(id)),
+        catalogRevision: s.catalogRevision + 1,
+      }));
     },
 
     async removeOfflineEngine() {
@@ -964,12 +1087,88 @@ export const useOfflineEngineStore = create<OfflineEngineState>((set, get) => {
   };
 });
 
+async function drainCatalogQueue(
+  get: () => OfflineEngineState,
+  set: (
+    partial:
+      | Partial<OfflineEngineState>
+      | ((s: OfflineEngineState) => Partial<OfflineEngineState>)
+  ) => void
+): Promise<boolean> {
+  if (catalogWorkerRunning) return true;
+  catalogWorkerRunning = true;
+  catalogCancelRequested = false;
+
+  let anyInstalled = false;
+  let completedCount = 0;
+
+  try {
+    while (true) {
+      if (catalogCancelRequested) break;
+      const queue = get().catalogQueueIds;
+      if (queue.length === 0) break;
+
+      const workId = queue[0];
+      const totalWorks = completedCount + queue.length;
+      const currentIndex = completedCount + 1;
+
+      const works = get().corpusManifest.works ?? [];
+      const work = works.find((w) => w.id === workId);
+
+      // Skip unknown or already-installed works
+      if (!work || get().installedWorkIds.includes(workId)) {
+        const rest = get().catalogQueueIds.filter((id) => id !== workId);
+        set({ catalogQueueIds: rest });
+        await setSetting(KEY_CATALOG_QUEUE, JSON.stringify(rest));
+        continue;
+      }
+
+      const result = await downloadSingleWorkInternal(
+        work,
+        currentIndex,
+        totalWorks,
+        set
+      );
+
+      if (catalogCancelRequested) break;
+
+      if (result === 'ok') {
+        anyInstalled = true;
+        completedCount += 1;
+        const rest = get().catalogQueueIds.filter((id) => id !== workId);
+        set((s) => ({
+          catalogQueueIds: rest,
+          installedWorkIds: s.installedWorkIds.includes(workId)
+            ? s.installedWorkIds
+            : [...s.installedWorkIds, workId],
+          catalogRevision: s.catalogRevision + 1,
+        }));
+        await setSetting(KEY_CATALOG_QUEUE, JSON.stringify(rest));
+        await yieldToUi();
+      } else if (result === 'interrupted') {
+        // Network/background socket drop — keep queue persisted so foreground resumes it!
+        break;
+      } else {
+        // Permanent error (e.g. 404 or corrupt) — pop this work and continue queue
+        const rest = get().catalogQueueIds.filter((id) => id !== workId);
+        set({ catalogQueueIds: rest });
+        await setSetting(KEY_CATALOG_QUEUE, JSON.stringify(rest));
+      }
+    }
+  } finally {
+    catalogWorkerRunning = false;
+    set({ activeCatalogDownload: null });
+  }
+
+  return anyInstalled;
+}
+
 async function downloadSingleWorkInternal(
   work: CatalogWorkEntry,
   currentIndex: number,
   totalWorks: number,
   set: (partial: Partial<OfflineEngineState>) => void
-): Promise<boolean> {
+): Promise<'ok' | 'interrupted' | 'failed'> {
   const { passagesPath, vectorsPath } = getWorkLocalPaths(work.slug);
   const totalBytes = work.passagesBytes + work.vectorsBytes;
   let baseBytes = 0;
@@ -987,11 +1186,22 @@ async function downloadSingleWorkInternal(
       totalWorks,
       bytesWritten: 0,
       totalBytes,
+      stage: 'downloading',
     },
   });
 
+  let lastEmitAt = 0;
+
   for (const f of files) {
-    if (catalogCancelRequested) return false;
+    if (catalogCancelRequested) return 'interrupted';
+
+    // Reuse file already on disk if complete (e.g. passages downloaded before backgrounding)
+    const existingSize = await getFileSize(f.dest);
+    if (f.size > 0 && existingSize >= f.size * 0.99) {
+      baseBytes += f.size;
+      continue;
+    }
+
     await ensureParentDir(f.dest);
     try {
       const dl = FileSystem.createDownloadResumable(
@@ -999,6 +1209,9 @@ async function downloadSingleWorkInternal(
         f.dest,
         {},
         (p) => {
+          const now = Date.now();
+          if (now - lastEmitAt < PROGRESS_THROTTLE_MS) return;
+          lastEmitAt = now;
           set({
             activeCatalogDownload: {
               label: work.title,
@@ -1007,6 +1220,7 @@ async function downloadSingleWorkInternal(
               totalWorks,
               bytesWritten: Math.min(totalBytes, baseBytes + p.totalBytesWritten),
               totalBytes,
+              stage: 'downloading',
             },
           });
         }
@@ -1015,31 +1229,51 @@ async function downloadSingleWorkInternal(
       const res = await dl.downloadAsync();
       activeCatalogResumable = null;
 
-      if (catalogCancelRequested) return false;
+      if (catalogCancelRequested) return 'interrupted';
       if (!res || (res.status !== 200 && res.status !== 206)) {
         const hint =
           res?.status === 404
             ? `"${work.title}" is still publishing on GitHub Releases — tap Refresh in a few minutes.`
             : `Could not download "${work.title}" (HTTP ${res?.status ?? 'network error'}).`;
         set({ catalogError: hint });
-        return false;
+        return res?.status === 404 ? 'failed' : 'interrupted';
       }
       baseBytes += f.size;
     } catch (err) {
       activeCatalogResumable = null;
-      if (!catalogCancelRequested) {
-        set({
-          catalogError:
-            err instanceof Error ? err.message : `Download failed for "${work.title}".`,
-        });
+      if (catalogCancelRequested || catalogBackgroundPaused) {
+        return 'interrupted';
       }
-      return false;
+      set({
+        catalogError:
+          err instanceof Error
+            ? err.message
+            : `Download paused for "${work.title}" — will resume when back online.`,
+      });
+      return 'interrupted';
     }
   }
 
+  set({
+    activeCatalogDownload: {
+      label: work.title,
+      workId: work.id,
+      currentIndex,
+      totalWorks,
+      bytesWritten: totalBytes,
+      totalBytes,
+      stage: 'indexing',
+    },
+  });
+  await yieldToUi();
+
   const ok = await ingestCatalogWorkIntoSqlite(work);
   if (!ok) {
-    set({ catalogError: `Downloaded "${work.title}" but could not index its passages.` });
+    set({
+      catalogError: `Downloaded "${work.title}" but could not index its passages.`,
+    });
+    return 'failed';
   }
-  return ok;
+  return 'ok';
 }
+

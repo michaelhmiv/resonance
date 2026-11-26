@@ -50,6 +50,7 @@ export function LibraryCatalogModal({
     manifestSyncing,
     installedWorkIds,
     activeCatalogDownload,
+    catalogQueueIds,
     catalogError,
     syncCorpusManifest,
     downloadCatalogWork,
@@ -68,10 +69,12 @@ export function LibraryCatalogModal({
 
   useEffect(() => {
     if (!visible) return;
-    void syncCorpusManifest();
+    // Uses 5-minute TTL unless user explicitly taps Refresh — instant reopen!
+    void syncCorpusManifest(false);
   }, [visible, syncCorpusManifest]);
 
   const installedSet = useMemo(() => new Set(installedWorkIds), [installedWorkIds]);
+  const queuedSet = useMemo(() => new Set(catalogQueueIds), [catalogQueueIds]);
   const collections = corpusManifest.collections ?? [];
   const allWorks = corpusManifest.works ?? [];
 
@@ -152,7 +155,7 @@ export function LibraryCatalogModal({
             </View>
             <View style={styles.headerActions}>
               <Pressable
-                onPress={() => void syncCorpusManifest()}
+                onPress={() => void syncCorpusManifest(true)}
                 hitSlop={8}
                 disabled={manifestSyncing}
                 style={styles.iconBtn}
@@ -237,21 +240,27 @@ export function LibraryCatalogModal({
               <View style={styles.activeBannerTop}>
                 <View style={styles.flexOne}>
                   <Text style={styles.activeBannerTitle} numberOfLines={1}>
-                    Downloading {activeCatalogDownload.label}
+                    {activeCatalogDownload.stage === 'indexing'
+                      ? `Indexing ${activeCatalogDownload.label}`
+                      : `Downloading ${activeCatalogDownload.label}`}
                   </Text>
                   <Text style={styles.activeBannerMeta}>
                     {activeCatalogDownload.totalWorks > 1
                       ? `Book ${activeCatalogDownload.currentIndex} of ${activeCatalogDownload.totalWorks} · `
                       : ''}
-                    {formatBytes(activeCatalogDownload.bytesWritten)} /{' '}
-                    {formatBytes(activeCatalogDownload.totalBytes)} ({activePct}%)
+                    {activeCatalogDownload.stage === 'indexing'
+                      ? 'Saving passages to Library…'
+                      : `${formatBytes(activeCatalogDownload.bytesWritten)} / ${formatBytes(activeCatalogDownload.totalBytes)} (${activePct}%)`}
+                  </Text>
+                  <Text style={styles.activeBannerMeta}>
+                    Continues in the background if you close this sheet.
                   </Text>
                 </View>
                 <Pressable
                   onPress={() => void cancelCatalogDownload()}
                   style={styles.cancelBtn}
                 >
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                  <Text style={styles.cancelBtnText}>Stop</Text>
                 </Pressable>
               </View>
               <View style={styles.progressTrack}>
@@ -349,11 +358,7 @@ export function LibraryCatalogModal({
                       {!allInstalled ? (
                         <Pressable
                           onPress={() => void downloadCatalogCollection(col.id)}
-                          disabled={activeCatalogDownload !== null}
-                          style={[
-                            styles.colPrimaryBtn,
-                            activeCatalogDownload !== null && styles.disabledBtn,
-                          ]}
+                          style={styles.colPrimaryBtn}
                         >
                           <Feather name="download" size={13} color={colors.surface} />
                           <Text style={styles.colPrimaryBtnText}>
@@ -389,6 +394,7 @@ export function LibraryCatalogModal({
                           const isInstalled = installedSet.has(work.id);
                           const isDownloadingThis =
                             activeCatalogDownload?.workId === work.id;
+                          const isQueued = !isDownloadingThis && queuedSet.has(work.id);
                           const sizeBytes = work.passagesBytes + work.vectorsBytes;
                           return (
                             <View key={work.id} style={styles.workRow}>
@@ -408,6 +414,10 @@ export function LibraryCatalogModal({
                                     size="small"
                                     color={colors.accent}
                                   />
+                                ) : isQueued ? (
+                                  <View style={styles.installedBadge}>
+                                    <Text style={styles.installedBadgeText}>Queued</Text>
+                                  </View>
                                 ) : isInstalled ? (
                                   <>
                                     {onOpenBook ? (
@@ -438,12 +448,7 @@ export function LibraryCatalogModal({
                                 ) : (
                                   <Pressable
                                     onPress={() => void downloadCatalogWork(work.id)}
-                                    disabled={activeCatalogDownload !== null}
-                                    style={[
-                                      styles.dlWorkBtn,
-                                      activeCatalogDownload !== null &&
-                                        styles.disabledBtn,
-                                    ]}
+                                    style={styles.dlWorkBtn}
                                   >
                                     <Feather
                                       name="download"

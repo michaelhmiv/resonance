@@ -24,6 +24,8 @@ export {
   WindIcon,
   BookmarkIcon,
   ChevronDownIcon,
+  ChevronUpIcon,
+  ChevronLeftIcon,
   CheckIcon,
   TrashIcon,
   EditIcon,

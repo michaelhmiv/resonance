@@ -1,24 +1,24 @@
 /**
- * Library browser — browse voice-of-the-Church texts by Book Package.
- *
- * Shows installed Book Packages (Seed Library, The Fathers, etc.),
- * each expandable to reveal the works it contains. Tapping a work
- * calls `onOpenBook`, which the parent renders as a ReadingView.
- *
- * (design spec §6.2: Library = full content collection; Book Packages
- * are downloadable bundles.)
+ * Library browser — browse voice-of-the-Church and Personal Library texts
+ * grouped by Book Package / Collection shelf.
  */
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  StyleSheet,
   Text,
   View,
-  StyleSheet,
 } from 'react-native';
-import { ChevronRightIcon } from '@resonance/ui';
+import { ChevronDownIcon, ChevronRightIcon } from '@resonance/ui';
 
 import {
   cardSurface,
@@ -30,7 +30,11 @@ import {
   serifText,
   spacing,
 } from '@resonance/theme';
-import { type LibraryPackage, type LibraryBook } from '@resonance/core';
+import {
+  getCachedSync,
+  type LibraryBook,
+  type LibraryPackage,
+} from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
 
 interface LibraryBrowserProps {
@@ -43,6 +47,47 @@ interface LibraryBrowserProps {
   onEditBookMetadata?: (book: LibraryBook) => void;
   /** Optional revision counter to refresh packages after import/edit/delete. */
   libraryRevision?: number;
+  /** Optional header rendered above packages (e.g. Continue Reading / Sync status). */
+  ListHeaderComponent?: ReactElement | null;
+}
+
+interface CachedWebLibraryResponse {
+  books?: Array<{
+    id: string;
+    title: string | null;
+    author: string | null;
+    era: string | null;
+    packageId: string;
+    packageLabel: string;
+    enabled?: boolean;
+  }>;
+}
+
+const PackageSeparator = () => <View style={styles.packageGap} />;
+
+function readCachedPackages(): LibraryPackage[] | null {
+  const raw = getCachedSync<CachedWebLibraryResponse>('/api/library/books');
+  if (!raw?.books) return null;
+  const byPackage = new Map<string, LibraryPackage>();
+  for (const book of raw.books) {
+    if (book.enabled === false) continue;
+    const existing = byPackage.get(book.packageId) ?? {
+      package_id: book.packageId,
+      label: book.packageLabel,
+      books: [],
+    };
+    existing.books.push({
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      era: book.era,
+      package_id: book.packageId,
+    });
+    byPackage.set(book.packageId, existing);
+  }
+  return Array.from(byPackage.values()).sort((a, b) =>
+    a.package_id.localeCompare(b.package_id)
+  );
 }
 
 function personalStatusLabel(book: LibraryBook): string | null {
@@ -50,7 +95,9 @@ function personalStatusLabel(book: LibraryBook): string | null {
   const parts: string[] = [];
   if (book.sourceFormat) parts.push(book.sourceFormat.toUpperCase());
   if (book.embeddingStatus === 'ready') {
-    parts.push(book.includeInResonance === false ? 'Library only' : 'Ready for echoes');
+    parts.push(
+      book.includeInResonance === false ? 'Library only' : 'Ready for echoes'
+    );
   } else if (book.embeddingStatus === 'embedding') {
     parts.push(`Embedding ${book.embeddedChunks ?? 0}/${book.totalChunks ?? 0}`);
   } else if (book.embeddingStatus === 'error') {
@@ -69,59 +116,79 @@ export function LibraryBrowser({
   onOpenImport,
   onEditBookMetadata,
   libraryRevision = 0,
+  ListHeaderComponent,
 }: LibraryBrowserProps): ReactNode {
-  const [packages, setPackages] = useState<LibraryPackage[] | null>(null);
+  const [packages, setPackages] = useState<LibraryPackage[] | null>(() =>
+    readCachedPackages()
+  );
   const dataLayer = useDataLayer();
-  const [expandedPkg, setExpandedPkg] = useState<string | null>(null);
+  const [expandedPkgs, setExpandedPkgs] = useState<Set<string>>(() => {
+    const cached = readCachedPackages();
+    return cached && cached.length > 0 ? new Set([cached[0].package_id]) : new Set();
+  });
   const [loadError, setLoadError] = useState<string | null>(null);
-  // First-visit onboarding prompt. Persisted via user_settings('library_seen_at').
-  // null = still loading the check, false = show prompt, true = hide.
-  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
 
   useEffect(() => {
     let cancelled = false;
-    dataLayer.getLibraryPackages().then((pkgs) => {
-      if (!cancelled) {
+    dataLayer
+      .getLibraryPackages()
+      .then((pkgs) => {
+        if (cancelled) return;
         setPackages(pkgs);
         setLoadError(null);
-        // Auto-expand the first package on initial load.
         if (pkgs.length > 0) {
-          setExpandedPkg((prev) => prev ?? pkgs[0].package_id);
+          setExpandedPkgs((prev) =>
+            prev.size > 0 ? prev : new Set([pkgs[0].package_id])
+          );
         }
-      }
-    }).catch((err) => {
-      if (!cancelled) {
-        setLoadError(err instanceof Error ? err.message : 'Unable to load Library.');
-        setPackages([]);
-      }
-    });
-    fetch('/api/settings')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((settings) => {
-        if (cancelled) return;
-        setShowOnboarding(!settings?.library_seen_at);
       })
-      .catch(() => {
-        if (!cancelled) setShowOnboarding(false);
+      .catch((err) => {
+        if (!cancelled) {
+          setLoadError(
+            err instanceof Error ? err.message : 'Unable to load Library.'
+          );
+          setPackages((prev) => prev ?? []);
+        }
       });
+
+    // Only show web per-book Settings onboarding on web (where onOpenCatalog is absent)
+    if (!onOpenCatalog && !onOpenImport) {
+      dataLayer
+        .getSettings()
+        .then((settings) => {
+          if (!cancelled) {
+            setShowOnboarding(!settings?.library_seen_at);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setShowOnboarding(false);
+        });
+    } else {
+      setShowOnboarding(false);
+    }
+
     return () => {
       cancelled = true;
     };
-  }, [dataLayer, libraryRevision]);
+  }, [dataLayer, libraryRevision, onOpenCatalog, onOpenImport]);
 
   const dismissOnboarding = useCallback(async () => {
     setShowOnboarding(false);
     try {
-      await fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: 'library_seen_at', value: new Date().toISOString() }),
-      });
-    } catch { /* best-effort */ }
-  }, []);
+      await dataLayer.setSetting?.('library_seen_at', new Date().toISOString());
+    } catch {
+      // best-effort
+    }
+  }, [dataLayer]);
 
   const togglePackage = useCallback((pkgId: string) => {
-    setExpandedPkg((prev) => (prev === pkgId ? null : pkgId));
+    setExpandedPkgs((prev) => {
+      const next = new Set(prev);
+      if (next.has(pkgId)) next.delete(pkgId);
+      else next.add(pkgId);
+      return next;
+    });
   }, []);
 
   if (packages === null) {
@@ -135,6 +202,9 @@ export function LibraryBrowser({
   if (packages.length === 0) {
     return (
       <View style={[styles.container, styles.center]}>
+        {ListHeaderComponent ? (
+          <View style={styles.emptyHeaderWrap}>{ListHeaderComponent}</View>
+        ) : null}
         <Text style={styles.emptyTitle}>
           {loadError ? 'Unable to load Library.' : 'Build your Library.'}
         </Text>
@@ -170,8 +240,9 @@ export function LibraryBrowser({
     );
   }
 
-  return (
-    <View style={styles.container}>
+  const listHeader = (
+    <View style={styles.listHeaderWrap}>
+      {ListHeaderComponent ?? null}
       {onOpenCatalog || onOpenImport ? (
         <View style={styles.importBar}>
           {onOpenCatalog ? (
@@ -197,7 +268,7 @@ export function LibraryBrowser({
         </View>
       ) : null}
 
-      {showOnboarding && (
+      {showOnboarding ? (
         <View style={styles.onboardingCard}>
           <Text style={styles.onboardingTitle}>Customize your Library</Text>
           <Text style={styles.onboardingBody}>
@@ -206,7 +277,7 @@ export function LibraryBrowser({
             For now, everything is enabled.
           </Text>
           <Pressable
-            onPress={dismissOnboarding}
+            onPress={() => void dismissOnboarding()}
             style={styles.onboardingDismiss}
             accessibilityRole="button"
             accessibilityLabel="Dismiss"
@@ -214,13 +285,19 @@ export function LibraryBrowser({
             <Text style={styles.onboardingDismissText}>Got it</Text>
           </Pressable>
         </View>
-      )}
+      ) : null}
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
       <FlatList
         data={packages}
         keyExtractor={(item) => item.package_id}
-        contentContainerStyle={listContentContainer}
+        ListHeaderComponent={listHeader}
+        contentContainerStyle={[listContentContainer, styles.listContent]}
         renderItem={({ item: pkg }) => {
-          const expanded = expandedPkg === pkg.package_id;
+          const expanded = expandedPkgs.has(pkg.package_id);
           return (
             <View style={styles.packageSection}>
               <Pressable
@@ -231,16 +308,23 @@ export function LibraryBrowser({
                   pressed && styles.packageHeaderPressed,
                 ]}
                 accessibilityRole="button"
+                accessibilityState={{ expanded }}
                 accessibilityLabel={`${pkg.label} — ${pkg.books.length} works`}
               >
-                {/* eslint-disable-next-line react-native-a11y */}
                 <View style={styles.packageHeaderRow}>
                   <Text style={styles.packageLabel}>{pkg.label}</Text>
-                  <Text style={styles.bookCount}>{pkg.books.length}</Text>
+                  <View style={styles.packageHeaderRight}>
+                    <Text style={styles.bookCount}>{pkg.books.length}</Text>
+                    {expanded ? (
+                      <ChevronDownIcon size={16} color={colors.textTertiary} />
+                    ) : (
+                      <ChevronRightIcon size={16} color={colors.textTertiary} />
+                    )}
+                  </View>
                 </View>
               </Pressable>
 
-              {expanded && (
+              {expanded ? (
                 <View style={styles.booksList}>
                   {pkg.books.map((book: LibraryBook) => {
                     const statusText = personalStatusLabel(book);
@@ -263,7 +347,9 @@ export function LibraryBrowser({
                               <Text style={styles.bookAuthor}>{book.author}</Text>
                             ) : null}
                             {statusText ? (
-                              <Text style={styles.bookPersonalMeta}>{statusText}</Text>
+                              <Text style={styles.bookPersonalMeta}>
+                                {statusText}
+                              </Text>
                             ) : null}
                           </View>
                           <View style={styles.bookRightActions}>
@@ -278,18 +364,21 @@ export function LibraryBrowser({
                                 <Text style={styles.editMetaBtnText}>Edit</Text>
                               </Pressable>
                             ) : null}
-                            <ChevronRightIcon size={18} color={colors.textTertiary} />
+                            <ChevronRightIcon
+                              size={18}
+                              color={colors.textTertiary}
+                            />
                           </View>
                         </Pressable>
                       </View>
                     );
                   })}
                 </View>
-              )}
+              ) : null}
             </View>
           );
         }}
-        ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
+        ItemSeparatorComponent={PackageSeparator}
       />
     </View>
   );
@@ -303,6 +392,22 @@ const styles = StyleSheet.create({
   center: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  listContent: {
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxl,
+  },
+  listHeaderWrap: {
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  emptyHeaderWrap: {
+    width: '100%',
+    paddingHorizontal: layout.screenPaddingX,
+    marginBottom: spacing.lg,
+  },
+  packageGap: {
+    height: spacing.md,
   },
   emptyTitle: {
     fontFamily: fontFamilies.serifSemibold,
@@ -333,28 +438,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  packageHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   packageLabel: {
+    flex: 1,
     fontFamily: fontFamilies.serifSemibold,
     fontSize: 19,
     color: colors.textPrimary,
   },
   bookCount: {
     fontFamily: fontFamilies.sansMedium,
-    fontSize: 14,
+    fontSize: 13.5,
     color: colors.textTertiary,
   },
   booksList: {
-    paddingLeft: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingLeft: spacing.md,
+    paddingTop: spacing.xs,
   },
   bookRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: spacing.md,
-    paddingLeft: spacing.md,
+    paddingLeft: spacing.sm,
     paddingRight: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
   bookRowPressed: {
     opacity: 0.6,
@@ -370,14 +484,11 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     marginTop: spacing.xs,
   },
-  // First-visit onboarding prompt
   onboardingCard: {
-    margin: layout.cardPadding,
-    marginBottom: 0,
     padding: layout.cardPadding,
     borderRadius: radii.md,
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     gap: spacing.sm,
   },
@@ -438,8 +549,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginHorizontal: layout.screenPaddingX,
-    marginTop: spacing.md,
     gap: spacing.sm,
   },
   importBarBtn: {

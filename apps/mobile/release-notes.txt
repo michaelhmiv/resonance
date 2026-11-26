@@ -1,7 +1,8 @@
-Resonance — Reliable Google Drive EPUB Discovery & Live Batch Import Progress.
+Resonance — Word Tab UX Sweep, Performance Overhaul & Background Sync.
 
 What's in this build:
-• Catches missing Google Drive EPUBs inside subfolders: normalizes Android SAF subfolder URIs and peeks 256-byte file headers when Drive reports EPUBs as application/octet-stream or application/zip
-• Fixes stalled / colliding batch imports: defers on-device ONNX embedding until the entire batch finishes (preventing SQLite transaction contention & CPU thrashing) and writes local copies natively without JS base64 loops
-• Adds a pinned Batch Import Progress Card with live progress bar, current book name, active stage (Downloading → Extracting chapters → Saving), running imported/skipped/failed counts, Stop button, and clear error details
-• Adds a 45-second timeout per file so a stalled cloud file can never freeze an entire batch
+• Exit any book effortlessly: compact reading header with ← Books / ← Library back button, Android hardware Back support, and active Word tab re-tap reset
+• Flush bottom reading action bar: eliminates the gap above the bottom tab bar and fixes Highlight Mode overflow with a dedicated highlight strip (including highlight removal and Note guardrails)
+• Major Word tab performance fixes: single batched O(1) cross-reference lookup per chapter, memoized verse rows, cached Bible/Library queries, and batched SQLite passage inserts
+• Seamless tab switching & deep-linking: fixes stuck tab transitions, adds Patterns → Word verse deep-linking, scrollable chapter grid (Psalms 1–150, Isaiah, etc.), Old/New Testament filters, and Library section navigation
+• True background downloading, importing & embedding: closing sync/import modals is instant and never stalls or cancels active work; queues persist and auto-resume across foreground/background transitions with a live status banner on the Word tab

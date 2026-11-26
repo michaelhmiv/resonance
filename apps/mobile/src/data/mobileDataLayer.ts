@@ -31,14 +31,17 @@ import {
 } from '../db/queries/libraryQueries';
 import type { PersonalWorkMetadataPatch } from '@resonance/core';
 import {
-  getHighlightsForRefs as _getHighlightsForRefsMobile,
-  saveHighlight as _saveHighlightMobile,
-  removeHighlight as _removeHighlightMobile,
+  getFullHighlightsForRefs,
+  saveFullHighlight,
+  updateFullHighlight,
+  deleteFullHighlightById,
   saveBookmark,
   removeBookmark,
   getBookmarks,
   getCrossReferences,
+  getCrossReferencesBatch,
 } from '../db/queries/readingQueries';
+import { useSettingsStore } from '../settings/settingsStore';
 import { findResonance, storeSegmentVector } from '../embedding/resonanceService';
 import {
   clusterEntries,
@@ -216,64 +219,19 @@ export class MobileDataLayer implements DataLayer {
   }
 
   async getHighlightsForRefs(refs: string[]): Promise<Highlight[]> {
-    // Mobile still uses whole-verse highlights — convert the legacy map to
-    // a Highlight[] with null offsets.
-    const map = await _getHighlightsForRefsMobile(refs);
-    return Object.entries(map).map(([verse_ref, color]) => ({
-      id: `legacy-${verse_ref}`,
-      verse_ref,
-      color,
-      start_offset: null,
-      end_offset: null,
-      selected_text: null,
-      note_text: null,
-      note_updated_at: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }));
+    return getFullHighlightsForRefs(refs);
   }
 
   async saveHighlight(input: SaveHighlightInput): Promise<Highlight> {
-    // Mobile doesn't yet support phrase-level highlights — save the color
-    // for the whole verse and return a legacy-shaped row.
-    await _saveHighlightMobile(input.verseRef, input.color);
-    return {
-      id: `mobile-${Date.now()}`,
-      verse_ref: input.verseRef,
-      color: input.color,
-      start_offset: input.startOffset,
-      end_offset: input.endOffset,
-      selected_text: input.selectedText,
-      note_text: input.noteText ?? null,
-      note_updated_at: input.noteText ? new Date().toISOString() : null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    return saveFullHighlight(input);
   }
 
   async updateHighlight(id: string, patch: UpdateHighlightPatch): Promise<Highlight> {
-    // Mobile: best-effort — only color updates land in the local DB.
-    if (patch.color) {
-      const verseRef = id.replace(/^mobile-/, '').replace(/^legacy-/, '');
-      await _saveHighlightMobile(verseRef, patch.color);
-    }
-    return {
-      id,
-      verse_ref: id.replace(/^mobile-/, '').replace(/^legacy-/, ''),
-      color: patch.color ?? '#d4a574',
-      start_offset: patch.startOffset ?? null,
-      end_offset: patch.endOffset ?? null,
-      selected_text: patch.selectedText ?? null,
-      note_text: patch.noteText ?? null,
-      note_updated_at: patch.noteText ? new Date().toISOString() : null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    return updateFullHighlight(id, patch);
   }
 
   async deleteHighlight(id: string): Promise<void> {
-    const verseRef = id.replace(/^mobile-/, '').replace(/^legacy-/, '');
-    await _removeHighlightMobile(verseRef);
+    return deleteFullHighlightById(id);
   }
 
   async saveBookmark(verseRef: string, label?: string) {
@@ -293,13 +251,7 @@ export class MobileDataLayer implements DataLayer {
   }
 
   async getCrossReferencesBatch(refs: string[]): Promise<Record<string, string[]>> {
-    if (refs.length === 0) return {};
-    const result: Record<string, string[]> = {};
-    await Promise.all(refs.map(async (ref) => {
-      const targets = await getCrossReferences(ref);
-      if (targets.length > 0) result[ref] = targets;
-    }));
-    return result;
+    return getCrossReferencesBatch(refs);
   }
 
   async recordReadingEvent(bookId: string, chapter: number, verseRef: string, timestamp: number): Promise<void> {
@@ -431,6 +383,52 @@ export class MobileDataLayer implements DataLayer {
   async setActiveEmbeddingModel(_id: EmbeddingModelId): Promise<void> {}
 
   async getSettings(): Promise<Record<string, string>> {
-    return {};
+    const store = useSettingsStore.getState();
+    const result: Record<string, string> = {
+      translation: store.readingTranslation.toLowerCase(),
+      fontSize: store.readingFontSize,
+      theme: store.theme,
+      textScale: store.textScale,
+    };
+    const db = getDatabase();
+    if (db) {
+      try {
+        const rows = await db.getAllAsync<{ key: string; value: string }>(
+          `SELECT key, value FROM app_settings;`
+        );
+        for (const r of rows) {
+          if (!(r.key in result)) {
+            result[r.key] = r.value;
+          }
+        }
+      } catch {
+        // best-effort
+      }
+    }
+    return result;
+  }
+
+  async setSetting(key: string, value: string): Promise<void> {
+    if (key === 'translation') {
+      const upper = value.toUpperCase();
+      if (upper === 'WEB' || upper === 'KJV') {
+        useSettingsStore.getState().setReadingTranslation(upper);
+      }
+    } else if (key === 'fontSize') {
+      if (value === 'small' || value === 'medium' || value === 'large') {
+        useSettingsStore.getState().setReadingFontSize(value);
+      }
+    }
+    const db = getDatabase();
+    if (!db) return;
+    try {
+      await db.runAsync(
+        `INSERT INTO app_settings (key, value) VALUES (?, ?)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value;`,
+        [key, value]
+      );
+    } catch {
+      // best-effort
+    }
   }
 }

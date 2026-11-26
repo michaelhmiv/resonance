@@ -1,20 +1,28 @@
 /**
- * Scripture browser — Book list (66 books, OT/NT) → Chapter grid.
+ * Scripture browser — Book list (66 books, OT/NT) → scrollable Chapter grid.
  *
- * Tapping a book reveals its chapter grid; tapping a chapter calls
+ * Tapping a book reveals its scrollable chapter grid; tapping a chapter calls
  * `onOpenChapter`, which the parent renders as a ReadingView.
- *
- * (design spec §6.1: browse by book → chapter → verses)
  */
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
+import {
+  ActivityIndicator,
+  BackHandler,
+  Platform,
   Pressable,
+  ScrollView,
   SectionList,
+  StyleSheet,
   Text,
   View,
-  StyleSheet,
-  ActivityIndicator,
 } from 'react-native';
 
 import {
@@ -27,13 +35,20 @@ import {
   serifText,
   spacing,
 } from '@resonance/theme';
-import { type BookSummary, type Translation } from '@resonance/core';
+import {
+  bibleBookId,
+  getCachedSync,
+  type BookSummary,
+  type Translation,
+} from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
-import { getCachedSync } from '@resonance/core';
+import { ChevronLeftIcon } from '@resonance/ui';
 
 interface ScriptureBrowserProps {
   translation: Translation;
-  onOpenChapter: (bookName: string, chapter: number) => void;
+  onOpenChapter: (bookName: string, chapter: number, totalChapters?: number) => void;
+  /** Optional header element rendered above the book list (e.g. Continue Reading). */
+  ListHeaderComponent?: ReactElement | null;
 }
 
 interface ChapterData {
@@ -41,32 +56,86 @@ interface ChapterData {
   chapters: number[];
 }
 
+interface CachedWebBooksResponse {
+  books?: Array<{
+    name: string;
+    testament: 'OT' | 'NT';
+    order: number;
+    chapterCount: number;
+  }>;
+}
+
+type TestamentFilter = 'ALL' | 'OT' | 'NT';
+
+const BookSeparator = () => <View style={styles.separator} />;
+
+function readCachedBooks(translation: Translation): BookSummary[] | null {
+  const raw = getCachedSync<CachedWebBooksResponse | BookSummary[]>(
+    `/api/bible/books?translation=${translation.toLowerCase()}`
+  );
+  if (!raw) return null;
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw.books)) {
+    return raw.books.map((b) => ({
+      name: b.name,
+      testament: b.testament,
+      order: b.order,
+      available: b.chapterCount > 0,
+      bookId: bibleBookId(b.name, translation),
+    }));
+  }
+  return null;
+}
+
 export function ScriptureBrowser({
   translation,
   onOpenChapter,
+  ListHeaderComponent,
 }: ScriptureBrowserProps): ReactNode {
-  // Lazy initializer reads from cache synchronously. If the user previously
-  // visited this tab, the books list paints on the first render — no spinner
-  // flash. If the cache is cold, we render null and let the effect fill it in.
-  const [books, setBooks] = useState<BookSummary[] | null>(() => {
-    return getCachedSync<BookSummary[]>(`/api/bible/books?translation=${translation}`);
-  });
+  const [books, setBooks] = useState<BookSummary[] | null>(() =>
+    readCachedBooks(translation)
+  );
   const dataLayer = useDataLayer();
+  const [testamentFilter, setTestamentFilter] = useState<TestamentFilter>('ALL');
   const [chapterView, setChapterView] = useState<ChapterData | null>(null);
+  const [openingBook, setOpeningBook] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Reset chapter grid if translation changes
+  useEffect(() => {
+    setChapterView(null);
+  }, [translation]);
+
+  // Android hardware back exits chapter grid back to books list
+  useEffect(() => {
+    if (Platform.OS === 'web' || !chapterView) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setChapterView(null);
+      return true;
+    });
+    return () => sub.remove();
+  }, [chapterView]);
 
   useEffect(() => {
     let cancelled = false;
-    setBooks(null);
+    const cached = readCachedBooks(translation);
+    if (cached) {
+      setBooks(cached);
+    }
     setLoadError(null);
-    dataLayer.getBooks(translation).then((nextBooks) => {
-      if (!cancelled) setBooks(nextBooks);
-    }).catch((err) => {
-      if (!cancelled) {
-        setLoadError(err instanceof Error ? err.message : 'Unable to load Scripture.');
-        setBooks([]);
-      }
-    });
+    dataLayer
+      .getBooks(translation)
+      .then((nextBooks) => {
+        if (!cancelled) setBooks(nextBooks);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setLoadError(
+            err instanceof Error ? err.message : 'Unable to load Scripture.'
+          );
+          setBooks((prev) => prev ?? []);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -74,38 +143,76 @@ export function ScriptureBrowser({
 
   const openBook = useCallback(
     async (book: BookSummary) => {
-      if (!book.available) return;
-      const chapters = await dataLayer.getChapters(book.name, translation);
-      setChapterView({ bookName: book.name, chapters });
+      if (!book.available || openingBook) return;
+      setOpeningBook(book.name);
+      try {
+        const chapters = await dataLayer.getChapters(book.name, translation);
+        setChapterView({ bookName: book.name, chapters });
+      } catch (err) {
+        setLoadError(
+          err instanceof Error ? err.message : `Unable to open ${book.name}.`
+        );
+      } finally {
+        setOpeningBook(null);
+      }
     },
-    [dataLayer, translation]
+    [dataLayer, translation, openingBook]
   );
 
-  // ── Chapter grid view ─────────────────────────────────────────────────
+  const sections = useMemo(() => {
+    if (!books) return [];
+    const otBooks = books.filter((b) => b.testament === 'OT');
+    const ntBooks = books.filter((b) => b.testament === 'NT');
+    if (testamentFilter === 'OT') {
+      return [{ title: 'Old Testament', data: otBooks }];
+    }
+    if (testamentFilter === 'NT') {
+      return [{ title: 'New Testament', data: ntBooks }];
+    }
+    return [
+      { title: 'Old Testament', data: otBooks },
+      { title: 'New Testament', data: ntBooks },
+    ];
+  }, [books, testamentFilter]);
+
+  // ── Scrollable chapter grid view ───────────────────────────────────────
   if (chapterView) {
     return (
       <View style={styles.container}>
-        <Pressable
-          style={styles.backRow}
-          onPress={() => setChapterView(null)}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="Back to books"
-        >
-          <Text style={styles.backText}>← Books</Text>
-        </Pressable>
-        <Text style={styles.bookTitle}>{chapterView.bookName}</Text>
+        <View style={styles.chapterHeader}>
+          <Pressable
+            style={({ pressed }) => [styles.backRow, pressed && styles.pressed]}
+            onPress={() => setChapterView(null)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Back to books"
+          >
+            <ChevronLeftIcon size={18} color={colors.accent} />
+            <Text style={styles.backText}>Books</Text>
+          </Pressable>
+          <Text style={styles.bookTitle}>{chapterView.bookName}</Text>
+          <Text style={styles.chapterCountSubtitle}>
+            {chapterView.chapters.length}{' '}
+            {chapterView.chapters.length === 1 ? 'chapter' : 'chapters'}
+          </Text>
+        </View>
 
         {chapterView.chapters.length === 0 ? (
           <Text style={styles.emptyText}>No chapters available.</Text>
         ) : (
-          <View style={styles.grid}>
+          <ScrollView
+            style={styles.gridScroll}
+            contentContainerStyle={styles.grid}
+            showsVerticalScrollIndicator={false}
+          >
             {chapterView.chapters.map((ch) => (
               <Pressable
                 key={ch}
                 onPress={() => {
+                  const total = chapterView.chapters.length;
+                  const name = chapterView.bookName;
                   setChapterView(null);
-                  onOpenChapter(chapterView.bookName, ch);
+                  onOpenChapter(name, ch, total);
                 }}
                 style={({ pressed }) => [
                   styles.chapterCell,
@@ -117,7 +224,7 @@ export function ScriptureBrowser({
                 <Text style={styles.chapterNum}>{ch}</Text>
               </Pressable>
             ))}
-          </View>
+          </ScrollView>
         )}
       </View>
     );
@@ -132,10 +239,7 @@ export function ScriptureBrowser({
     );
   }
 
-  const otBooks = books.filter((b) => b.testament === 'OT');
-  const ntBooks = books.filter((b) => b.testament === 'NT');
-
-  if (loadError) {
+  if (loadError && books.length === 0) {
     return (
       <View style={[styles.container, styles.center]}>
         <Text style={styles.emptyText}>Unable to load Scripture.</Text>
@@ -144,45 +248,84 @@ export function ScriptureBrowser({
     );
   }
 
-  const sections = [
-    { title: 'Old Testament', data: otBooks },
-    { title: 'New Testament', data: ntBooks },
-  ];
+  const listHeader = (
+    <View style={styles.listHeaderWrap}>
+      {ListHeaderComponent ?? null}
+      <View style={styles.filterRow}>
+        {(
+          [
+            { key: 'ALL', label: 'All (66)' },
+            { key: 'OT', label: 'Old Testament' },
+            { key: 'NT', label: 'New Testament' },
+          ] as const
+        ).map((tab) => {
+          const active = testamentFilter === tab.key;
+          return (
+            <Pressable
+              key={tab.key}
+              onPress={() => setTestamentFilter(tab.key)}
+              style={[styles.filterPill, active && styles.filterPillActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+            >
+              <Text
+                style={[
+                  styles.filterPillText,
+                  active && styles.filterPillTextActive,
+                ]}
+              >
+                {tab.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.name}
-        contentContainerStyle={listContentContainer}
+        ListHeaderComponent={listHeader}
+        contentContainerStyle={[listContentContainer, styles.listContent]}
         renderSectionHeader={({ section: { title } }) => (
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>{title}</Text>
           </View>
         )}
-        renderItem={({ item: book }) => (
-          <Pressable
-            onPress={() => openBook(book)}
-            disabled={!book.available}
-            style={({ pressed }) => [
-              cardSurface,
-              styles.bookRow,
-              pressed && styles.bookRowPressed,
-              !book.available && styles.bookRowUnavailable,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={`${book.name}${book.available ? '' : ' (not installed)'}`}
-          >
-            <Text style={styles.bookName}>{book.name}</Text>
-            {book.available ? (
-              <Text style={styles.chevron}>›</Text>
-            ) : (
-              <Text style={styles.unavailableLabel}>—</Text>
-            )}
-          </Pressable>
-        )}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        renderItem={({ item: book }) => {
+          const isOpening = openingBook === book.name;
+          return (
+            <Pressable
+              onPress={() => void openBook(book)}
+              disabled={!book.available || Boolean(openingBook)}
+              style={({ pressed }) => [
+                cardSurface,
+                styles.bookRow,
+                pressed && styles.bookRowPressed,
+                !book.available && styles.bookRowUnavailable,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={`${book.name}${book.available ? '' : ' (not installed)'}`}
+            >
+              <Text style={styles.bookName}>{book.name}</Text>
+              {isOpening ? (
+                <ActivityIndicator size="small" color={colors.accent} />
+              ) : book.available ? (
+                <Text style={styles.chevron}>›</Text>
+              ) : (
+                <Text style={styles.unavailableLabel}>—</Text>
+              )}
+            </Pressable>
+          );
+        }}
+        ItemSeparatorComponent={BookSeparator}
         stickySectionHeadersEnabled={false}
+        initialNumToRender={24}
+        maxToRenderPerBatch={20}
+        windowSize={9}
       />
     </View>
   );
@@ -197,10 +340,56 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  backRow: {
-    paddingHorizontal: layout.screenPaddingX,
+  pressed: {
+    opacity: 0.6,
+  },
+  listContent: {
     paddingTop: spacing.md,
-    paddingBottom: spacing.xs,
+    paddingBottom: spacing.xxl,
+  },
+  listHeaderWrap: {
+    gap: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  filterPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radii.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  filterPillActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  filterPillText: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 12.5,
+    color: colors.textSecondary,
+  },
+  filterPillTextActive: {
+    color: colors.surface,
+  },
+  chapterHeader: {
+    paddingHorizontal: layout.screenPaddingX,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  backRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    alignSelf: 'flex-start',
+    minHeight: 36,
+    marginBottom: spacing.xs,
   },
   backText: {
     fontFamily: fontFamilies.sansMedium,
@@ -211,19 +400,29 @@ const styles = StyleSheet.create({
     ...serifText,
     fontFamily: fontFamilies.serifSemibold,
     fontSize: 28,
+    lineHeight: 34,
     color: colors.textPrimary,
-    paddingHorizontal: layout.screenPaddingX,
-    paddingBottom: spacing.lg,
+  },
+  chapterCountSubtitle: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 12.5,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  gridScroll: {
+    flex: 1,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: layout.screenPaddingX - spacing.sm,
+    paddingHorizontal: layout.screenPaddingX,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl * 2,
     gap: spacing.sm,
   },
   chapterCell: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: radii.sm,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
@@ -244,10 +443,11 @@ const styles = StyleSheet.create({
     ...serifText,
     color: colors.textTertiary,
     paddingHorizontal: layout.screenPaddingX,
+    paddingTop: spacing.lg,
   },
   sectionHeader: {
     paddingBottom: spacing.sm,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.md,
   },
   sectionTitle: {
     fontFamily: fontFamilies.sansSemibold,

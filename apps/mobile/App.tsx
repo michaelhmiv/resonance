@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Text, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, AppState, Text, View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -70,6 +70,19 @@ function AppContent(): ReactNode {
         );
       });
   }, [fontsLoaded, setLoading, setReady, setError]);
+
+  // Keep downloads, catalog syncs, personal batch imports, and embeddings resilient
+  // across backgrounding / foregrounding.
+  useEffect(() => {
+    if (status !== 'ready') return;
+    const sub = AppState.addEventListener('change', (nextState) => {
+      useOfflineEngineStore.getState().handleAppStateChange(nextState);
+      if (nextState === 'active') {
+        void usePersonalLibraryStore.getState().resumeBackgroundWork();
+      }
+    });
+    return () => sub.remove();
+  }, [status]);
 
   useEffect(() => {
     if (fontsLoaded && status !== 'loading') {

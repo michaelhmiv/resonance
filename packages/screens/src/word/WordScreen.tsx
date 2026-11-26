@@ -4,11 +4,6 @@
  * Entry point for the Word tab: shows a Scripture/Library toggle in the
  * header, a search icon, and renders either the Scripture browser,
  * Library browser, reading view, or search screen depending on state.
- *
- * Supports deep-linking via initialBook/initialChapter/initialVerse
- * and a "Continue Reading" card for Phase 7.
- *
- * (design spec §6: Word tab — browse, search, highlight, annotate, bookmark)
  */
 
 import {
@@ -19,24 +14,37 @@ import {
   type ReactNode,
 } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { SearchIcon, SettingsIcon } from '@resonance/ui';
+import { SearchIcon, SettingsIcon, TranslationSelector, XIcon } from '@resonance/ui';
 
-import { colors, fontFamilies, radii, screenContainer, spacing } from '@resonance/theme';
-import { type LibraryBook, type Translation, getCachedSync } from '@resonance/core';
+import { colors, fontFamilies, layout, radii, screenContainer, spacing } from '@resonance/theme';
+import {
+  getCachedSync,
+  resolveBibleBookName,
+  type LibraryBook,
+  type Translation,
+} from '@resonance/core';
 import { useDataLayer } from '@resonance/core/data-layer-context';
 import { ScriptureBrowser } from './ScriptureBrowser';
 import { LibraryBrowser } from './LibraryBrowser';
 import { ReadingView, type ReadingMode } from './ReadingView';
 import { SearchScreen } from './SearchScreen';
-import { TranslationSelector } from '@resonance/ui';
 
 type ScreenView =
   | { name: 'browse' }
-  | { name: 'reading'; mode: ReadingMode }
+  | { name: 'reading'; mode: ReadingMode; targetVerse?: number }
   | { name: 'search' };
+
+export interface WordBackgroundStatus {
+  label: string;
+  detail?: string;
+  progressPct?: number;
+  onPress: () => void;
+}
 
 interface WordScreenProps {
   onOpenSettings?: () => void;
+  /** Hide Settings gear in subHeader when the platform top header already renders it. */
+  hideSettingsInSubHeader?: boolean;
   /** Optional mobile callback to browse & download optional Church Library books/collections. */
   onOpenCatalog?: () => void;
   /** Optional mobile callback to open Personal Library device-folder import flow. */
@@ -45,7 +53,11 @@ interface WordScreenProps {
   onEditBookMetadata?: (book: LibraryBook) => void;
   /** Optional revision counter to refresh the Library browser after imports/edits. */
   libraryRevision?: number;
-  /** Deep-link: auto-open this book on mount */
+  /** Incrementing signal (e.g. tapping the active Word tab) returns to the browse list. */
+  resetSignal?: number;
+  /** Optional live background sync/download/embedding banner (Mobile). */
+  backgroundStatus?: WordBackgroundStatus | null;
+  /** Deep-link: auto-open this book on mount or when changed */
   initialBook?: string;
   /** Deep-link: chapter number */
   initialChapter?: number;
@@ -55,116 +67,182 @@ interface WordScreenProps {
 
 export function WordScreen({
   onOpenSettings,
+  hideSettingsInSubHeader = false,
   onOpenCatalog,
   onOpenImport,
   onEditBookMetadata,
   libraryRevision = 0,
+  resetSignal = 0,
+  backgroundStatus = null,
   initialBook,
   initialChapter,
   initialVerse,
 }: WordScreenProps): ReactNode {
   const [surface, setSurface] = useState<'scripture' | 'library'>('scripture');
-  // Translation is read from cache synchronously so the first render of the
-  // ScriptureBrowser uses the right translation immediately (no flash of WEB
-  // then switching to KJV).
   const [translation, setTranslation] = useState<Translation>(() => {
     const cached = getCachedSync<{ translation?: string }>('/api/settings');
-    const saved = cached?.translation;
-    if (saved === 'kjv' || saved === 'web') return saved.toUpperCase() as Translation;
+    const saved = cached?.translation?.toLowerCase();
+    if (saved === 'kjv' || saved === 'web') {
+      return saved.toUpperCase() as Translation;
+    }
     return 'WEB';
   });
   const [view, setView] = useState<ScreenView>({ name: 'browse' });
-  const [totalChapters, setTotalChapters] = useState(1);
-  const [lastReadPosition, setLastReadPosition] = useState<{ bookId: string; chapter: number; verseRef: string } | null>(() => {
-    // No cache for lastReadPosition — it's tiny and rarely shared.
-    return null;
-  });
+  const [lastReadPosition, setLastReadPosition] = useState<{
+    bookId: string;
+    chapter: number;
+    verseRef: string;
+  } | null>(null);
+  const [continueDismissed, setContinueDismissed] = useState(false);
+
   const dataLayer = useDataLayer();
-  const deepLinkApplied = useRef(false);
+  const chapterCountCacheRef = useRef<Map<string, number>>(new Map());
+  const appliedDeepLinkKeyRef = useRef<string | null>(null);
+  const prevResetSignalRef = useRef(resetSignal);
 
-  // Load saved translation preference on mount (refreshes cache if stale)
+  // Return to browse when user taps the active Word tab
   useEffect(() => {
-    dataLayer.getSettings().then((settings) => {
-      const savedTranslation = settings?.translation;
-      if (savedTranslation === 'kjv' || savedTranslation === 'web') {
-        setTranslation(savedTranslation.toUpperCase() as Translation);
+    if (resetSignal !== prevResetSignalRef.current) {
+      prevResetSignalRef.current = resetSignal;
+      setView({ name: 'browse' });
+    }
+  }, [resetSignal]);
+
+  // Load saved translation preference on mount
+  useEffect(() => {
+    dataLayer
+      .getSettings()
+      .then((settings) => {
+        const saved = settings?.translation?.toLowerCase();
+        if (saved === 'kjv' || saved === 'web') {
+          setTranslation(saved.toUpperCase() as Translation);
+        }
+      })
+      .catch(() => {});
+  }, [dataLayer]);
+
+  const refreshLastReadPosition = useCallback(() => {
+    dataLayer
+      .getLastReadPosition?.()
+      .then((pos) => {
+        if (pos) setLastReadPosition(pos);
+      })
+      .catch(() => {});
+  }, [dataLayer]);
+
+  useEffect(() => {
+    refreshLastReadPosition();
+  }, [refreshLastReadPosition]);
+
+  // Helper: fetch and cache chapter count for a book+translation
+  const resolveTotalChapters = useCallback(
+    async (bookName: string, tr: Translation, knownTotal?: number): Promise<number> => {
+      const key = `${tr}:${bookName}`;
+      if (knownTotal && knownTotal > 0) {
+        chapterCountCacheRef.current.set(key, knownTotal);
+        return knownTotal;
       }
-    }).catch(() => {});
-  }, [dataLayer]);
+      const cached = chapterCountCacheRef.current.get(key);
+      if (cached && cached > 0) return cached;
+      try {
+        const chapters = await dataLayer.getChapters(bookName, tr);
+        const count = chapters.length || 1;
+        chapterCountCacheRef.current.set(key, count);
+        return count;
+      } catch {
+        return 1;
+      }
+    },
+    [dataLayer]
+  );
 
-  // Fetch last read position for "Continue Reading" card
+  // Apply deep-link on mount or whenever deep-link props change
   useEffect(() => {
-    dataLayer.getLastReadPosition?.().then((pos) => {
-      if (pos) setLastReadPosition(pos);
-    }).catch(() => {});
-  }, [dataLayer]);
+    if (!initialBook) return;
+    const key = `${initialBook}|${initialChapter ?? ''}|${initialVerse ?? ''}`;
+    if (appliedDeepLinkKeyRef.current === key) return;
+    appliedDeepLinkKeyRef.current = key;
 
-  // Apply deep-link on mount
-  useEffect(() => {
-    if (deepLinkApplied.current) return;
-    if (!initialBook || initialChapter == null) return;
-    deepLinkApplied.current = true;
-
-    // Determine if it's scripture or library from the book id
-    const bookId = initialBook;
-    if (bookId.startsWith('voice_') || bookId.startsWith('author_')) {
+    const canonicalBibleBook = resolveBibleBookName(initialBook);
+    if (canonicalBibleBook) {
+      const chapter = initialChapter != null && initialChapter > 0 ? initialChapter : 1;
+      setSurface('scripture');
+      void resolveTotalChapters(canonicalBibleBook, translation).then((total) => {
+        setView({
+          name: 'reading',
+          mode: {
+            kind: 'scripture',
+            bookName: canonicalBibleBook,
+            chapter,
+            translation,
+            totalChapters: total,
+          },
+          targetVerse: initialVerse,
+        });
+      });
+    } else {
+      // Any non-Bible book ID (slugs like "augustine-confessions", "personal_...", "voice_...")
       setSurface('library');
       setView({
         name: 'reading',
-        mode: { kind: 'library', bookId },
-      });
-    } else {
-      // Scripture: parse book name from ID (e.g. "web_Matthew" → "Matthew")
-      const bookName = bookId.replace(/^(web|kjv)_/, '').replace(/_/g, ' ');
-      setSurface('scripture');
-      dataLayer.getChapters(bookName, translation).then((chapters) => {
-        setTotalChapters(chapters.length || 1);
-        setView({
-          name: 'reading',
-          mode: {
-            kind: 'scripture',
-            bookName,
-            chapter: initialChapter,
-            translation,
-            totalChapters: chapters.length || 1,
-          },
-        });
-      }).catch(() => {
-        setView({
-          name: 'reading',
-          mode: {
-            kind: 'scripture',
-            bookName,
-            chapter: initialChapter,
-            translation,
-            totalChapters: 99,
-          },
-        });
+        mode: { kind: 'library', bookId: initialBook },
       });
     }
-  }, [initialBook, initialChapter, translation, dataLayer]);
+  }, [initialBook, initialChapter, initialVerse, translation, resolveTotalChapters]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
+  const persistTranslation = useCallback(
+    (nextTranslation: Translation) => {
+      setTranslation(nextTranslation);
+      void dataLayer
+        .setSetting?.('translation', nextTranslation.toLowerCase())
+        ?.catch(() => {});
+    },
+    [dataLayer]
+  );
+
   const openScriptureChapter = useCallback(
-    async (bookName: string, chapter: number) => {
-      const chapters = await dataLayer.getChapters(bookName, translation);
-      setTotalChapters(chapters.length || 1);
+    async (
+      bookName: string,
+      chapter: number,
+      totalOrVerse?: number,
+      explicitVerse?: number
+    ) => {
+      const canonical = resolveBibleBookName(bookName) ?? bookName;
+      const total = await resolveTotalChapters(canonical, translation, totalOrVerse);
+      setSurface('scripture');
       setView({
         name: 'reading',
         mode: {
           kind: 'scripture',
-          bookName,
+          bookName: canonical,
           chapter,
           translation,
-          totalChapters: chapters.length || 1,
+          totalChapters: total,
         },
+        targetVerse: explicitVerse,
       });
     },
-    [dataLayer, translation]
+    [translation, resolveTotalChapters]
+  );
+
+  const openScriptureFromBrowser = useCallback(
+    (bookName: string, chapter: number, totalChapters?: number) => {
+      void openScriptureChapter(bookName, chapter, totalChapters, undefined);
+    },
+    [openScriptureChapter]
+  );
+
+  const openScriptureFromSearch = useCallback(
+    (bookName: string, chapter: number, verse?: number) => {
+      void openScriptureChapter(bookName, chapter, undefined, verse);
+    },
+    [openScriptureChapter]
   );
 
   const openLibraryBook = useCallback((bookId: string) => {
+    setSurface('library');
     setView({
       name: 'reading',
       mode: { kind: 'library', bookId },
@@ -172,30 +250,39 @@ export function WordScreen({
   }, []);
 
   const navigateChapter = useCallback(
-    async (bookName: string, chapter: number) => {
-      const chapters = await dataLayer.getChapters(bookName, translation);
-      setTotalChapters(chapters.length || 1);
+    async (bookName: string, chapter: number, verse?: number) => {
+      const canonical = resolveBibleBookName(bookName) ?? bookName;
+      // Reuse known totalChapters immediately when staying in the same book!
+      const existingTotal =
+        view.name === 'reading' &&
+        view.mode.kind === 'scripture' &&
+        view.mode.bookName === canonical &&
+        view.mode.translation === translation
+          ? view.mode.totalChapters
+          : undefined;
+
+      const total = await resolveTotalChapters(canonical, translation, existingTotal);
       setView({
         name: 'reading',
         mode: {
           kind: 'scripture',
-          bookName,
+          bookName: canonical,
           chapter,
           translation,
-          totalChapters: chapters.length || 1,
+          totalChapters: total,
         },
+        targetVerse: verse,
       });
     },
-    [dataLayer, translation]
+    [view, translation, resolveTotalChapters]
   );
 
   const handleChangeTranslation = useCallback(
     (nextTranslation: Translation) => {
-      setTranslation(nextTranslation);
+      persistTranslation(nextTranslation);
       if (view.name === 'reading' && view.mode.kind === 'scripture') {
         const { bookName, chapter } = view.mode;
-        dataLayer.getChapters(bookName, nextTranslation).then((chapters) => {
-          setTotalChapters(chapters.length || 1);
+        void resolveTotalChapters(bookName, nextTranslation).then((total) => {
           setView({
             name: 'reading',
             mode: {
@@ -203,49 +290,140 @@ export function WordScreen({
               bookName,
               chapter,
               translation: nextTranslation,
-              totalChapters: chapters.length || 1,
+              totalChapters: total,
             },
           });
-        }).catch(() => {});
+        });
       }
     },
-    [view, dataLayer]
+    [view, persistTranslation, resolveTotalChapters]
   );
+
+  const handleExitReading = useCallback(() => {
+    setView({ name: 'browse' });
+    setContinueDismissed(false);
+    refreshLastReadPosition();
+  }, [refreshLastReadPosition]);
+
+  const handleResumeReading = useCallback(() => {
+    if (!lastReadPosition) return;
+    const pos = lastReadPosition;
+    const canonicalBibleBook = resolveBibleBookName(pos.bookId);
+    if (canonicalBibleBook) {
+      void openScriptureChapter(canonicalBibleBook, pos.chapter || 1);
+    } else {
+      openLibraryBook(pos.bookId);
+    }
+  }, [lastReadPosition, openScriptureChapter, openLibraryBook]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  // Search screen renders over everything.
   if (view.name === 'search') {
     return (
       <SearchScreen
         onCancel={() => setView({ name: 'browse' })}
-        onOpenScripture={openScriptureChapter}
+        onOpenScripture={openScriptureFromSearch}
         onOpenLibrary={openLibraryBook}
       />
     );
   }
 
-  // Reading view.
   if (view.name === 'reading') {
     return (
       <ReadingView
         mode={view.mode}
         onNavigateChapter={navigateChapter}
         onChangeTranslation={handleChangeTranslation}
-        onBack={() => {
-          deepLinkApplied.current = false;
-          setView({ name: 'browse' });
-        }}
-        initialVerse={initialVerse}
+        onBack={handleExitReading}
+        initialVerse={view.targetVerse}
       />
     );
   }
 
-  // Browse view with Scripture/Library toggle.
+  // Inline top header card for Continue Reading (never floats over bottom books!)
+  const continueReadingBanner =
+    lastReadPosition && !continueDismissed ? (
+      <View style={styles.continueCard}>
+        <Pressable
+          onPress={handleResumeReading}
+          style={({ pressed }) => [
+            styles.continueCardMain,
+            pressed && styles.pressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={`Continue reading ${lastReadPosition.verseRef}`}
+        >
+          <View style={styles.continueTextCol}>
+            <Text style={styles.continueLabel}>Continue Reading</Text>
+            <Text style={styles.continueRef} numberOfLines={1}>
+              {lastReadPosition.verseRef}
+            </Text>
+          </View>
+          <Text style={styles.continueAction}>Resume →</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setContinueDismissed(true)}
+          hitSlop={8}
+          style={styles.continueDismissBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss continue reading"
+        >
+          <XIcon size={14} color={colors.textTertiary} />
+        </Pressable>
+      </View>
+    ) : null;
+
+  const browseListHeader =
+    backgroundStatus || continueReadingBanner ? (
+      <View style={styles.browseHeaderStack}>
+        {backgroundStatus ? (
+          <Pressable
+            onPress={backgroundStatus.onPress}
+            style={({ pressed }) => [
+              styles.bgStatusCard,
+              pressed && styles.pressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={backgroundStatus.label}
+          >
+            <View style={styles.bgStatusRow}>
+              <View style={styles.continueTextCol}>
+                <Text style={styles.bgStatusLabel} numberOfLines={1}>
+                  {backgroundStatus.label}
+                </Text>
+                {backgroundStatus.detail ? (
+                  <Text style={styles.bgStatusDetail} numberOfLines={1}>
+                    {backgroundStatus.detail}
+                  </Text>
+                ) : null}
+              </View>
+              {typeof backgroundStatus.progressPct === 'number' ? (
+                <Text style={styles.bgStatusPct}>
+                  {backgroundStatus.progressPct}%
+                </Text>
+              ) : null}
+            </View>
+            {typeof backgroundStatus.progressPct === 'number' ? (
+              <View style={styles.bgProgressTrack}>
+                <View
+                  style={[
+                    styles.bgProgressFill,
+                    {
+                      width: `${Math.max(4, Math.min(100, backgroundStatus.progressPct))}%`,
+                    },
+                  ]}
+                />
+              </View>
+            ) : null}
+          </Pressable>
+        ) : null}
+        {continueReadingBanner}
+      </View>
+    ) : null;
+
   return (
     <View style={screenContainer}>
       <View style={styles.subHeader}>
-        {/* eslint-disable-next-line react-native-a11y */}
         <View style={styles.toggle}>
           {(['scripture', 'library'] as const).map((s) => {
             const active = surface === s;
@@ -272,21 +450,27 @@ export function WordScreen({
         </View>
 
         <View style={styles.headerRight}>
-          {surface === 'scripture' && (
-            <TranslationSelector value={translation} onChange={setTranslation} />
-          )}
+          {surface === 'scripture' ? (
+            <TranslationSelector
+              value={translation}
+              onChange={persistTranslation}
+              placement="top"
+            />
+          ) : null}
           <Pressable
             onPress={() => setView({ name: 'search' })}
-            hitSlop={10}
+            hitSlop={8}
+            style={styles.iconBtn}
             accessibilityRole="button"
             accessibilityLabel="Search"
           >
             <SearchIcon size={20} color={colors.textSecondary} />
           </Pressable>
-          {onOpenSettings ? (
+          {onOpenSettings && !hideSettingsInSubHeader ? (
             <Pressable
               onPress={onOpenSettings}
-              hitSlop={10}
+              hitSlop={8}
+              style={styles.iconBtn}
               accessibilityRole="button"
               accessibilityLabel="Settings"
             >
@@ -299,7 +483,8 @@ export function WordScreen({
       {surface === 'scripture' ? (
         <ScriptureBrowser
           translation={translation}
-          onOpenChapter={openScriptureChapter}
+          onOpenChapter={openScriptureFromBrowser}
+          ListHeaderComponent={browseListHeader}
         />
       ) : (
         <LibraryBrowser
@@ -308,74 +493,46 @@ export function WordScreen({
           onOpenImport={onOpenImport}
           onEditBookMetadata={onEditBookMetadata}
           libraryRevision={libraryRevision}
+          ListHeaderComponent={browseListHeader}
         />
-      )}
-
-      {/* Continue Reading card */}
-      {lastReadPosition && !deepLinkApplied.current && (
-        <View style={styles.continueCard}>
-          <Pressable
-            onPress={() => {
-              const pos = lastReadPosition;
-              if (
-                pos.bookId.startsWith('voice_') ||
-                pos.bookId.startsWith('author_') ||
-                pos.bookId.startsWith('personal_')
-              ) {
-                setSurface('library');
-                setView({ name: 'reading', mode: { kind: 'library', bookId: pos.bookId } });
-              } else {
-                const bookName = pos.bookId.replace(/^(web|kjv)_/, '').replace(/_/g, ' ');
-                setSurface('scripture');
-                dataLayer.getChapters(bookName, translation).then((chapters) => {
-                  setTotalChapters(chapters.length || 1);
-                  setView({
-                    name: 'reading',
-                    mode: { kind: 'scripture', bookName, chapter: pos.chapter, translation, totalChapters: chapters.length || 1 },
-                  });
-                }).catch(() => {});
-              }
-            }}
-            style={styles.continueCardInner}
-          >
-            <Text style={styles.continueLabel}>Continue Reading</Text>
-            <Text style={styles.continueRef}>{lastReadPosition.verseRef}</Text>
-            <Text style={styles.continueAction}>Tap to resume →</Text>
-          </Pressable>
-        </View>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  pressed: {
+    opacity: 0.65,
+  },
   subHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: layout.screenPaddingX,
     paddingVertical: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
+    backgroundColor: colors.background,
   },
   toggle: {
     flexDirection: 'row',
-    gap: 0,
+    borderRadius: radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: 2,
   },
   toggleItem: {
     paddingVertical: 6,
     paddingHorizontal: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderRadius: radii.sm,
   },
   toggleItemActive: {
     backgroundColor: colors.accent,
-    borderColor: colors.accent,
   },
   toggleText: {
     fontFamily: fontFamilies.sansMedium,
-    fontSize: 14,
+    fontSize: 13.5,
     color: colors.textSecondary,
   },
   toggleTextActive: {
@@ -384,26 +541,43 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.lg,
-    marginRight: spacing.md,
+    gap: spacing.xs,
+  },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.sm,
+  },
+  browseHeaderStack: {
+    gap: spacing.sm,
   },
   continueCard: {
-    position: 'absolute',
-    bottom: spacing.lg,
-    left: spacing.lg,
-    right: spacing.lg,
-  },
-  continueCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: radii.lg,
+    borderRadius: radii.md,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.xs,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.xs,
+    paddingVertical: spacing.sm,
+  },
+  continueCardMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  continueTextCol: {
+    flex: 1,
+    gap: 1,
   },
   continueLabel: {
     fontFamily: fontFamilies.sansSemibold,
-    fontSize: 12,
+    fontSize: 11,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
     color: colors.textTertiary,
@@ -417,6 +591,52 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.sansMedium,
     fontSize: 13,
     color: colors.accent,
-    marginTop: spacing.xs,
+  },
+  continueDismissBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 2,
+  },
+  bgStatusCard: {
+    backgroundColor: '#f6f1e7',
+    borderRadius: radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.accentMuted,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: 6,
+  },
+  bgStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  bgStatusLabel: {
+    fontFamily: fontFamilies.sansSemibold,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  bgStatusDetail: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  bgStatusPct: {
+    fontFamily: fontFamilies.sansSemibold,
+    fontSize: 12.5,
+    color: colors.accent,
+  },
+  bgProgressTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    overflow: 'hidden',
+  },
+  bgProgressFill: {
+    height: '100%',
+    backgroundColor: colors.accent,
   },
 });

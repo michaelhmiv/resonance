@@ -39,6 +39,7 @@ import {
   clearPersonalWorkVectors,
   deletePersonalWork,
   findPersonalWorkByHash,
+  getEmbeddedPassageIdsForBook,
   getLibraryPassages,
   getPersonalWork,
   getPersonalWorks,
@@ -63,6 +64,7 @@ export const PERSONAL_FILES_DIR = `${PERSONAL_LIBRARY_ROOT}files/`;
 
 const KEY_FOLDER_URI = 'personal_library_folder_uri';
 const KEY_FOLDER_LABEL = 'personal_library_folder_label';
+const KEY_BATCH_QUEUE = 'personal_batch_queue_v1';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -80,6 +82,16 @@ export interface DiscoveredFolderFile {
 export interface ScanProgress {
   foldersScanned: number;
   filesFound: number;
+}
+
+export interface BatchImportProgress {
+  currentIndex: number;
+  total: number;
+  currentFilename: string;
+  stage: 'downloading' | 'extracting' | 'saving';
+  imported: number;
+  skipped: number;
+  failed: number;
 }
 
 export interface InspectedDocument {
@@ -107,10 +119,16 @@ export interface PersonalLibraryState {
   pickedFiles: DiscoveredFolderFile[];
   discoveredFiles: DiscoveredFolderFile[];
   scanning: boolean;
+  lastScannedAt: number | null;
   scanProgress: ScanProgress | null;
   scanNotice: string | null;
   scanError: string | null;
   works: PersonalWorkMetadata[];
+  /** Global background batch-import state — survives closing modal & switching tabs. */
+  batchImporting: boolean;
+  batchProgress: BatchImportProgress | null;
+  batchSummary: string | null;
+  batchError: string | null;
   embeddingActiveBookId: string | null;
   embeddingPaused: boolean;
   /** Monotonic revision bumped whenever books/metadata change so LibraryBrowser refreshes. */
@@ -132,6 +150,12 @@ export interface PersonalLibraryState {
     meta: PersonalImportMetadataForm,
     options?: { replaceExistingBookId?: string; deferEmbedding?: boolean }
   ) => Promise<PersonalWorkMetadata>;
+  startBatchImport: (
+    targets: DiscoveredFolderFile[]
+  ) => Promise<{ imported: number; lastBookId: string | null }>;
+  cancelBatchImport: () => void;
+  clearBatchBanner: () => void;
+  resumeBackgroundWork: () => Promise<void>;
   importPastedText: (
     rawText: string,
     format: 'txt' | 'md',
@@ -151,7 +175,13 @@ export interface PersonalLibraryState {
 
 let embeddingLoopRunning = false;
 let embeddingPauseFlag = false;
+let batchLoopRunning = false;
+let batchCancelFlag = false;
 let activeScanRunId = 0;
+
+function yieldToUi(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
 
 const MAX_SCAN_DEPTH = 6;
 const MAX_SCAN_FOLDERS = 250;
@@ -391,10 +421,15 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
   pickedFiles: [],
   discoveredFiles: [],
   scanning: false,
+  lastScannedAt: null,
   scanProgress: null,
   scanNotice: null,
   scanError: null,
   works: [],
+  batchImporting: false,
+  batchProgress: null,
+  batchSummary: null,
+  batchError: null,
   embeddingActiveBookId: null,
   embeddingPaused: false,
   libraryRevision: 0,
@@ -430,6 +465,9 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
     useOfflineEngineStore.getState().registerOnReady(() => {
       void get().processEmbeddingQueue();
     });
+
+    // Resume any interrupted personal batch imports or pending embeddings right away
+    void get().resumeBackgroundWork();
   },
 
   async refreshWorks() {
@@ -888,6 +926,7 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
       discoveredFiles: sorted,
       works,
       scanning: false,
+      lastScannedAt: Date.now(),
       scanProgress: null,
       scanNotice,
     });
@@ -1007,6 +1046,257 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
     return saved;
   },
 
+  clearBatchBanner() {
+    set({ batchSummary: null, batchError: null });
+  },
+
+  cancelBatchImport() {
+    batchCancelFlag = true;
+  },
+
+  async startBatchImport(targets: DiscoveredFolderFile[]) {
+    if (targets.length === 0) return { imported: 0, lastBookId: null };
+
+    // Persist pending targets so closing the modal or backgrounding never loses the queue
+    const existingRaw = await readSetting(KEY_BATCH_QUEUE);
+    let queued: DiscoveredFolderFile[] = [];
+    if (existingRaw) {
+      try {
+        const parsed = JSON.parse(existingRaw) as DiscoveredFolderFile[];
+        if (Array.isArray(parsed)) queued = parsed;
+      } catch {
+        queued = [];
+      }
+    }
+    const seen = new Set(queued.map((f) => f.uri));
+    for (const t of targets) {
+      if (!seen.has(t.uri)) {
+        seen.add(t.uri);
+        queued.push(t);
+      }
+    }
+    await writeSetting(KEY_BATCH_QUEUE, JSON.stringify(queued));
+
+    if (batchLoopRunning) {
+      return { imported: 0, lastBookId: null };
+    }
+
+    batchLoopRunning = true;
+    batchCancelFlag = false;
+    get().pauseEmbeddingQueue();
+
+    const totalInitial = queued.length;
+    set({
+      batchImporting: true,
+      batchSummary: null,
+      batchError: null,
+      batchProgress: {
+        currentIndex: 1,
+        total: totalInitial,
+        currentFilename: queued[0].filename,
+        stage: 'downloading',
+        imported: 0,
+        skipped: 0,
+        failed: 0,
+      },
+    });
+
+    let importedCount = 0;
+    let skippedDupes = 0;
+    let failedCount = 0;
+    const errorSamples: string[] = [];
+    let lastBookId: string | null = null;
+    let cancelled = false;
+
+    try {
+      while (true) {
+        if (batchCancelFlag) {
+          cancelled = true;
+          break;
+        }
+
+        // Re-read queue in case additional files were appended while running
+        const currentRaw = await readSetting(KEY_BATCH_QUEUE);
+        let remaining: DiscoveredFolderFile[] = [];
+        if (currentRaw) {
+          try {
+            const parsed = JSON.parse(currentRaw) as DiscoveredFolderFile[];
+            if (Array.isArray(parsed)) remaining = parsed;
+          } catch {
+            remaining = [];
+          }
+        }
+        if (remaining.length === 0) break;
+
+        const file = remaining[0];
+        const processedSoFar = importedCount + skippedDupes + failedCount;
+        const total = processedSoFar + remaining.length;
+
+        set({
+          batchProgress: {
+            currentIndex: processedSoFar + 1,
+            total,
+            currentFilename: file.filename,
+            stage: 'downloading',
+            imported: importedCount,
+            skipped: skippedDupes,
+            failed: failedCount,
+          },
+        });
+        await yieldToUi();
+
+        try {
+          const result = await get().inspectFile(file, {
+            onStage: (stage) => {
+              set({
+                batchProgress: {
+                  currentIndex: processedSoFar + 1,
+                  total,
+                  currentFilename: file.filename,
+                  stage,
+                  imported: importedCount,
+                  skipped: skippedDupes,
+                  failed: failedCount,
+                },
+              });
+            },
+          });
+
+          if (result.duplicateWork) {
+            skippedDupes++;
+          } else if (result.processed.chunks.length === 0) {
+            failedCount++;
+            if (errorSamples.length < 2) {
+              errorSamples.push(
+                `${file.filename}: ${result.processed.ocrRequired ? 'scanned image PDF (no text layer)' : 'no readable text found'}`
+              );
+            }
+          } else {
+            set({
+              batchProgress: {
+                currentIndex: processedSoFar + 1,
+                total,
+                currentFilename: result.processed.suggestedTitle || file.filename,
+                stage: 'saving',
+                imported: importedCount,
+                skipped: skippedDupes,
+                failed: failedCount,
+              },
+            });
+            await yieldToUi();
+
+            const saved = await get().commitImport(
+              result,
+              {
+                title: result.processed.suggestedTitle,
+                author: result.processed.suggestedAuthor,
+                era: result.processed.suggestedEra || 'Personal',
+                collection: 'Personal Library',
+                tags: result.processed.suggestedTags,
+                notes: result.processed.suggestedNotes,
+                includeInResonance: !result.processed.ocrRequired,
+              },
+              { deferEmbedding: true }
+            );
+            importedCount++;
+            lastBookId = saved.bookId;
+          }
+        } catch (err) {
+          failedCount++;
+          const msg = err instanceof Error ? err.message : 'Unknown error';
+          if (errorSamples.length < 2) {
+            errorSamples.push(`${file.filename}: ${msg}`);
+          }
+        }
+
+        // Pop processed item from persisted queue
+        const nextRemaining = remaining.slice(1);
+        await writeSetting(
+          KEY_BATCH_QUEUE,
+          nextRemaining.length > 0 ? JSON.stringify(nextRemaining) : null
+        );
+        await yieldToUi();
+      }
+
+      if (cancelled) {
+        await writeSetting(KEY_BATCH_QUEUE, null);
+      }
+
+      // Kick off background on-device embedding once the batch finishes
+      if (importedCount > 0) {
+        void get().processEmbeddingQueue();
+      }
+
+      if (importedCount === 0) {
+        if (cancelled) {
+          set({ batchSummary: 'Import stopped before any books were saved.' });
+        } else if (skippedDupes > 0 && failedCount === 0) {
+          set({
+            batchSummary: `All ${skippedDupes} selected file${skippedDupes === 1 ? ' is' : 's are'} already in your Library.`,
+          });
+        } else {
+          set({
+            batchError:
+              errorSamples.length > 0
+                ? `Could not import selected files (${errorSamples.join('; ')}).`
+                : 'No new readable passages were found in the selected files.',
+          });
+        }
+      } else {
+        const parts = [
+          `Imported ${importedCount} book${importedCount === 1 ? '' : 's'}`,
+        ];
+        if (skippedDupes > 0) parts.push(`${skippedDupes} already in Library`);
+        if (failedCount > 0) parts.push(`${failedCount} failed`);
+        if (cancelled) parts.push('stopped early');
+        set({
+          batchSummary: parts.join(' · ') + '.',
+          batchError: errorSamples.length > 0 ? errorSamples.join(' · ') : null,
+        });
+      }
+
+      return { imported: importedCount, lastBookId };
+    } finally {
+      batchLoopRunning = false;
+      batchCancelFlag = false;
+      set({
+        batchImporting: false,
+        batchProgress: null,
+      });
+    }
+  },
+
+  async resumeBackgroundWork() {
+    // 1. Resume any interrupted personal batch import queue
+    if (!batchLoopRunning) {
+      const queuedRaw = await readSetting(KEY_BATCH_QUEUE);
+      if (queuedRaw) {
+        try {
+          const parsed = JSON.parse(queuedRaw) as DiscoveredFolderFile[];
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            void get().startBatchImport(parsed);
+            return; // startBatchImport triggers processEmbeddingQueue when done
+          }
+        } catch {
+          await writeSetting(KEY_BATCH_QUEUE, null);
+        }
+      }
+    }
+
+    // 2. Resume any pending/interrupted on-device book embeddings
+    if (!embeddingLoopRunning && !batchLoopRunning) {
+      const works = await getPersonalWorks();
+      const hasPending = works.some(
+        (w) =>
+          w.totalChunks > 0 &&
+          (w.embeddingStatus === 'pending' || w.embeddingStatus === 'embedding')
+      );
+      if (hasPending) {
+        void get().processEmbeddingQueue();
+      }
+    }
+  },
+
   async importPastedText(rawText, format, meta) {
     await ensurePersonalDirs();
     const safeName = `${(meta.title.trim() || 'personal-note').replace(/[^a-zA-Z0-9_-]+/g, '_')}.${format}`;
@@ -1117,21 +1407,33 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
         if (embeddingPauseFlag) break;
 
         set({ embeddingActiveBookId: work.bookId });
-        const passages = await getLibraryPassages(work.bookId);
+        const [passages, alreadyEmbeddedIds] = await Promise.all([
+          getLibraryPassages(work.bookId),
+          getEmbeddedPassageIdsForBook(work.bookId, DEFAULT_LOCAL_EMBEDDING_MODEL),
+        ]);
+
+        let embedded = alreadyEmbeddedIds.size;
+        let failed = false;
+
         await updatePersonalEmbeddingState(work.bookId, {
           status: 'embedding',
-          embeddedChunks: work.embeddedChunks,
+          embeddedChunks: embedded,
           totalChunks: passages.length,
           modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
           error: null,
         });
 
-        let embedded = 0;
-        let failed = false;
-
         for (let i = 0; i < passages.length; i++) {
           if (embeddingPauseFlag) break;
           const p = passages[i];
+
+          // Checkpoint resume: skip chunks already embedded in passage_vectors
+          if (alreadyEmbeddedIds.has(p.id)) continue;
+
+          // Cooperatively yield to UI thread before each chunk so taps/modals stay instant
+          await yieldToUi();
+          if (embeddingPauseFlag) break;
+
           const titleCtx = [work.title, work.author, p.division]
             .filter(Boolean)
             .join(' — ');
@@ -1149,7 +1451,8 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
             scale,
             quantized,
           });
-          embedded = i + 1;
+          alreadyEmbeddedIds.add(p.id);
+          embedded = alreadyEmbeddedIds.size;
 
           // Throttle UI/SQLite progress updates every 5 chunks or at the end
           if (embedded % 5 === 0 || embedded === passages.length) {
