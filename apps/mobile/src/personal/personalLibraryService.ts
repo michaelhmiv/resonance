@@ -1780,13 +1780,13 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           if (failed) {
             const errMsg =
               getLastEmbeddingError() ??
-              'On-device embedding paused before finishing. Tap Retry to resume.';
+              'Embedding paused before finishing. Tap Retry to resume.';
             endedWithError = true;
             await updatePersonalEmbeddingState(work.bookId, {
               status: 'error',
               embeddedChunks: embedded,
               totalChunks: passages.length,
-              modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
+              modelId: activeBookModelId,
               error: errMsg,
             });
             set({
@@ -1807,7 +1807,7 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
               status: 'ready',
               embeddedChunks: passages.length,
               totalChunks: passages.length,
-              modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
+              modelId: activeBookModelId,
               error: null,
             });
             clearLibraryVectors();

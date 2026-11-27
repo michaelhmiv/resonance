@@ -1,13 +1,17 @@
 /**
- * DiaryCaptureBar — compact, quiet cream-paper capture dock for Voice, Photo,
- * and Video inside the Journal.
+ * DiaryCaptureBar — quiet cream-paper docked footer bar for Voice, Photo,
+ * Video, and active-entry Echoes inside the Journal.
  *
  * Strictly gated behind OpenRouter BYOK: renders `null` when OpenRouter is not
  * configured or Life Diary media toggles are off.
+ *
+ * Mounts the native `useAudioRecorder` hook ONLY while actively recording so
+ * idle Journal sessions never poll native Android audio.
  */
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Modal,
   Pressable,
@@ -29,7 +33,8 @@ import { useOpenRouterStore } from '../openrouter/openrouterStore';
 import { useDiaryMediaStore } from '../diary/diaryMediaService';
 
 interface Props {
-  keyboardHeight: number;
+  activeEntryText?: string | null;
+  onTriggerEchoes?: (text: string) => void;
   onMediaAdded?: () => void;
 }
 
@@ -40,7 +45,131 @@ function formatDuration(ms: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-export function DiaryCaptureBar({ keyboardHeight, onMediaAdded }: Props): ReactNode {
+// ── Active Voice Recorder Strip (mounted only while recording) ──────────────
+
+function VoiceRecorderStrip({
+  onFinished,
+  onCancel,
+}: {
+  onFinished: (uri: string, durationMs: number) => Promise<void>;
+  onCancel: () => void;
+}): ReactNode {
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(recorder, 250);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        await setAudioModeAsync({
+          allowsRecording: true,
+          playsInSilentMode: true,
+        });
+        await recorder.prepareToRecordAsync();
+        if (active) {
+          recorder.record();
+        }
+      } catch (err) {
+        if (active) {
+          Alert.alert(
+            'Could not start recording',
+            err instanceof Error ? err.message : 'Please try again.'
+          );
+          onCancel();
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+      try {
+        if (recorder.isRecording) {
+          void recorder.stop();
+        }
+      } catch {
+        // ignore cleanup errors
+      }
+    };
+  }, [recorder, onCancel]);
+
+  const handleCancel = useCallback(async () => {
+    try {
+      await recorder.stop();
+    } catch {
+      // ignore
+    }
+    onCancel();
+  }, [recorder, onCancel]);
+
+  const handleSave = useCallback(async () => {
+    if (saving) return;
+    setSaving(true);
+    const durationMs = recorderState.durationMillis ?? 0;
+    try {
+      await recorder.stop();
+      const uri = recorder.uri ?? recorder.getStatus()?.url ?? null;
+      if (!uri) {
+        Alert.alert('Recording unavailable', 'No audio file was produced. Please try again.');
+        onCancel();
+        return;
+      }
+      await onFinished(uri, Math.max(1000, durationMs));
+    } catch (err) {
+      Alert.alert(
+        'Could not save voice note',
+        err instanceof Error ? err.message : 'Please try again.'
+      );
+      onCancel();
+    } finally {
+      setSaving(false);
+    }
+  }, [saving, recorder, recorderState.durationMillis, onFinished, onCancel]);
+
+  return (
+    <View style={styles.recordingBar}>
+      <View style={styles.recLeft}>
+        <View style={styles.recDot} />
+        <Text style={styles.recTimer}>
+          Recording · {formatDuration(recorderState.durationMillis ?? 0)}
+        </Text>
+      </View>
+      <View style={styles.recActions}>
+        <Pressable
+          onPress={() => void handleCancel()}
+          disabled={saving}
+          style={styles.recCancelBtn}
+          hitSlop={8}
+        >
+          <Feather name="trash-2" size={16} color={colors.textSecondary} />
+        </Pressable>
+        <Pressable
+          onPress={() => void handleSave()}
+          disabled={saving}
+          style={styles.recSaveBtn}
+          hitSlop={8}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <>
+              <Feather name="check" size={16} color="#ffffff" />
+              <Text style={styles.recSaveText}>Save</Text>
+            </>
+          )}
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+// ── Main Docked Footer Bar ──────────────────────────────────────────────────
+
+export function DiaryCaptureBar({
+  activeEntryText,
+  onTriggerEchoes,
+  onMediaAdded,
+}: Props): ReactNode {
   const hasKey = useOpenRouterStore((s) => s.hasKey);
   const routingMode = useOpenRouterStore((s) => s.routingMode);
   const features = useOpenRouterStore((s) => s.features);
@@ -53,17 +182,9 @@ export function DiaryCaptureBar({ keyboardHeight, onMediaAdded }: Props): ReactN
   const addPhotos = useDiaryMediaStore((s) => s.addPhotos);
   const addVideo = useDiaryMediaStore((s) => s.addVideo);
 
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recorderState = useAudioRecorderState(recorder, 250);
-
   const [isRecordingUi, setIsRecordingUi] = useState(false);
   const [pickerSheet, setPickerSheet] = useState<'photo' | 'video' | null>(null);
-
-  useEffect(() => {
-    if (!recorderState.isRecording && isRecordingUi) {
-      // Keep UI synced if OS interrupted recording
-    }
-  }, [recorderState.isRecording, isRecordingUi]);
+  const [busy, setBusy] = useState(false);
 
   const startVoiceRecording = useCallback(async () => {
     try {
@@ -75,219 +196,239 @@ export function DiaryCaptureBar({ keyboardHeight, onMediaAdded }: Props): ReactN
         );
         return;
       }
-      await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      });
-      await recorder.prepareToRecordAsync();
-      recorder.record();
       setIsRecordingUi(true);
     } catch (err) {
       Alert.alert(
-        'Could not start recording',
+        'Could not request microphone permission',
         err instanceof Error ? err.message : 'Please try again.'
       );
     }
-  }, [recorder]);
+  }, []);
 
-  const cancelVoiceRecording = useCallback(async () => {
-    try {
-      await recorder.stop();
-    } catch {
-      // ignore
-    } finally {
+  const handleVoiceFinished = useCallback(
+    async (uri: string, durationMs: number) => {
       setIsRecordingUi(false);
-    }
-  }, [recorder]);
-
-  const saveVoiceRecording = useCallback(async () => {
-    const durationMs = recorderState.durationMillis ?? 0;
-    try {
-      await recorder.stop();
-      setIsRecordingUi(false);
-      const uri = recorder.uri;
-      if (uri) {
+      setBusy(true);
+      try {
         await addVoiceNote({
           sourceUri: uri,
-          durationMs: Math.max(1000, durationMs),
+          durationMs,
           mimeType: 'audio/m4a',
         });
         onMediaAdded?.();
+      } catch (err) {
+        Alert.alert(
+          'Could not save voice note',
+          err instanceof Error ? err.message : 'Please try again.'
+        );
+      } finally {
+        setBusy(false);
       }
-    } catch (err) {
-      setIsRecordingUi(false);
-      Alert.alert(
-        'Could not save voice note',
-        err instanceof Error ? err.message : 'Please try again.'
-      );
-    }
-  }, [recorder, recorderState.durationMillis, addVoiceNote, onMediaAdded]);
+    },
+    [addVoiceNote, onMediaAdded]
+  );
 
   const pickPhotoFromCamera = useCallback(async () => {
     setPickerSheet(null);
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Camera permission needed', 'Allow camera access to take a diary photo.');
-      return;
-    }
-    const res = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      quality: 0.88,
-    });
-    if (!res.canceled && res.assets.length > 0) {
-      await addPhotos({ assets: res.assets });
-      onMediaAdded?.();
+    setBusy(true);
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Camera permission needed', 'Allow camera access to take a diary photo.');
+        return;
+      }
+      const res = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        quality: 0.88,
+      });
+      if (!res.canceled && res.assets.length > 0) {
+        await addPhotos({ assets: res.assets });
+        onMediaAdded?.();
+      }
+    } catch (err) {
+      Alert.alert(
+        'Could not add photo',
+        err instanceof Error ? err.message : 'Please try again.'
+      );
+    } finally {
+      setBusy(false);
     }
   }, [addPhotos, onMediaAdded]);
 
   const pickPhotosFromLibrary = useCallback(async () => {
     setPickerSheet(null);
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
+    setBusy(true);
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          'Photo library permission needed',
+          'Allow photo access to attach photos to your diary.'
+        );
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        selectionLimit: 6,
+        quality: 0.88,
+      });
+      if (!res.canceled && res.assets.length > 0) {
+        await addPhotos({ assets: res.assets });
+        onMediaAdded?.();
+      }
+    } catch (err) {
       Alert.alert(
-        'Photo library permission needed',
-        'Allow photo access to attach photos to your diary.'
+        'Could not add photos',
+        err instanceof Error ? err.message : 'Please try again.'
       );
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      selectionLimit: 6,
-      quality: 0.88,
-    });
-    if (!res.canceled && res.assets.length > 0) {
-      await addPhotos({ assets: res.assets });
-      onMediaAdded?.();
+    } finally {
+      setBusy(false);
     }
   }, [addPhotos, onMediaAdded]);
 
   const recordVideoFromCamera = useCallback(async () => {
     setPickerSheet(null);
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Camera permission needed', 'Allow camera access to record a diary video.');
-      return;
-    }
-    const res = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['videos'],
-      videoMaxDuration: 60,
-      videoQuality: ImagePicker.UIImagePickerControllerQualityType.Medium,
-    });
-    if (!res.canceled && res.assets[0]) {
-      const a = res.assets[0];
-      await addVideo({
-        sourceUri: a.uri,
-        durationMs: a.duration ?? null,
-        width: a.width ?? null,
-        height: a.height ?? null,
-        mimeType: a.mimeType ?? 'video/mp4',
-        fileSize: a.fileSize ?? null,
+    setBusy(true);
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Camera permission needed', 'Allow camera access to record a diary video.');
+        return;
+      }
+      const res = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['videos'],
+        videoMaxDuration: 60,
+        videoQuality: ImagePicker.UIImagePickerControllerQualityType?.Medium,
       });
-      onMediaAdded?.();
+      if (!res.canceled && res.assets[0]) {
+        const a = res.assets[0];
+        await addVideo({
+          sourceUri: a.uri,
+          durationMs: a.duration ?? null,
+          width: a.width ?? null,
+          height: a.height ?? null,
+          mimeType: a.mimeType ?? 'video/mp4',
+          fileSize: a.fileSize ?? null,
+        });
+        onMediaAdded?.();
+      }
+    } catch (err) {
+      Alert.alert(
+        'Could not add video',
+        err instanceof Error ? err.message : 'Please try again.'
+      );
+    } finally {
+      setBusy(false);
     }
   }, [addVideo, onMediaAdded]);
 
   const pickVideoFromLibrary = useCallback(async () => {
     setPickerSheet(null);
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert(
-        'Photo library permission needed',
-        'Allow library access to attach a video to your diary.'
-      );
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['videos'],
-      videoQuality: ImagePicker.UIImagePickerControllerQualityType.Medium,
-    });
-    if (!res.canceled && res.assets[0]) {
-      const a = res.assets[0];
-      await addVideo({
-        sourceUri: a.uri,
-        durationMs: a.duration ?? null,
-        width: a.width ?? null,
-        height: a.height ?? null,
-        mimeType: a.mimeType ?? 'video/mp4',
-        fileSize: a.fileSize ?? null,
+    setBusy(true);
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          'Photo library permission needed',
+          'Allow library access to attach a video to your diary.'
+        );
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['videos'],
+        videoQuality: ImagePicker.UIImagePickerControllerQualityType?.Medium,
       });
-      onMediaAdded?.();
+      if (!res.canceled && res.assets[0]) {
+        const a = res.assets[0];
+        await addVideo({
+          sourceUri: a.uri,
+          durationMs: a.duration ?? null,
+          width: a.width ?? null,
+          height: a.height ?? null,
+          mimeType: a.mimeType ?? 'video/mp4',
+          fileSize: a.fileSize ?? null,
+        });
+        onMediaAdded?.();
+      }
+    } catch (err) {
+      Alert.alert(
+        'Could not add video',
+        err instanceof Error ? err.message : 'Please try again.'
+      );
+    } finally {
+      setBusy(false);
     }
   }, [addVideo, onMediaAdded]);
 
   if (!voiceAllowed && !visualAllowed) return null;
 
-  const bottomOffset = keyboardHeight > 0 ? 8 : 14;
+  const canEchoActive = Boolean(
+    activeEntryText && activeEntryText.trim().length >= 12 && onTriggerEchoes
+  );
 
   return (
     <>
       {isRecordingUi ? (
-        <View style={[styles.recordingBar, { bottom: bottomOffset }]}>
-          <View style={styles.recLeft}>
-            <View style={styles.recDot} />
-            <Text style={styles.recTimer}>
-              Recording · {formatDuration(recorderState.durationMillis ?? 0)}
-            </Text>
-          </View>
-          <View style={styles.recActions}>
-            <Pressable
-              onPress={() => void cancelVoiceRecording()}
-              style={styles.recCancelBtn}
-              hitSlop={8}
-            >
-              <Feather name="trash-2" size={16} color={colors.textSecondary} />
-            </Pressable>
-            <Pressable
-              onPress={() => void saveVoiceRecording()}
-              style={styles.recSaveBtn}
-              hitSlop={8}
-            >
-              <Feather name="check" size={16} color="#ffffff" />
-              <Text style={styles.recSaveText}>Save</Text>
-            </Pressable>
-          </View>
-        </View>
+        <VoiceRecorderStrip
+          onFinished={handleVoiceFinished}
+          onCancel={() => setIsRecordingUi(false)}
+        />
       ) : (
-        <View
-          style={[
-            styles.dockWrap,
-            keyboardHeight > 0 ? styles.dockKeyboard : styles.dockFloating,
-            { bottom: bottomOffset },
-          ]}
-        >
-          {voiceAllowed ? (
+        <View style={styles.footerBar}>
+          <View style={styles.footerLeft}>
+            {voiceAllowed ? (
+              <Pressable
+                onPress={() => void startVoiceRecording()}
+                disabled={busy}
+                style={styles.dockBtn}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel="Record voice diary note"
+              >
+                <Feather name="mic" size={16} color={colors.accent} />
+                <Text style={styles.dockLabel}>Voice</Text>
+              </Pressable>
+            ) : null}
+            {visualAllowed ? (
+              <>
+                <Pressable
+                  onPress={() => setPickerSheet('photo')}
+                  disabled={busy}
+                  style={styles.dockBtn}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add diary photo"
+                >
+                  <Feather name="camera" size={16} color={colors.accent} />
+                  <Text style={styles.dockLabel}>Photo</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setPickerSheet('video')}
+                  disabled={busy}
+                  style={styles.dockBtn}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add diary video"
+                >
+                  <Feather name="video" size={16} color={colors.accent} />
+                  <Text style={styles.dockLabel}>Video</Text>
+                </Pressable>
+              </>
+            ) : null}
+            {busy ? <ActivityIndicator size="small" color={colors.accent} /> : null}
+          </View>
+
+          {canEchoActive ? (
             <Pressable
-              onPress={() => void startVoiceRecording()}
-              style={styles.dockBtn}
-              hitSlop={8}
+              onPress={() => onTriggerEchoes?.(activeEntryText!.trim())}
+              style={styles.echoPill}
+              hitSlop={6}
               accessibilityRole="button"
-              accessibilityLabel="Record voice diary note"
+              accessibilityLabel="Find echoes for current entry"
             >
-              <Feather name="mic" size={18} color={colors.textPrimary} />
+              <Text style={styles.echoPillText}>✦ Echoes</Text>
             </Pressable>
-          ) : null}
-          {visualAllowed ? (
-            <>
-              <Pressable
-                onPress={() => setPickerSheet('photo')}
-                style={styles.dockBtn}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Add diary photo"
-              >
-                <Feather name="camera" size={18} color={colors.textPrimary} />
-              </Pressable>
-              <Pressable
-                onPress={() => setPickerSheet('video')}
-                style={styles.dockBtn}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Add diary video"
-              >
-                <Feather name="video" size={18} color={colors.textPrimary} />
-              </Pressable>
-            </>
           ) : null}
         </View>
       )}
@@ -344,54 +485,59 @@ export function DiaryCaptureBar({ keyboardHeight, onMediaAdded }: Props): ReactN
 }
 
 const styles = StyleSheet.create({
-  dockWrap: {
-    position: 'absolute',
+  footerBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
-    borderRadius: 999,
-    paddingHorizontal: 6,
-    paddingVertical: 5,
-    gap: 4,
-    shadowColor: '#2c2620',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
-  dockFloating: {
-    right: 16,
-  },
-  dockKeyboard: {
-    right: 16,
+  footerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   dockBtn: {
-    width: 38,
-    height: 36,
-    borderRadius: 18,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  dockLabel: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 12.5,
+    color: colors.textPrimary,
+  },
+  echoPill: {
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: '#f1ece2',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  echoPillText: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 12.5,
+    color: colors.accent,
   },
   recordingBar: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderTopWidth: 1,
     borderColor: '#d9b9b0',
-    borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
-    shadowColor: '#2c2620',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
   recLeft: {
     flexDirection: 'row',

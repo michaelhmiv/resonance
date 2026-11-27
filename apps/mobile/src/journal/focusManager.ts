@@ -21,6 +21,7 @@ import { useJournalStore, markStructuralDirty } from './journalStore';
 import {
   type JournalSegment,
   createSegment,
+  isMediaSegment,
   isNonTextSegment,
   isTextSegment,
 } from './segmentModel';
@@ -181,6 +182,12 @@ export const useFocusStore = create<FocusState>((set, get) => ({
       useJournalStore.setState({ segments: next });
       markStructuralDirty(next, [prev.id], [newSeg]);
       set({ activeSegmentId: seg.id, cursorPosition: left.length });
+      return;
+    }
+
+    // Never let a stray Backspace silently delete a Voice, Photo, or Video
+    // memory — media cards have an explicit delete confirmation button.
+    if (isMediaSegment(prev)) {
       return;
     }
 

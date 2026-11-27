@@ -340,6 +340,39 @@ export async function getDiaryStorageStats(): Promise<DiaryStorageStats> {
   }
 }
 
+async function persistSegmentRowImmediately(seg: {
+  id: string;
+  created_at: number;
+  updated_at: number;
+  segment_type: string;
+  text: string | null;
+  position_index: number;
+  parent_date: string | null;
+}): Promise<void> {
+  const db = getDatabase();
+  if (!db) return;
+  await db.runAsync(
+    `INSERT INTO journal_segments
+       (id, created_at, updated_at, segment_type, text, position_index, parent_date)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       updated_at = excluded.updated_at,
+       segment_type = excluded.segment_type,
+       text = excluded.text,
+       position_index = excluded.position_index,
+       parent_date = excluded.parent_date;`,
+    [
+      seg.id,
+      seg.created_at,
+      seg.updated_at,
+      seg.segment_type,
+      seg.text,
+      seg.position_index,
+      seg.parent_date,
+    ]
+  );
+}
+
 export const useDiaryMediaStore = create<DiaryMediaStoreState>((set, get) => ({
   loaded: false,
   mediaBySegmentId: {},
@@ -375,6 +408,8 @@ export const useDiaryMediaStore = create<DiaryMediaStoreState>((set, get) => ({
     const nextPos = journalState.segments.length;
     const seg = createSegment('voice', '', nextPos, dateStr);
     journalState.insertSegment(seg);
+    // Flush segment row immediately so diary_media FK constraint succeeds under PRAGMA foreign_keys = ON
+    await persistSegmentRowImmediately(seg);
 
     await db.runAsync(
       `INSERT INTO diary_media (
@@ -412,6 +447,7 @@ export const useDiaryMediaStore = create<DiaryMediaStoreState>((set, get) => ({
       const journalState = useJournalStore.getState();
       const seg = createSegment('photo', '', journalState.segments.length, dateStr);
       journalState.insertSegment(seg);
+      await persistSegmentRowImmediately(seg);
 
       await db.runAsync(
         `INSERT INTO diary_media (
@@ -483,6 +519,7 @@ export const useDiaryMediaStore = create<DiaryMediaStoreState>((set, get) => ({
     const journalState = useJournalStore.getState();
     const seg = createSegment('video', '', journalState.segments.length, dateStr);
     journalState.insertSegment(seg);
+    await persistSegmentRowImmediately(seg);
 
     await db.runAsync(
       `INSERT INTO diary_media (

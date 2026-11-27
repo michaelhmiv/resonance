@@ -22,6 +22,7 @@ import {
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -135,10 +136,12 @@ export function JournalScreen(): ReactNode {
   const [echoLoading, setEchoLoading] = useState(false);
   const [echoResult, setEchoResult] = useState<ResonanceResult | null>(null);
 
+  const [hasLoadedFromDb, setHasLoadedFromDb] = useState(false);
+
   // ── Load journal on mount ──────────────────────────────────────────────
   useEffect(() => {
     if (db && status === 'ready') {
-      void load(db);
+      void load(db).finally(() => setHasLoadedFromDb(true));
     }
   }, [db, status, load]);
 
@@ -260,13 +263,13 @@ export function JournalScreen(): ReactNode {
 
   // ── Initialize: create first text segment if document is empty ─────────
   useEffect(() => {
-    if (!loading && segments.length === 0) {
+    if (hasLoadedFromDb && !loading && segments.length === 0) {
       const parentDate = toParentDate();
       const seg = createSegment('text', '', 0, parentDate);
       insertSegment(seg);
       setTimeout(() => focusSegment(seg.id, 0), 100);
     }
-  }, [loading, segments.length, insertSegment, focusSegment]);
+  }, [hasLoadedFromDb, loading, segments.length, insertSegment, focusSegment]);
 
   // ── Filter & Search segments ───────────────────────────────────────────
   const visibleSegments = useMemo(() => {
@@ -319,22 +322,49 @@ export function JournalScreen(): ReactNode {
     }
   }, []);
 
-  const handleSelectMemory = useCallback(
-    (item: DiaryMediaItem) => {
-      setActiveFilter('all');
-      setFilterPerson(null);
-      setSearchQuery('');
-      const idx = items.findIndex(
-        (it) => it.kind === 'segment' && it.segment.id === item.segmentId
-      );
-      if (idx >= 0) {
-        setTimeout(() => {
+  const [pendingScrollSegmentId, setPendingScrollSegmentId] = useState<string | null>(null);
+
+  const handleSelectMemory = useCallback((item: DiaryMediaItem) => {
+    setActiveFilter('all');
+    setFilterPerson(null);
+    setSearchQuery('');
+    setPendingScrollSegmentId(item.segmentId);
+  }, []);
+
+  useEffect(() => {
+    if (!pendingScrollSegmentId) return;
+    const idx = items.findIndex(
+      (it) => it.kind === 'segment' && it.segment.id === pendingScrollSegmentId
+    );
+    if (idx >= 0) {
+      setPendingScrollSegmentId(null);
+      setTimeout(() => {
+        try {
           listRef.current?.scrollToIndex({ index: idx, animated: true });
-        }, 150);
-      }
-    },
-    [items]
-  );
+        } catch {
+          // ignore out-of-range scroll during rapid list update
+        }
+      }, 120);
+    }
+  }, [pendingScrollSegmentId, items]);
+
+  const handleContinueWriting = useCallback(() => {
+    const parentDate = toParentDate();
+    const seg = createSegment('text', '', segments.length, parentDate);
+    insertSegment(seg);
+    setTimeout(() => focusSegment(seg.id, 0), 80);
+  }, [segments.length, insertSegment, focusSegment]);
+
+  const activeSegmentText = useMemo(() => {
+    if (!activeSegmentId) return null;
+    const found = segments.find((s) => s.id === activeSegmentId);
+    return found && isTextSegment(found) ? found.text : null;
+  }, [activeSegmentId, segments]);
+
+  const lastVisibleIsMedia = useMemo(() => {
+    if (visibleSegments.length === 0) return false;
+    return isMediaSegment(visibleSegments[visibleSegments.length - 1]);
+  }, [visibleSegments]);
 
   // ── Render ──────────────────────────────────────────────────────────────
 
@@ -350,7 +380,7 @@ export function JournalScreen(): ReactNode {
     <View
       style={[
         styles.container,
-        { paddingBottom: keyboardHeight > 0 ? keyboardHeight : 0 },
+        { paddingBottom: Platform.OS === 'ios' && keyboardHeight > 0 ? keyboardHeight : 0 },
       ]}
     >
       {/* ── Pull-down Search & Life Diary Filter Bar ──────────────── */}
@@ -440,97 +470,112 @@ export function JournalScreen(): ReactNode {
         </View>
       ) : null}
 
-      <FlashList
-        ref={listRef}
-        data={items}
-        keyExtractor={(item, index) => {
-          if (item.kind === 'segment') return `seg-${item.segment.id}`;
-          if (item.kind === 'verse_day') return `vod-${item.parentDate}`;
-          return `dd-${item.parentDate}-${index}`;
-        }}
-        contentContainerStyle={[
-          styles.listContent,
-          diaryMediaUnlocked && { paddingBottom: 88 },
-        ]}
-        renderItem={({ item }) => {
-          if (item.kind === 'date_divider') {
-            return <DateDivider label={item.label} />;
-          }
-          if (item.kind === 'verse_day') {
-            return <VerseOfDayCard reference={item.ref} text={item.text} />;
-          }
+      <View style={styles.listFlex}>
+        <FlashList
+          ref={listRef}
+          data={items}
+          extraData={{ activeSegmentId, mediaBySegmentId }}
+          keyExtractor={(item, index) => {
+            if (item.kind === 'segment') return `seg-${item.segment.id}`;
+            if (item.kind === 'verse_day') return `vod-${item.parentDate}`;
+            return `dd-${item.parentDate}-${index}`;
+          }}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => {
+            if (item.kind === 'date_divider') {
+              return <DateDivider label={item.label} />;
+            }
+            if (item.kind === 'verse_day') {
+              return <VerseOfDayCard reference={item.ref} text={item.text} />;
+            }
 
-          const seg = item.segment;
+            const seg = item.segment;
 
-          // Multimodal Life Diary cards (Voice, Photo, Video)
-          if (isMediaSegment(seg)) {
-            const mediaItem = mediaBySegmentId[seg.id];
-            if (!mediaItem) return null;
+            // Multimodal Life Diary cards (Voice, Photo, Video)
+            if (isMediaSegment(seg)) {
+              const mediaItem = mediaBySegmentId[seg.id];
+              if (!mediaItem) return null;
+              return (
+                <DiaryMediaCard
+                  item={mediaItem}
+                  onSelectPerson={(p) => {
+                    setFilterPerson(p);
+                    setSearchVisible(true);
+                  }}
+                  onTriggerEchoes={(txt) => void handleTriggerEchoes(txt)}
+                />
+              );
+            }
+
+            if (!isTextSegment(seg)) return null;
+
+            const isActive = seg.id === activeSegmentId;
+            if (isActive) {
+              return (
+                <ActiveSegmentInput
+                  segment={seg}
+                  onChangeText={(text) => handleChangeText(seg.id, text)}
+                  onKeyPress={(e) => {
+                    if (
+                      e.nativeEvent.key === 'Backspace' &&
+                      useFocusStore.getState().getCursorPosition() === 0
+                    ) {
+                      handleBackspace(
+                        seg.id,
+                        useFocusStore.getState().getCursorPosition()
+                      );
+                    }
+                    if (e.nativeEvent.key === 'Enter') {
+                      handleReturn(
+                        seg.id,
+                        useFocusStore.getState().getCursorPosition()
+                      );
+                    }
+                  }}
+                  onFocus={() => focusSegment(seg.id, undefined)}
+                />
+              );
+            }
+
             return (
-              <DiaryMediaCard
-                item={mediaItem}
-                onSelectPerson={(p) => {
-                  setFilterPerson(p);
-                  setSearchVisible(true);
-                }}
-                onTriggerEchoes={(txt) => void handleTriggerEchoes(txt)}
-              />
+              <Pressable
+                onPress={() => focusSegment(seg.id, (seg.text ?? '').length)}
+                onLongPress={() => focusSegment(seg.id, 0)}
+                delayLongPress={200}
+              >
+                <StaticSegmentText text={seg.text ?? ''} />
+              </Pressable>
             );
+          }}
+          ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
+          ListFooterComponent={
+            lastVisibleIsMedia ? (
+              <Pressable
+                onPress={handleContinueWriting}
+                style={styles.continueWritingBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Continue writing below memory"
+              >
+                <Text style={styles.continueWritingText}>Continue writing…</Text>
+              </Pressable>
+            ) : (
+              <View style={{ height: spacing.xl }} />
+            )
           }
+        />
 
-          if (!isTextSegment(seg)) return null;
+        {/* ── Empty state placeholder ────────────────────────────────── */}
+        {segments.length === 0 && (
+          <View style={styles.emptyOverlay} pointerEvents="none">
+            <Text style={styles.emptyText}>Whatever is real.</Text>
+          </View>
+        )}
+      </View>
 
-          const isActive = seg.id === activeSegmentId;
-          if (isActive) {
-            return (
-              <ActiveSegmentInput
-                segment={seg}
-                onChangeText={(text) => handleChangeText(seg.id, text)}
-                onKeyPress={(e) => {
-                  if (
-                    e.nativeEvent.key === 'Backspace' &&
-                    useFocusStore.getState().getCursorPosition() === 0
-                  ) {
-                    handleBackspace(
-                      seg.id,
-                      useFocusStore.getState().getCursorPosition()
-                    );
-                  }
-                  if (e.nativeEvent.key === 'Enter') {
-                    handleReturn(
-                      seg.id,
-                      useFocusStore.getState().getCursorPosition()
-                    );
-                  }
-                }}
-                onFocus={() => focusSegment(seg.id, undefined)}
-              />
-            );
-          }
-
-          return (
-            <Pressable
-              onPress={() => focusSegment(seg.id, (seg.text ?? '').length)}
-              onLongPress={() => focusSegment(seg.id, 0)}
-              delayLongPress={200}
-            >
-              <StaticSegmentText text={seg.text ?? ''} />
-            </Pressable>
-          );
-        }}
-        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
-      />
-
-      {/* ── Empty state placeholder ────────────────────────────────── */}
-      {segments.length === 0 && (
-        <View style={styles.emptyOverlay} pointerEvents="none">
-          <Text style={styles.emptyText}>Whatever is real.</Text>
-        </View>
-      )}
-
-      {/* ── OpenRouter-gated Quiet Capture Dock (Voice · Photo · Video) */}
+      {/* ── OpenRouter-gated Quiet Docked Bar (Voice · Photo · Video · Echoes) */}
       <DiaryCaptureBar
-        keyboardHeight={keyboardHeight}
+        activeEntryText={activeSegmentText}
+        onTriggerEchoes={(txt) => void handleTriggerEchoes(txt)}
         onMediaAdded={() => {
           setTimeout(() => {
             listRef.current?.scrollToEnd({ animated: true });
@@ -740,6 +785,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  listFlex: {
+    flex: 1,
+  },
   center: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -747,6 +795,17 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: layout.screenPaddingX,
     paddingVertical: spacing.lg,
+  },
+  continueWritingBtn: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: 2,
+    marginTop: spacing.xs,
+  },
+  continueWritingText: {
+    fontFamily: fontFamilies.serifItalic,
+    fontStyle: 'italic',
+    fontSize: 17,
+    color: colors.placeholder,
   },
   headerRight: {
     flexDirection: 'row',
