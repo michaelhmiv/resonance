@@ -1,0 +1,61 @@
+name: OpenRouter Live E2E
+
+on:
+  workflow_dispatch:
+
+jobs:
+  openrouter-e2e:
+    name: SQLite + Live OpenRouter API E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run local SQLite & public catalog E2E suite
+        run: node scripts/test-openrouter-diary-e2e.mjs
+
+      - name: Generate real audio (m4a), photo (png), video (mp4), and scanned PDF fixtures
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq espeak-ng ffmpeg python3-pil
+          mkdir -p /tmp/or-fixtures
+
+          # 1. Real spoken voice note in M4A (same container expo-audio produces)
+          espeak-ng -s 145 -w /tmp/or-fixtures/voice_note.wav "Good morning. Psalm twenty three, the Lord is my shepherd, I shall not want."
+          ffmpeg -y -loglevel error -i /tmp/or-fixtures/voice_note.wav -c:a aac -b:a 64k /tmp/or-fixtures/voice_note.m4a
+
+          # 2. Real warm-paper photo PNG with readable text + 1-page image-only scanned PDF
+          python3 - <<'PY'
+          from PIL import Image, ImageDraw, ImageFont
+
+          img = Image.new("RGB", (900, 420), (245, 240, 228))
+          draw = ImageDraw.Draw(img)
+          font = ImageFont.load_default(size=36)
+          draw.rectangle([24, 24, 876, 396], outline=(160, 145, 120), width=3)
+          draw.text((64, 90), "Morning Journal Note", fill=(45, 38, 30), font=font)
+          draw.text((64, 175), "Psalm 23:1", fill=(110, 78, 46), font=font)
+          draw.text((64, 245), "The Lord is my shepherd.", fill=(45, 38, 30), font=font)
+          img.save("/tmp/or-fixtures/diary_note.png", "PNG")
+
+          pdf_img = Image.new("RGB", (1000, 500), (255, 255, 255))
+          pdraw = ImageDraw.Draw(pdf_img)
+          pdraw.text((70, 120), "Chapter One", fill=(20, 20, 20), font=font)
+          pdraw.text((70, 210), "In the beginning was the Word.", fill=(20, 20, 20), font=font)
+          pdraw.text((70, 290), "Grace and peace to you.", fill=(20, 20, 20), font=font)
+          pdf_img.save("/tmp/or-fixtures/scanned_page.pdf", "PDF", resolution=150.0)
+          PY
+
+          # 3. Real 2-second MP4 video combining the journal image + spoken audio
+          ffmpeg -y -loglevel error -loop 1 -i /tmp/or-fixtures/diary_note.png -i /tmp/or-fixtures/voice_note.wav -c:v libx264 -t 2 -pix_fmt yuv420p -vf "scale=480:224" -c:a aac -shortest /tmp/or-fixtures/diary_clip.mp4
+
+          ls -lh /tmp/or-fixtures/
+
+      - name: Run live authenticated OpenRouter E2E suite (all 9 endpoints)
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          FIXTURE_DIR: /tmp/or-fixtures
+        run: node scripts/test-openrouter-live.mjs
