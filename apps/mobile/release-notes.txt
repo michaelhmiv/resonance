@@ -1,5 +1,4 @@
-Resonance Android Preview — OpenRouter BYOK & Multimodal Life Diary (Reliability & E2E Fixes):
-• Critical SQLite fixes for Voice, Photo & Video memories: Migration v6 expands journal_segments to allow voice/photo/video types, persists parent segments immediately before inserting diary_media (preventing FK crashes), and switches auto-save to ON CONFLICT DO UPDATE (preventing cascade deletion of media, people tags, and vectors).
-• Journal UI & Android layout fixes: Voice / Photo / Video / ✦ Echoes now sit in a clean docked footer bar (fixing Android keyboard padding & clipping), FlashList live-updates when transcripts/OCR finish, Backspace never deletes media cards, tapping below a memory starts a new writing block, and Memories & People opens directly to the requested tab & scrolls reliably.
-• OpenRouter live catalog & OCR fixes: fixed live Reranker (/models?endpoints=/api/v1/rerank) and Speech-to-Text (/models?endpoints=/api/v1/audio/transcriptions) catalogs, fixed Scanned PDF OCR SQLite columns, fixed OpenRouter highlight backfill & Personal Library model tracking, and added an explicit Life Diary active/paused status indicator in Settings → OpenRouter.
-• How to unlock Voice, Photo & Video in Journal: open Settings → OpenRouter, paste your API key, and keep Routing Mode set to "OpenRouter Cloud".
+Resonance Android Preview — Floating Life Diary Icons & Monotonic Build Versioning:
+• Redesigned Journal Voice, Photo, Video, and ✦ Echoes controls into a minimal floating cream-paper icon capsule in the bottom-right corner — matching Resonance's quiet editorial aesthetic with zero text button clutter.
+• Compact floating recording pill when recording a voice note (timer + discard + save check), hovering cleanly above the keyboard or bottom bar.
+• Auto-incremented Android versionCode/versionName per Firebase preview release so Firebase App Tester clearly distinguishes every update.
