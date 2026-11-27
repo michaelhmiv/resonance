@@ -34,6 +34,11 @@ import {
 } from '../personal/personalLibraryService';
 import { useOfflineEngineStore } from '../packages/offlineEngineManager';
 import { useSettingsStore } from '../settings/settingsStore';
+import { useOpenRouterStore } from '../openrouter/openrouterStore';
+import {
+  estimatePdfOcrCost,
+  transcribeScannedPersonalPdf,
+} from '../openrouter/pdfOcrService';
 import { formatBytes } from '../db/queries/settingsQueries';
 import { BottomSheetModal } from './BottomSheetModal';
 import { EmbeddingProgressCard } from './EmbeddingProgressCard';
@@ -127,13 +132,26 @@ function PersonalLibraryImportModalInner({
   const reembedWork = usePersonalLibraryStore((s) => s.reembedWork);
   const processEmbeddingQueue = usePersonalLibraryStore((s) => s.processEmbeddingQueue);
 
-  const embedderReady = useOfflineEngineStore(
+  const localEmbedderReady = useOfflineEngineStore(
     (s) => s.phase === 'ready' || s.groups.embedder.ready
   );
+  const openRouterEmbedReady = useOpenRouterStore(
+    (s) => s.hasKey && s.routingMode !== 'local_only' && s.features.embeddings && !s.creditsExhausted
+  );
+  const openRouterPdfOcrEnabled = useOpenRouterStore(
+    (s) =>
+      s.hasKey &&
+      s.routingMode !== 'local_only' &&
+      s.features.scannedPdfOcr &&
+      !s.creditsExhausted
+  );
+  const embedderReady = localEmbedderReady || openRouterEmbedReady;
   const setEngineSheetVisible = useOfflineEngineStore((s) => s.setSheetVisible);
   const autoEmbedPersonalFiles = useSettingsStore((s) => s.autoEmbedPersonalFiles);
+  const refreshWorks = usePersonalLibraryStore((s) => s.refreshWorks);
 
   const [step, setStep] = useState<ModalStep>(editingWork ? 'edit' : 'folder');
+  const [ocrRunningBookId, setOcrRunningBookId] = useState<string | null>(null);
   const [pickingFiles, setPickingFiles] = useState(false);
   const [inspectingFile, setInspectingFile] = useState<string | null>(null);
   const [inspected, setInspected] = useState<InspectedDocument | null>(null);
@@ -1527,7 +1545,75 @@ function PersonalLibraryImportModalInner({
                               : `Not embedded yet (${liveEditingWork.totalChunks} passages · auto-embedding is off in Settings)`}
                   </Text>
 
-                  {!embedderReady ? (
+                  {liveEditingWork.ocrRequired ? (
+                    <View style={styles.inlineBtnRow}>
+                      {openRouterPdfOcrEnabled ? (
+                        <Pressable
+                          disabled={ocrRunningBookId === liveEditingWork.bookId}
+                          onPress={() => {
+                            const est = estimatePdfOcrCost(liveEditingWork.fileSizeBytes);
+                            if (est.tooLarge) {
+                              Alert.alert(
+                                'PDF too large for mobile OCR',
+                                'Files over 12 MB should be split or compressed before transcribing via OpenRouter.'
+                              );
+                              return;
+                            }
+                            const costStr =
+                              est.estimatedCostUsd < 0.01
+                                ? `$${est.estimatedCostUsd.toFixed(4)}`
+                                : `$${est.estimatedCostUsd.toFixed(2)}`;
+                            Alert.alert(
+                              'Transcribe Scanned PDF via OpenRouter?',
+                              `Model: ${est.modelId}\nEstimated ~${est.estimatedPages} pages · est. ${costStr}.\n\nExtracted text will save locally and auto-embed for Resonance.`,
+                              [
+                                { text: 'Cancel', style: 'cancel' },
+                                {
+                                  text: 'Transcribe',
+                                  onPress: () => {
+                                    setOcrRunningBookId(liveEditingWork.bookId);
+                                    void transcribeScannedPersonalPdf(liveEditingWork.bookId)
+                                      .then(async (res) => {
+                                        await refreshWorks();
+                                        void processEmbeddingQueue({ force: true });
+                                        Alert.alert(
+                                          'OCR Complete',
+                                          `Extracted ${res.chunkCount} passages via ${res.modelUsed}.`
+                                        );
+                                      })
+                                      .catch((err) => {
+                                        Alert.alert(
+                                          'OCR Failed',
+                                          err instanceof Error ? err.message : 'Please try again.'
+                                        );
+                                      })
+                                      .finally(() => setOcrRunningBookId(null));
+                                  },
+                                },
+                              ]
+                            );
+                          }}
+                          style={styles.accentFilledBtn}
+                        >
+                          {ocrRunningBookId === liveEditingWork.bookId ? (
+                            <ActivityIndicator size="small" color={colors.surface} />
+                          ) : (
+                            <Feather name="file-text" size={14} color={colors.surface} />
+                          )}
+                          <Text style={styles.accentFilledText}>
+                            {ocrRunningBookId === liveEditingWork.bookId
+                              ? 'Transcribing PDF…'
+                              : 'Transcribe Scanned PDF (OpenRouter)'}
+                          </Text>
+                        </Pressable>
+                      ) : (
+                        <Text style={styles.cardMeta}>
+                          Scanned PDF requires OCR — enable OpenRouter Scanned PDF OCR in Settings
+                          to transcribe it automatically.
+                        </Text>
+                      )}
+                    </View>
+                  ) : !embedderReady ? (
                     <View style={styles.inlineBtnRow}>
                       <Pressable
                         onPress={() => {

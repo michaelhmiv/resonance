@@ -1,6 +1,5 @@
-Resonance — Slim arm64-v8a APK (~65% smaller) & Optional Reranker (~58% smaller core download).
-
-What's in this build:
-• Slimmer Android APK (~108 MB → ~35–40 MB): targets modern 64-bit Android devices (`arm64-v8a`) instead of bundling 4 copies of React Native, Hermes, and ONNX Runtime in a single APK
-• Lighter core Offline Engine download (~998 MB → ~415 MB): core download now installs only Voyage-4-Nano (512d INT8) + World English Bible vectors, which power all embeddings, semantic search, Personal Library, highlights, and Journal Resonance
-• Optional Qwen3-Reranker-0.6B add-on (~583 MB): now managed separately in Settings → Offline Resonance Engine, with one-tap Download or Remove to reclaim ~583 MB anytime
+Resonance Android Preview — OpenRouter BYOK & Multimodal Life Diary:
+• Optional OpenRouter BYOK in Settings (encrypted in Android Keystore, Zero Data Retention on by default, live spend tracking & monthly budget warning, On-Device / Cloud+Fallback / Hybrid Books-Only routing modes).
+• Any OpenRouter Embedding Model: default Voyage-4-Large shares the exact 512d vector space with on-device Voyage-4-Nano (zero re-embed!), OR pick any model from OpenRouter's live catalog (Qwen3-Embedding-8B, Cohere Embed 5 Pro, Perplexity Contextual, Gemini Embedding 2, etc.) with non-destructive Re-embed Library & upfront cost estimator.
+• Cloud Neural Reranking via OpenRouter (Qwen3-Reranker-8B default, Voyage Rerank, Cohere Rerank) with local fallback, plus Scanned PDF OCR in Personal Library.
+• Multimodal Life Diary (unlocked when OpenRouter is configured): quiet Voice, Photo, and Video capture bar in Journal with speech-to-text transcripts, factual Vision/OCR indexing, two-tier video handling, user-tagged People chips, Memories & People gallery, semantic diary search, and Patterns People & Moments card.

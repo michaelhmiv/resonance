@@ -18,7 +18,7 @@ import { PatternsScreen } from '../screens/PatternsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 
 export type TabParamList = {
-  Journal: undefined;
+  Journal: { filterPersonId?: string; focusSegmentId?: string } | undefined;
   Word: { bookId?: string; chapter?: number; verse?: number; passageId?: number } | undefined;
   Patterns: undefined;
 };

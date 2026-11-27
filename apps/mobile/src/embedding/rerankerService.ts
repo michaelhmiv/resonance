@@ -294,3 +294,66 @@ export async function scoreCandidatePair(
     return null;
   }
 }
+
+export interface RerankPoolInput {
+  id: string;
+  text: string;
+  source?: string;
+}
+
+export interface RerankPoolScore {
+  prob: number;
+  logit: number;
+}
+
+/**
+ * Batch-rerank a candidate pool:
+ *   1. If OpenRouter reranking is enabled for journal lookups, runs a single
+ *      fast `POST /api/v1/rerank` call (e.g. `qwen/qwen3-reranker-8b`).
+ *   2. Otherwise (or on network fallback), scores with on-device
+ *      `Qwen3-Reranker-0.6B` if installed.
+ */
+export async function rerankCandidatePool(
+  query: string,
+  candidates: RerankPoolInput[],
+  localInstalled: boolean
+): Promise<Map<string, RerankPoolScore>> {
+  const scores = new Map<string, RerankPoolScore>();
+  if (candidates.length === 0) return scores;
+
+  const { isOpenRouterEnabledForFeature } = await import('../openrouter/openrouterStore');
+  if (isOpenRouterEnabledForFeature('reranking', 'journal')) {
+    try {
+      const { rerankViaOpenRouter } = await import('../openrouter/openrouterClient');
+      const docs = candidates.map((c) =>
+        c.source ? `[${c.source}] ${c.text}` : c.text
+      );
+      const cloudResults = await rerankViaOpenRouter(query, docs, {
+        topN: candidates.length,
+      });
+      for (const r of cloudResults) {
+        const item = candidates[r.index];
+        if (!item) continue;
+        const p = Math.max(0.001, Math.min(0.999, r.relevanceScore));
+        const logit = Math.log(p / (1 - p));
+        scores.set(item.id, { prob: r.relevanceScore, logit });
+      }
+      if (scores.size > 0) return scores;
+    } catch (err) {
+      console.warn('[rerankerService] OpenRouter rerank fallback to local:', err);
+    }
+  }
+
+  const canLocal =
+    isRerankerReady() || (localInstalled && (await ensureRerankerReady()));
+  if (!canLocal) return scores;
+
+  for (const c of candidates) {
+    const scored = await scoreCandidatePair(query, c.text, c.source);
+    if (scored) {
+      scores.set(c.id, scored);
+    }
+  }
+  return scores;
+}
+

@@ -389,6 +389,154 @@ export const MIGRATIONS: Migration[] = [
         ON highlight_vectors (highlight_id, kind);
     `,
   },
+  {
+    version: 5,
+    description:
+      'OpenRouter BYOK multi-model vector isolation, Multimodal Life Diary media/people tables, and usage ledger',
+    sql: `
+      -- 1. Non-destructive multi-model passage_vectors keyed by (passage_id, model_id)
+      ALTER TABLE passage_vectors RENAME TO passage_vectors_v4;
+      CREATE TABLE IF NOT EXISTS passage_vectors (
+        passage_id   INTEGER NOT NULL,
+        book_id      TEXT NOT NULL,
+        model_id     TEXT NOT NULL,
+        dim          INTEGER NOT NULL,
+        scale        REAL NOT NULL,
+        vector_int8  BLOB NOT NULL,
+        updated_at   INTEGER NOT NULL,
+        PRIMARY KEY (passage_id, model_id),
+        FOREIGN KEY (passage_id) REFERENCES passages (id) ON DELETE CASCADE
+      );
+      INSERT OR IGNORE INTO passage_vectors
+        (passage_id, book_id, model_id, dim, scale, vector_int8, updated_at)
+      SELECT passage_id, book_id, model_id, dim, scale, vector_int8, updated_at
+      FROM passage_vectors_v4;
+      DROP TABLE passage_vectors_v4;
+      CREATE INDEX IF NOT EXISTS idx_passage_vectors_book
+        ON passage_vectors (book_id, model_id);
+      CREATE INDEX IF NOT EXISTS idx_passage_vectors_model
+        ON passage_vectors (model_id, passage_id);
+
+      -- 2. Non-destructive multi-model journal_segment_vectors keyed by (segment_id, model_id)
+      ALTER TABLE journal_segment_vectors RENAME TO journal_segment_vectors_v4;
+      CREATE TABLE IF NOT EXISTS journal_segment_vectors (
+        segment_id   TEXT NOT NULL,
+        model_id     TEXT NOT NULL DEFAULT 'voyage-4-nano',
+        dim          INTEGER NOT NULL DEFAULT 512,
+        scale        REAL,
+        vector_int8  BLOB,
+        vector_blob  BLOB,
+        updated_at   INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (segment_id, model_id),
+        FOREIGN KEY (segment_id) REFERENCES journal_segments (id) ON DELETE CASCADE
+      );
+      INSERT OR IGNORE INTO journal_segment_vectors
+        (segment_id, model_id, dim, vector_blob, updated_at)
+      SELECT segment_id, 'voyage-4-nano', 512, vector_blob, 0
+      FROM journal_segment_vectors_v4;
+      DROP TABLE journal_segment_vectors_v4;
+      CREATE INDEX IF NOT EXISTS idx_journal_segment_vectors_model
+        ON journal_segment_vectors (model_id, segment_id);
+
+      -- 3. Non-destructive multi-model highlight_vectors keyed by (highlight_id, kind, model_id)
+      ALTER TABLE highlight_vectors RENAME TO highlight_vectors_v4;
+      CREATE TABLE IF NOT EXISTS highlight_vectors (
+        id           TEXT PRIMARY KEY,
+        highlight_id TEXT NOT NULL,
+        kind         TEXT NOT NULL CHECK (kind IN ('highlight', 'note')),
+        model_id     TEXT NOT NULL,
+        dim          INTEGER NOT NULL,
+        scale        REAL NOT NULL,
+        vector_int8  BLOB NOT NULL,
+        source_label TEXT,
+        updated_at   INTEGER NOT NULL,
+        UNIQUE (highlight_id, kind, model_id),
+        FOREIGN KEY (highlight_id) REFERENCES highlights (id) ON DELETE CASCADE
+      );
+      INSERT OR IGNORE INTO highlight_vectors
+        (id, highlight_id, kind, model_id, dim, scale, vector_int8, source_label, updated_at)
+      SELECT id, highlight_id, kind, model_id, dim, scale, vector_int8, source_label, updated_at
+      FROM highlight_vectors_v4;
+      DROP TABLE highlight_vectors_v4;
+      CREATE INDEX IF NOT EXISTS idx_highlight_vectors_hl
+        ON highlight_vectors (highlight_id, kind, model_id);
+
+      -- 4. Multimodal Life Diary media items (voice notes, photos, short videos)
+      CREATE TABLE IF NOT EXISTS diary_media (
+        id                TEXT PRIMARY KEY,
+        segment_id        TEXT NOT NULL,
+        kind              TEXT NOT NULL CHECK (kind IN ('voice', 'photo', 'video')),
+        local_uri         TEXT NOT NULL,
+        thumb_uri         TEXT,
+        mime_type         TEXT NOT NULL,
+        byte_size         INTEGER NOT NULL DEFAULT 0,
+        duration_ms       INTEGER,
+        width             INTEGER,
+        height            INTEGER,
+        caption           TEXT,
+        transcript        TEXT,
+        ai_summary        TEXT,
+        ocr_text          TEXT,
+        moment_type       TEXT,
+        location_label    TEXT,
+        captured_at       INTEGER NOT NULL,
+        processing_status TEXT NOT NULL DEFAULT 'queued'
+                          CHECK (processing_status IN ('queued', 'processing', 'ready', 'error')),
+        processing_error  TEXT,
+        ai_model_used     TEXT,
+        created_at        INTEGER NOT NULL,
+        updated_at        INTEGER NOT NULL,
+        FOREIGN KEY (segment_id) REFERENCES journal_segments (id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_diary_media_segment
+        ON diary_media (segment_id);
+      CREATE INDEX IF NOT EXISTS idx_diary_media_kind_date
+        ON diary_media (kind, captured_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_diary_media_status
+        ON diary_media (processing_status);
+
+      -- 5. Local user-confirmed People directory & memory links (no face recognition)
+      CREATE TABLE IF NOT EXISTS diary_people (
+        id           TEXT PRIMARY KEY,
+        name         TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        relationship TEXT,
+        created_at   INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS diary_media_people (
+        media_id  TEXT NOT NULL,
+        person_id TEXT NOT NULL,
+        PRIMARY KEY (media_id, person_id),
+        FOREIGN KEY (media_id) REFERENCES diary_media (id) ON DELETE CASCADE,
+        FOREIGN KEY (person_id) REFERENCES diary_people (id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_diary_media_people_person
+        ON diary_media_people (person_id);
+
+      CREATE TABLE IF NOT EXISTS journal_segment_people (
+        segment_id TEXT NOT NULL,
+        person_id  TEXT NOT NULL,
+        PRIMARY KEY (segment_id, person_id),
+        FOREIGN KEY (segment_id) REFERENCES journal_segments (id) ON DELETE CASCADE,
+        FOREIGN KEY (person_id) REFERENCES diary_people (id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_journal_segment_people_person
+        ON journal_segment_people (person_id);
+
+      -- 6. Local OpenRouter token & spend ledger
+      CREATE TABLE IF NOT EXISTS openrouter_usage_log (
+        id                 TEXT PRIMARY KEY,
+        task_kind          TEXT NOT NULL,
+        model_id           TEXT NOT NULL,
+        prompt_tokens      INTEGER NOT NULL DEFAULT 0,
+        completion_tokens  INTEGER NOT NULL DEFAULT 0,
+        estimated_cost_usd REAL NOT NULL DEFAULT 0,
+        created_at         INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_openrouter_usage_created
+        ON openrouter_usage_log (created_at DESC);
+    `,
+  },
 ];
 
 /** The current target schema version (max across migrations). */

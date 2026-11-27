@@ -17,12 +17,15 @@ import * as FileSystem from 'expo-file-system/legacy';
 import {
   EMBEDDING_DIM,
   OFFLINE_ENGINE_MANIFEST,
+  VOYAGE4_SHARED_SPACE_MODELS,
   base64ToBytes,
   blobToVector,
   cosineSimilarity,
   dotProductFloat32Int8,
+  isVoyage4SharedSpace,
   parseRvec,
   perLibraryZScoreFuse,
+  quantizeVectorInt8,
   type FusionCandidate,
   type ResonanceCard,
   type ResonanceResult,
@@ -32,16 +35,16 @@ import {
   embedQuery,
   ensureEmbeddingReady,
 } from './embeddingService';
-import {
-  ensureRerankerReady,
-  isRerankerReady,
-  scoreCandidatePair,
-} from './rerankerService';
+import { rerankCandidatePool } from './rerankerService';
 import {
   getPackLocalPaths,
   getWorkLocalPaths,
   useOfflineEngineStore,
 } from '../packages/offlineEngineManager';
+import {
+  getActiveEmbeddingModelId,
+  getActiveVectorSpaceId,
+} from '../openrouter/openrouterStore';
 
 export type { ResonanceCard, ResonanceResult };
 
@@ -64,204 +67,294 @@ interface PackedVectorMatrix {
 }
 
 let loadedMatrices: PackedVectorMatrix[] | null = null;
+let loadedVectorSpaceId: string | null = null;
+
+function getCompatibleModelIds(activeModel: string): string[] {
+  if (isVoyage4SharedSpace(activeModel)) {
+    return [...VOYAGE4_SHARED_SPACE_MODELS];
+  }
+  return [activeModel];
+}
+
+function packSqlPassageRows(
+  library: 'scripture' | 'witness' | 'personal',
+  rows: Array<{
+    passage_id: number;
+    book_id: string;
+    dim: number;
+    scale: number;
+    vector_int8: Uint8Array;
+    text: string;
+    chapter: number | null;
+    verse_start: number | null;
+    translation: string | null;
+    division: string | null;
+    title: string | null;
+    author: string | null;
+  }>
+): PackedVectorMatrix | null {
+  if (rows.length === 0) return null;
+  const dim = rows[0].dim;
+  const compatible = rows.filter((r) => r.dim === dim && r.vector_int8 != null);
+  if (compatible.length === 0) return null;
+
+  const count = compatible.length;
+  const scales = new Float32Array(count);
+  const vectors = new Int8Array(count * dim);
+  const meta: PackedVectorMatrix['meta'] = [];
+
+  for (let i = 0; i < count; i++) {
+    const r = compatible[i];
+    scales[i] = r.scale;
+    const raw =
+      r.vector_int8 instanceof Uint8Array
+        ? r.vector_int8
+        : new Uint8Array(r.vector_int8 as unknown as ArrayBuffer);
+    const signed = new Int8Array(
+      raw.buffer,
+      raw.byteOffset,
+      Math.min(dim, raw.byteLength)
+    );
+    vectors.set(signed, i * dim);
+
+    const source =
+      library === 'personal'
+        ? [r.title ?? r.book_id, r.author, r.division].filter(Boolean).join(' · ')
+        : formatPassageSource(r);
+
+    meta.push({
+      passageId: r.passage_id,
+      bookId: r.book_id,
+      workId: library === 'scripture' ? 'web' : r.book_id,
+      source,
+      text: r.text,
+      translation: library === 'scripture' ? r.translation : null,
+    });
+  }
+
+  return { library, dim, count, scales, vectors, meta };
+}
 
 /**
- * Load all installed 512d int8 `.rvec` files (core Bible pack + individually
- * downloaded Church Library works) AND embedded Personal Library works
- * (`include_in_resonance = 1`) from SQLite into memory.
+ * Load all installed vector matrices for the active embedding vector space:
+ *   - Voyage-4 shared space (`voyage-4-nano`, `voyage-4-lite`, `voyage-4`, `voyage-4-large`):
+ *       shipped 512d `.rvec` packs (Bible + Church works) + SQLite `passage_vectors`
+ *   - Any custom OpenRouter model (e.g. `qwen/qwen3-embedding-8b`, `cohere/embed-5-pro`):
+ *       all re-embedded Bible, Church, and Personal Library rows from `passage_vectors`
  */
 export async function loadLibraryVectors(): Promise<void> {
-  if (loadedMatrices !== null) return;
+  const spaceId = getActiveVectorSpaceId();
+  if (loadedMatrices !== null && loadedVectorSpaceId === spaceId) return;
 
   const db = getDatabase();
   if (!db) {
     loadedMatrices = [];
+    loadedVectorSpaceId = spaceId;
     return;
   }
 
+  const activeModel = getActiveEmbeddingModelId('search');
+  const useVoyage4 = isVoyage4SharedSpace(activeModel);
   const matrices: PackedVectorMatrix[] = [];
 
   try {
-    const manifest = useOfflineEngineStore.getState().corpusManifest;
+    if (useVoyage4) {
+      const manifest = useOfflineEngineStore.getState().corpusManifest;
 
-    // 1. Load core Bible `.rvec` pack (if downloaded)
-    for (const pack of manifest.packs) {
-      if (pack.kind !== 'bible') continue;
-      const { vectorsPath } = getPackLocalPaths(pack.id);
-      const info = await FileSystem.getInfoAsync(vectorsPath);
-      if (!info.exists) continue;
-      try {
-        const b64 = await FileSystem.readAsStringAsync(vectorsPath, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        const rvec = parseRvec(base64ToBytes(b64));
-        const rows = await db.getAllAsync<{
-          id: number;
-          book_id: string;
-          chapter: number | null;
-          verse_start: number | null;
-          text: string;
-          translation: string | null;
-          title: string | null;
-          author: string | null;
-        }>(
-          `SELECT p.id, p.book_id, p.chapter, p.verse_start, p.text, p.translation,
-                  b.title, b.author
-           FROM passages p
-           LEFT JOIN books b ON b.id = p.book_id
-           WHERE p.translation = 'WEB'
-           ORDER BY p.id
-           LIMIT ?;`,
-          [rvec.count]
-        );
-        const usable = Math.min(rvec.count, rows.length);
-        if (usable > 0) {
-          matrices.push({
-            library: 'scripture',
-            dim: rvec.dim,
-            count: usable,
-            scales: rvec.scales.subarray(0, usable),
-            vectors: rvec.vectors.subarray(0, usable * rvec.dim),
-            meta: rows.slice(0, usable).map((r) => ({
-              passageId: r.id,
-              bookId: r.book_id,
-              workId: 'web',
-              source: formatPassageSource(r),
-              text: r.text,
-              translation: r.translation,
-            })),
+      // 1. Load core Bible `.rvec` pack (if downloaded)
+      for (const pack of manifest.packs) {
+        if (pack.kind !== 'bible') continue;
+        const { vectorsPath } = getPackLocalPaths(pack.id);
+        const info = await FileSystem.getInfoAsync(vectorsPath);
+        if (!info.exists) continue;
+        try {
+          const b64 = await FileSystem.readAsStringAsync(vectorsPath, {
+            encoding: FileSystem.EncodingType.Base64,
           });
+          const rvec = parseRvec(base64ToBytes(b64));
+          const rows = await db.getAllAsync<{
+            id: number;
+            book_id: string;
+            chapter: number | null;
+            verse_start: number | null;
+            text: string;
+            translation: string | null;
+            title: string | null;
+            author: string | null;
+          }>(
+            `SELECT p.id, p.book_id, p.chapter, p.verse_start, p.text, p.translation,
+                    b.title, b.author
+             FROM passages p
+             LEFT JOIN books b ON b.id = p.book_id
+             WHERE p.translation = 'WEB'
+             ORDER BY p.id
+             LIMIT ?;`,
+            [rvec.count]
+          );
+          const usable = Math.min(rvec.count, rows.length);
+          if (usable > 0) {
+            matrices.push({
+              library: 'scripture',
+              dim: rvec.dim,
+              count: usable,
+              scales: rvec.scales.subarray(0, usable),
+              vectors: rvec.vectors.subarray(0, usable * rvec.dim),
+              meta: rows.slice(0, usable).map((r) => ({
+                passageId: r.id,
+                bookId: r.book_id,
+                workId: 'web',
+                source: formatPassageSource(r),
+                text: r.text,
+                translation: r.translation,
+              })),
+            });
+          }
+        } catch {
+          // Skip corrupt/incomplete pack gracefully
         }
-      } catch {
-        // Skip corrupt/incomplete pack gracefully
       }
-    }
 
-    // 2. Load individually installed Church Library works (`offline_engine/works/<slug>.vectors.rvec`)
-    for (const work of manifest.works ?? []) {
-      const { vectorsPath } = getWorkLocalPaths(work.slug);
-      const info = await FileSystem.getInfoAsync(vectorsPath);
-      if (!info.exists) continue;
-      try {
-        const b64 = await FileSystem.readAsStringAsync(vectorsPath, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        const rvec = parseRvec(base64ToBytes(b64));
-        const rows = await db.getAllAsync<{
-          id: number;
-          book_id: string;
-          chapter: number | null;
-          verse_start: number | null;
-          text: string;
-          translation: string | null;
-          title: string | null;
-          author: string | null;
-        }>(
-          `SELECT p.id, p.book_id, p.chapter, p.verse_start, p.text, p.translation,
-                  b.title, b.author
-           FROM passages p
-           JOIN books b ON b.id = p.book_id
-           WHERE p.book_id = ?
-           ORDER BY p.id
-           LIMIT ?;`,
-          [work.id, rvec.count]
-        );
-        const usable = Math.min(rvec.count, rows.length);
-        if (usable > 0) {
-          matrices.push({
-            library: 'witness',
-            dim: rvec.dim,
-            count: usable,
-            scales: rvec.scales.subarray(0, usable),
-            vectors: rvec.vectors.subarray(0, usable * rvec.dim),
-            meta: rows.slice(0, usable).map((r) => ({
-              passageId: r.id,
-              bookId: r.book_id,
-              workId: r.book_id,
-              source: formatPassageSource(r),
-              text: r.text,
-              translation: null,
-            })),
+      // 2. Load individually installed Church Library works (`offline_engine/works/<slug>.vectors.rvec`)
+      for (const work of manifest.works ?? []) {
+        const { vectorsPath } = getWorkLocalPaths(work.slug);
+        const info = await FileSystem.getInfoAsync(vectorsPath);
+        if (!info.exists) continue;
+        try {
+          const b64 = await FileSystem.readAsStringAsync(vectorsPath, {
+            encoding: FileSystem.EncodingType.Base64,
           });
+          const rvec = parseRvec(base64ToBytes(b64));
+          const rows = await db.getAllAsync<{
+            id: number;
+            book_id: string;
+            chapter: number | null;
+            verse_start: number | null;
+            text: string;
+            translation: string | null;
+            title: string | null;
+            author: string | null;
+          }>(
+            `SELECT p.id, p.book_id, p.chapter, p.verse_start, p.text, p.translation,
+                    b.title, b.author
+             FROM passages p
+             JOIN books b ON b.id = p.book_id
+             WHERE p.book_id = ?
+             ORDER BY p.id
+             LIMIT ?;`,
+            [work.id, rvec.count]
+          );
+          const usable = Math.min(rvec.count, rows.length);
+          if (usable > 0) {
+            matrices.push({
+              library: 'witness',
+              dim: rvec.dim,
+              count: usable,
+              scales: rvec.scales.subarray(0, usable),
+              vectors: rvec.vectors.subarray(0, usable * rvec.dim),
+              meta: rows.slice(0, usable).map((r) => ({
+                passageId: r.id,
+                bookId: r.book_id,
+                workId: r.book_id,
+                source: formatPassageSource(r),
+                text: r.text,
+                translation: null,
+              })),
+            });
+          }
+        } catch {
+          // Skip corrupt work file gracefully
         }
-      } catch {
-        // Skip corrupt work file gracefully
-      }
-    }
-
-    // 2. Load embedded Personal Library works (`include_in_resonance = 1`)
-    const personalRows = await db.getAllAsync<{
-      passage_id: number;
-      book_id: string;
-      dim: number;
-      scale: number;
-      vector_int8: Uint8Array;
-      text: string;
-      division: string | null;
-      title: string | null;
-      author: string | null;
-    }>(
-      `SELECT pv.passage_id, pv.book_id, pv.dim, pv.scale, pv.vector_int8,
-              p.text, p.division, b.title, b.author
-       FROM passage_vectors pv
-       JOIN passages p ON p.id = pv.passage_id
-       JOIN books b ON b.id = pv.book_id
-       JOIN personal_books pb ON pb.book_id = pv.book_id
-       WHERE pb.include_in_resonance = 1 AND pv.dim = ?
-       ORDER BY pv.passage_id;`,
-      [EMBEDDING_DIM]
-    );
-
-    if (personalRows.length > 0) {
-      const count = personalRows.length;
-      const scales = new Float32Array(count);
-      const vectors = new Int8Array(count * EMBEDDING_DIM);
-      const meta: PackedVectorMatrix['meta'] = [];
-
-      for (let i = 0; i < count; i++) {
-        const r = personalRows[i];
-        scales[i] = r.scale;
-        const raw =
-          r.vector_int8 instanceof Uint8Array
-            ? r.vector_int8
-            : new Uint8Array(r.vector_int8 as unknown as ArrayBuffer);
-        const signed = new Int8Array(
-          raw.buffer,
-          raw.byteOffset,
-          Math.min(EMBEDDING_DIM, raw.byteLength)
-        );
-        vectors.set(signed, i * EMBEDDING_DIM);
-
-        const labelParts = [r.title ?? r.book_id];
-        if (r.author) labelParts.push(r.author);
-        if (r.division) labelParts.push(r.division);
-        meta.push({
-          passageId: r.passage_id,
-          bookId: r.book_id,
-          workId: r.book_id,
-          source: labelParts.join(' · '),
-          text: r.text,
-          translation: null,
-        });
       }
 
-      matrices.push({
-        library: 'personal',
-        dim: EMBEDDING_DIM,
-        count,
-        scales,
-        vectors,
-        meta,
-      });
+      // 3. Load embedded Personal Library works (`include_in_resonance = 1`) in Voyage-4 512d space
+      const compatIds = getCompatibleModelIds(activeModel);
+      const placeholders = compatIds.map(() => '?').join(',');
+      const personalRows = await db.getAllAsync<{
+        passage_id: number;
+        book_id: string;
+        dim: number;
+        scale: number;
+        vector_int8: Uint8Array;
+        text: string;
+        chapter: number | null;
+        verse_start: number | null;
+        translation: string | null;
+        division: string | null;
+        title: string | null;
+        author: string | null;
+      }>(
+        `SELECT pv.passage_id, pv.book_id, pv.dim, pv.scale, pv.vector_int8,
+                p.text, p.chapter, p.verse_start, p.translation, p.division,
+                b.title, b.author
+         FROM passage_vectors pv
+         JOIN passages p ON p.id = pv.passage_id
+         JOIN books b ON b.id = pv.book_id
+         JOIN personal_books pb ON pb.book_id = pv.book_id
+         WHERE pb.include_in_resonance = 1
+           AND pv.dim = ?
+           AND pv.model_id IN (${placeholders})
+         GROUP BY pv.passage_id
+         ORDER BY pv.passage_id;`,
+        [EMBEDDING_DIM, ...compatIds]
+      );
+      const personalMat = packSqlPassageRows('personal', personalRows);
+      if (personalMat) matrices.push(personalMat);
+    } else {
+      // Custom OpenRouter model space — load re-embedded Bible, Church, and Personal vectors from SQLite
+      const allCustomRows = await db.getAllAsync<{
+        passage_id: number;
+        book_id: string;
+        dim: number;
+        scale: number;
+        vector_int8: Uint8Array;
+        text: string;
+        chapter: number | null;
+        verse_start: number | null;
+        translation: string | null;
+        division: string | null;
+        title: string | null;
+        author: string | null;
+        is_personal: number;
+        include_in_resonance: number | null;
+      }>(
+        `SELECT pv.passage_id, pv.book_id, pv.dim, pv.scale, pv.vector_int8,
+                p.text, p.chapter, p.verse_start, p.translation, p.division,
+                b.title, b.author,
+                CASE WHEN pb.book_id IS NOT NULL THEN 1 ELSE 0 END AS is_personal,
+                pb.include_in_resonance
+         FROM passage_vectors pv
+         JOIN passages p ON p.id = pv.passage_id
+         LEFT JOIN books b ON b.id = pv.book_id
+         LEFT JOIN personal_books pb ON pb.book_id = pv.book_id
+         WHERE pv.model_id = ?
+         ORDER BY pv.passage_id;`,
+        [activeModel]
+      );
+
+      const scriptureRows = allCustomRows.filter((r) => r.translation === 'WEB');
+      const witnessRows = allCustomRows.filter(
+        (r) => r.translation == null && r.is_personal === 0
+      );
+      const personalRows = allCustomRows.filter(
+        (r) => r.is_personal === 1 && (r.include_in_resonance ?? 1) === 1
+      );
+
+      const sMat = packSqlPassageRows('scripture', scriptureRows);
+      const wMat = packSqlPassageRows('witness', witnessRows);
+      const pMat = packSqlPassageRows('personal', personalRows);
+      if (sMat) matrices.push(sMat);
+      if (wMat) matrices.push(wMat);
+      if (pMat) matrices.push(pMat);
     }
   } catch {
     // Leave whatever loaded cleanly
   }
 
   loadedMatrices = matrices;
+  loadedVectorSpaceId = spaceId;
 }
 
-// ── In-memory 512d int8 Highlight & Margin Note vector store ────────────────
+// ── In-memory dynamic-dim int8 Highlight & Margin Note vector store ─────────
 
 interface PackedHighlightMatrix {
   dim: number;
@@ -282,6 +375,7 @@ interface PackedHighlightMatrix {
 
 let loadedHighlightMatrix: PackedHighlightMatrix | null = null;
 let loadedHighlightedRefSet: Set<string> | null = null;
+let loadedHighlightSpaceId: string | null = null;
 
 function normAnchor(ref: string): string {
   return ref.toLowerCase().replace(/[^a-z0-9#]/g, '');
@@ -291,7 +385,12 @@ export async function loadHighlightVectors(): Promise<{
   matrix: PackedHighlightMatrix;
   highlightedRefs: Set<string>;
 }> {
-  if (loadedHighlightMatrix !== null && loadedHighlightedRefSet !== null) {
+  const spaceId = getActiveVectorSpaceId();
+  if (
+    loadedHighlightMatrix !== null &&
+    loadedHighlightedRefSet !== null &&
+    loadedHighlightSpaceId === spaceId
+  ) {
     return { matrix: loadedHighlightMatrix, highlightedRefs: loadedHighlightedRefSet };
   }
 
@@ -308,17 +407,21 @@ export async function loadHighlightVectors(): Promise<{
   if (!db) {
     loadedHighlightMatrix = empty;
     loadedHighlightedRefSet = refSet;
+    loadedHighlightSpaceId = spaceId;
     return { matrix: empty, highlightedRefs: refSet };
   }
 
   try {
-    // Load all highlight refs for O(1) affinity boosting (even before vectors exist)
     const allRefs = await db.getAllAsync<{ verse_ref: string }>(
       `SELECT DISTINCT verse_ref FROM highlights LIMIT 5000;`
     );
     for (const r of allRefs) {
       if (r.verse_ref) refSet.add(normAnchor(r.verse_ref));
     }
+
+    const activeModel = getActiveEmbeddingModelId('search');
+    const compatIds = getCompatibleModelIds(activeModel);
+    const placeholders = compatIds.map(() => '?').join(',');
 
     const vecRows = await db.getAllAsync<{
       highlight_id: string;
@@ -337,20 +440,22 @@ export async function loadHighlightVectors(): Promise<{
               h.verse_ref, h.book_id, h.selected_text, h.note_text, h.color
        FROM highlight_vectors hv
        JOIN highlights h ON h.id = hv.highlight_id
-       WHERE hv.dim = ?
+       WHERE hv.model_id IN (${placeholders})
        ORDER BY hv.updated_at DESC
        LIMIT 2000;`,
-      [EMBEDDING_DIM]
+      compatIds
     );
 
     if (vecRows.length > 0) {
-      const count = vecRows.length;
+      const dim = vecRows[0].dim;
+      const compatible = vecRows.filter((r) => r.dim === dim);
+      const count = compatible.length;
       const scales = new Float32Array(count);
-      const vectors = new Int8Array(count * EMBEDDING_DIM);
+      const vectors = new Int8Array(count * dim);
       const meta: PackedHighlightMatrix['meta'] = [];
 
       for (let i = 0; i < count; i++) {
-        const r = vecRows[i];
+        const r = compatible[i];
         scales[i] = r.scale;
         const raw =
           r.vector_int8 instanceof Uint8Array
@@ -359,9 +464,9 @@ export async function loadHighlightVectors(): Promise<{
         const signed = new Int8Array(
           raw.buffer,
           raw.byteOffset,
-          Math.min(EMBEDDING_DIM, raw.byteLength)
+          Math.min(dim, raw.byteLength)
         );
-        vectors.set(signed, i * EMBEDDING_DIM);
+        vectors.set(signed, i * dim);
         meta.push({
           highlightId: r.highlight_id,
           kind: r.kind === 'note' ? 'note' : 'highlight',
@@ -374,14 +479,9 @@ export async function loadHighlightVectors(): Promise<{
         });
       }
 
-      loadedHighlightMatrix = {
-        dim: EMBEDDING_DIM,
-        count,
-        scales,
-        vectors,
-        meta,
-      };
+      loadedHighlightMatrix = { dim, count, scales, vectors, meta };
       loadedHighlightedRefSet = refSet;
+      loadedHighlightSpaceId = spaceId;
       return { matrix: loadedHighlightMatrix, highlightedRefs: refSet };
     }
   } catch {
@@ -390,6 +490,7 @@ export async function loadHighlightVectors(): Promise<{
 
   loadedHighlightMatrix = empty;
   loadedHighlightedRefSet = refSet;
+  loadedHighlightSpaceId = spaceId;
   return { matrix: empty, highlightedRefs: refSet };
 }
 
@@ -413,15 +514,17 @@ function formatPassageSource(r: {
   return r.title ?? r.book_id;
 }
 
-/** Invalidate the in-memory vector store (e.g. after importing or embedding a personal book). */
+/** Invalidate the in-memory vector store (e.g. after importing, re-embedding, or switching models). */
 export function clearLibraryVectors(): void {
   loadedMatrices = null;
+  loadedVectorSpaceId = null;
 }
 
 /** Invalidate the in-memory highlight & margin-note vector store. */
 export function clearHighlightVectors(): void {
   loadedHighlightMatrix = null;
   loadedHighlightedRefSet = null;
+  loadedHighlightSpaceId = null;
 }
 
 // ── Find resonant passages (Stratified Fetch + Qwen3-Reranker + Z-Fusion + Highlight Affinity) ──
@@ -480,7 +583,7 @@ function searchHighlightMatrix(
   excludeHighlightId?: string | null,
   maxResults = 3
 ): ResonanceCard[] {
-  if (matrix.count === 0) return [];
+  if (matrix.count === 0 || matrix.dim !== queryVec.length) return [];
   const bestByHl = new Map<
     string,
     { sim: number; meta: PackedHighlightMatrix['meta'][number] }
@@ -547,10 +650,11 @@ export async function findResonance(
   const scriptureHits: RawHit[] = [];
   const nonScriptureHits: RawHit[] = [];
 
-  // Stage 1: Stratified Per-Library Fetch in unified 512d int8 vector space
+  // Stage 1: Stratified Per-Library Fetch in active int8 vector space
   // with Gated Highlight Affinity & Decaying Reading Context Boost
   for (const mat of matrices) {
     const dim = mat.dim;
+    if (dim !== queryVec.length) continue;
     for (let i = 0; i < mat.count; i++) {
       const baseSim = dotProductFloat32Int8(
         queryVec,
@@ -612,35 +716,33 @@ export async function findResonance(
     ...nonScriptureHits.slice(0, STRATIFIED_WITNESS_K),
   ];
 
-  // Stage 2: Qwen3-Reranker-0.6B pointwise scoring (optional add-on; runs only if installed)
-  const useReranker =
-    isRerankerReady() ||
-    (useOfflineEngineStore.getState().groups.reranker.ready &&
-      (await ensureRerankerReady()));
-  const candidates: FusionCandidate[] = [];
+  // Stage 2: Neural reranking — OpenRouter cloud (e.g. Qwen3-Reranker-8B) OR local Qwen3-0.6B
+  const localRerankerInstalled = useOfflineEngineStore.getState().groups.reranker.ready;
   const hitById = new Map<string, RawHit>();
-
-  for (const hit of pool) {
+  const poolInputs = pool.map((hit) => {
     const id = `${hit.library}:${hit.passageId}`;
     hitById.set(id, hit);
-    let rerankProb: number | null = null;
-    let rerankLogit: number | null = null;
-    if (useReranker) {
-      const scored = await scoreCandidatePair(journalText, hit.text, hit.source);
-      if (scored) {
-        rerankProb = scored.prob;
-        rerankLogit = scored.logit;
-      }
-    }
-    candidates.push({
+    return { id, text: hit.text, source: hit.source };
+  });
+
+  const rerankScores = await rerankCandidatePool(
+    journalText,
+    poolInputs,
+    localRerankerInstalled
+  );
+
+  const candidates: FusionCandidate[] = pool.map((hit) => {
+    const id = `${hit.library}:${hit.passageId}`;
+    const scored = rerankScores.get(id);
+    return {
       id,
       workId: hit.workId,
       library: hit.library,
       denseScore: hit.denseScore,
-      rerankProb,
-      rerankLogit,
-    });
-  }
+      rerankProb: scored?.prob ?? null,
+      rerankLogit: scored?.logit ?? null,
+    };
+  });
 
   // Stage 3: Per-Library Z-Score Fusion (α = 0.60) + Calibrated Silence (τ = 0.06)
   const fused = perLibraryZScoreFuse(candidates, {
@@ -714,6 +816,7 @@ export async function findPassageEchoes(
 
   for (const mat of matrices) {
     const dim = mat.dim;
+    if (dim !== queryVec.length) continue;
     for (let i = 0; i < mat.count; i++) {
       const m = mat.meta[i];
       // Exclude the exact passage we're querying from
@@ -819,6 +922,7 @@ export async function searchInBookSemantic(
 
   for (const mat of matrices) {
     const dim = mat.dim;
+    if (dim !== queryVec.length) continue;
     for (let i = 0; i < mat.count; i++) {
       const m = mat.meta[i];
       const mBookNorm = m.bookId.toLowerCase();
@@ -865,28 +969,30 @@ export async function searchLibrarySemantic(
 
   if (scope === 'highlights' || scope === 'all') {
     const { matrix: hlMatrix } = await loadHighlightVectors();
-    for (let i = 0; i < hlMatrix.count; i++) {
-      const sim = dotProductFloat32Int8(
-        queryVec,
-        hlMatrix.vectors,
-        i * hlMatrix.dim,
-        hlMatrix.scales[i],
-        hlMatrix.dim
-      );
-      if (sim < 0.24) continue;
-      const m = hlMatrix.meta[i];
-      hits.push({
-        passageId: 0,
-        bookId: m.bookId ?? m.verseRef,
-        source: m.sourceLabel,
-        text: m.selectedText,
-        translation: null,
-        similarity: sim,
-        library: 'highlight',
-        highlightNote: m.noteText,
-        highlightColor: m.color,
-        highlightId: m.highlightId,
-      });
+    if (hlMatrix.dim === queryVec.length) {
+      for (let i = 0; i < hlMatrix.count; i++) {
+        const sim = dotProductFloat32Int8(
+          queryVec,
+          hlMatrix.vectors,
+          i * hlMatrix.dim,
+          hlMatrix.scales[i],
+          hlMatrix.dim
+        );
+        if (sim < 0.24) continue;
+        const m = hlMatrix.meta[i];
+        hits.push({
+          passageId: 0,
+          bookId: m.bookId ?? m.verseRef,
+          source: m.sourceLabel,
+          text: m.selectedText,
+          translation: null,
+          similarity: sim,
+          library: 'highlight',
+          highlightNote: m.noteText,
+          highlightColor: m.color,
+          highlightId: m.highlightId,
+        });
+      }
     }
   }
 
@@ -899,6 +1005,7 @@ export async function searchLibrarySemantic(
       if (scope === 'scripture' && mat.library !== 'scripture') continue;
       if (scope === 'library' && mat.library === 'scripture') continue;
       const dim = mat.dim;
+      if (dim !== queryVec.length) continue;
       for (let i = 0; i < mat.count; i++) {
         const sim = dotProductFloat32Int8(
           queryVec,
@@ -926,47 +1033,111 @@ export async function searchLibrarySemantic(
   return hits.slice(0, limit);
 }
 
-// ── Search past journal entries ─────────────────────────────────────────────
+// ── Search past journal & Life Diary entries ────────────────────────────────
+
+function computeSegmentVectorSim(
+  queryVec: Float32Array,
+  row: {
+    dim: number | null;
+    scale: number | null;
+    vector_int8: Uint8Array | null;
+    vector_blob: Uint8Array | null;
+  }
+): number | null {
+  if (row.vector_int8 != null && row.scale != null && row.dim === queryVec.length) {
+    const raw =
+      row.vector_int8 instanceof Uint8Array
+        ? row.vector_int8
+        : new Uint8Array(row.vector_int8 as unknown as ArrayBuffer);
+    if (raw.byteLength >= queryVec.length) {
+      const signed = new Int8Array(raw.buffer, raw.byteOffset, queryVec.length);
+      return dotProductFloat32Int8(queryVec, signed, 0, row.scale, queryVec.length);
+    }
+  }
+  if (row.vector_blob != null && row.vector_blob.byteLength > 0) {
+    const vec = blobToVector(row.vector_blob);
+    if (vec.length === queryVec.length) {
+      return cosineSimilarity(queryVec, vec);
+    }
+  }
+  return null;
+}
 
 async function findResonantPastEntries(
-  queryVec: Float32Array
+  queryVec: Float32Array,
+  excludeSegmentId?: string | null
 ): Promise<ResonanceCard[]> {
   const db = getDatabase();
   if (!db) return [];
 
   try {
+    const activeModel = getActiveEmbeddingModelId('search');
+    const compatIds = getCompatibleModelIds(activeModel);
+    const placeholders = compatIds.map(() => '?').join(',');
+
     const rows = await db.getAllAsync<{
       segment_id: string;
-      vector_blob: Uint8Array;
-      text: string;
+      segment_type: string;
+      dim: number | null;
+      scale: number | null;
+      vector_int8: Uint8Array | null;
+      vector_blob: Uint8Array | null;
+      text: string | null;
       created_at: number;
+      media_kind: string | null;
+      media_caption: string | null;
+      media_transcript: string | null;
+      media_summary: string | null;
     }>(
-      `SELECT jsv.segment_id, jsv.vector_blob, js.text, js.created_at
+      `SELECT jsv.segment_id, js.segment_type, jsv.dim, jsv.scale, jsv.vector_int8,
+              jsv.vector_blob, js.text, js.created_at,
+              dm.kind AS media_kind, dm.caption AS media_caption,
+              dm.transcript AS media_transcript, dm.ai_summary AS media_summary
        FROM journal_segment_vectors jsv
        JOIN journal_segments js ON js.id = jsv.segment_id
-       WHERE js.segment_type = 'text'
+       LEFT JOIN diary_media dm ON dm.segment_id = js.id
+       WHERE js.segment_type IN ('text', 'voice', 'photo', 'video')
+         AND jsv.model_id IN (${placeholders})
        ORDER BY js.created_at DESC
-       LIMIT 500;`
+       LIMIT 600;`,
+      compatIds
     );
 
-    const scored: ResonanceCard[] = [];
+    const bestBySeg = new Map<string, ResonanceCard>();
     for (const row of rows) {
-      if (row.vector_blob == null || row.vector_blob.byteLength === 0) continue;
-      const vec = blobToVector(row.vector_blob);
-      if (vec.length !== queryVec.length) continue;
-      const sim = cosineSimilarity(queryVec, vec);
-      if (sim >= MIN_SIMILARITY) {
-        const date = new Date(row.created_at);
-        const dateLabel = date.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        });
-        scored.push({
+      if (excludeSegmentId && row.segment_id === excludeSegmentId) continue;
+      const sim = computeSegmentVectorSim(queryVec, row);
+      if (sim == null || sim < MIN_SIMILARITY) continue;
+
+      const date = new Date(row.created_at);
+      const dateLabel = date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+      const kindLabel =
+        row.media_kind === 'voice'
+          ? 'Voice note'
+          : row.media_kind === 'photo'
+            ? 'Photo memory'
+            : row.media_kind === 'video'
+              ? 'Video memory'
+              : 'Your journal';
+      const displayText =
+        row.media_caption?.trim() ||
+        row.media_transcript?.trim() ||
+        row.media_summary?.trim() ||
+        row.text?.trim() ||
+        '';
+      if (!displayText) continue;
+
+      const prev = bestBySeg.get(row.segment_id);
+      if (!prev || sim > prev.similarity) {
+        bestBySeg.set(row.segment_id, {
           passageId: 0,
           bookId: `journal:${row.segment_id}`,
-          text: row.text ?? '',
-          source: `Your journal — ${dateLabel}`,
+          text: displayText,
+          source: `${kindLabel} — ${dateLabel}`,
           translation: null,
           similarity: sim,
           kind: 'past_entry',
@@ -974,39 +1145,110 @@ async function findResonantPastEntries(
       }
     }
 
-    scored.sort((a, b) => b.similarity - a.similarity);
-    return scored.slice(0, MAX_PER_CATEGORY);
+    return Array.from(bestBySeg.values())
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, MAX_PER_CATEGORY);
   } catch {
     return [];
   }
 }
 
-// ── Store journal entry vector ──────────────────────────────────────────────
+/**
+ * Semantic search across all Journal writings and Life Diary memories
+ * (voice transcripts, photo captions/summaries/OCR, and videos).
+ */
+export async function searchDiarySemantic(
+  query: string,
+  limit = 25
+): Promise<Array<{ segmentId: string; similarity: number }>> {
+  if (query.trim().length < 2 || !(await ensureEmbeddingReady('journal'))) {
+    return [];
+  }
+  const queryVec = await embedQuery(query.trim(), 'journal');
+  if (!queryVec) return [];
+
+  const db = getDatabase();
+  if (!db) return [];
+
+  try {
+    const activeModel = getActiveEmbeddingModelId('search');
+    const compatIds = getCompatibleModelIds(activeModel);
+    const placeholders = compatIds.map(() => '?').join(',');
+
+    const rows = await db.getAllAsync<{
+      segment_id: string;
+      dim: number | null;
+      scale: number | null;
+      vector_int8: Uint8Array | null;
+      vector_blob: Uint8Array | null;
+    }>(
+      `SELECT jsv.segment_id, jsv.dim, jsv.scale, jsv.vector_int8, jsv.vector_blob
+       FROM journal_segment_vectors jsv
+       JOIN journal_segments js ON js.id = jsv.segment_id
+       WHERE js.segment_type IN ('text', 'voice', 'photo', 'video')
+         AND jsv.model_id IN (${placeholders})
+       ORDER BY js.created_at DESC
+       LIMIT 1000;`,
+      compatIds
+    );
+
+    const best = new Map<string, number>();
+    for (const row of rows) {
+      const sim = computeSegmentVectorSim(queryVec, row);
+      if (sim == null || sim < 0.22) continue;
+      const prev = best.get(row.segment_id);
+      if (prev == null || sim > prev) {
+        best.set(row.segment_id, sim);
+      }
+    }
+
+    return Array.from(best.entries())
+      .map(([segmentId, similarity]) => ({ segmentId, similarity }))
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
+// ── Store journal / diary memory vector (multi-model int8) ──────────────────
 
 export async function storeSegmentVector(
   segmentId: string,
-  text: string
+  text: string,
+  precomputed?: { modelId: string; vector: Float32Array } | null
 ): Promise<void> {
-  if (text.trim().length < MIN_TEXT_LENGTH) return;
-  if (!(await ensureEmbeddingReady())) return;
+  if (!precomputed && text.trim().length < MIN_TEXT_LENGTH) return;
 
-  const vec = await embedQuery(text);
-  if (!vec) return;
+  let vec: Float32Array | null = precomputed?.vector ?? null;
+  let modelId = precomputed?.modelId ?? getActiveEmbeddingModelId('journal');
+
+  if (!vec) {
+    if (!(await ensureEmbeddingReady('journal'))) return;
+    vec = await embedQuery(text, 'journal');
+    if (!vec) return;
+    modelId = getActiveEmbeddingModelId('journal');
+  }
 
   const db = getDatabase();
   if (!db) return;
 
   try {
-    const blob = new Uint8Array(
-      vec.buffer.slice(vec.byteOffset, vec.byteOffset + vec.byteLength) as ArrayBuffer
+    const { quantized, scale } = quantizeVectorInt8(vec, vec.length);
+    const qBlob = new Uint8Array(
+      quantized.buffer,
+      quantized.byteOffset,
+      quantized.byteLength
     );
     await db.runAsync(
-      `INSERT OR REPLACE INTO journal_segment_vectors (segment_id, vector_blob)
-       VALUES (?, ?);`,
-      [segmentId, blob]
+      `INSERT OR REPLACE INTO journal_segment_vectors
+         (segment_id, model_id, dim, scale, vector_int8, vector_blob, updated_at)
+       VALUES (?, ?, ?, ?, ?, NULL, ?);`,
+      [segmentId, modelId, vec.length, scale, qBlob, Date.now()]
     );
   } catch {
     // Non-fatal
   }
 }
+
 

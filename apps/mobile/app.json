@@ -46,7 +46,22 @@
         }
       ],
       "expo-sqlite",
-      "./plugins/withOnnxRuntimeFix"
+      "./plugins/withOnnxRuntimeFix",
+      "expo-secure-store",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow Resonance to record voice diary entries when OpenRouter transcription is enabled."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Resonance to attach photos and videos to your private life diary.",
+          "cameraPermission": "Allow Resonance to capture photos and videos for your private life diary."
+        }
+      ],
+      "expo-video"
     ]
   }
 }

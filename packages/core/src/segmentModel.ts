@@ -42,6 +42,14 @@ export function isTextSegment(s: JournalSegment): boolean {
   return s.segment_type === 'text';
 }
 
+export function isMediaSegment(s: JournalSegment): boolean {
+  return (
+    s.segment_type === 'voice' ||
+    s.segment_type === 'photo' ||
+    s.segment_type === 'video'
+  );
+}
+
 export function isNonTextSegment(s: JournalSegment): boolean {
   return s.segment_type !== 'text';
 }

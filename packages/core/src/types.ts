@@ -229,7 +229,10 @@ export type SegmentType =
   | 'date_divider'
   | 'verse_day'
   | 'footnote'
-  | 'resonance_cards';
+  | 'resonance_cards'
+  | 'voice'
+  | 'photo'
+  | 'video';
 
 export interface JournalSegment {
   id: string;
@@ -860,4 +863,103 @@ export interface SmartReferenceJump {
   verseEnd?: number;
   label: string;
 }
+
+// ── OpenRouter BYOK & Multimodal Life Diary ─────────────────────────────────
+
+export type OpenRouterRoutingMode = 'local_only' | 'cloud_with_fallback' | 'hybrid_books_only';
+
+export type OpenRouterTaskKind =
+  | 'embedding'
+  | 'rerank'
+  | 'transcription'
+  | 'vision'
+  | 'video'
+  | 'pdf_ocr';
+
+export interface OpenRouterFeatureFlags {
+  embeddings: boolean;
+  reranking: boolean;
+  voice: boolean;
+  photosAndVideos: boolean;
+  scannedPdfOcr: boolean;
+}
+
+export interface OpenRouterModelCatalogEntry {
+  id: string;
+  name: string;
+  description?: string;
+  contextLength?: number;
+  /** USD per 1M prompt tokens (0 if unknown/free). */
+  promptPricePerMillion: number;
+  /** USD per 1M completion tokens (0 if unknown/free). */
+  completionPricePerMillion: number;
+  supportsImageInput: boolean;
+  supportsVideoInput: boolean;
+  supportsAudioInput: boolean;
+  supportsContextualEmbeddings?: boolean;
+  recommended?: boolean;
+  badge?: string;
+}
+
+export interface OpenRouterKeyStatus {
+  valid: boolean;
+  label: string | null;
+  limitUsd: number | null;
+  limitRemainingUsd: number | null;
+  usageUsd: number | null;
+  isFreeTier: boolean;
+  checkedAt: number;
+  error?: string | null;
+}
+
+export interface OpenRouterUsageSummary {
+  totalPromptTokens: number;
+  totalCompletionTokens: number;
+  totalCostUsd: number;
+  monthCostUsd: number;
+  requestCount: number;
+}
+
+export type DiaryMediaKind = 'voice' | 'photo' | 'video';
+
+export type DiaryProcessingStatus =
+  | 'queued'
+  | 'processing'
+  | 'ready'
+  | 'error';
+
+export interface DiaryPerson {
+  id: string;
+  name: string;
+  relationship: string | null;
+  createdAt: number;
+  memoryCount?: number;
+}
+
+export interface DiaryMediaItem {
+  id: string;
+  segmentId: string;
+  kind: DiaryMediaKind;
+  localUri: string;
+  thumbUri: string | null;
+  mimeType: string;
+  byteSize: number;
+  durationMs: number | null;
+  width: number | null;
+  height: number | null;
+  caption: string | null;
+  transcript: string | null;
+  aiSummary: string | null;
+  ocrText: string | null;
+  momentType: string | null;
+  locationLabel: string | null;
+  capturedAt: number;
+  processingStatus: DiaryProcessingStatus;
+  processingError: string | null;
+  aiModelUsed: string | null;
+  createdAt: number;
+  updatedAt: number;
+  people: DiaryPerson[];
+}
+
 

@@ -585,3 +585,115 @@ export function blobToVector(blob: Uint8Array | ArrayBuffer): Float32Array {
       : blob.buffer.slice(blob.byteOffset, blob.byteOffset + blob.byteLength);
   return new Float32Array(buf);
 }
+
+// ── OpenRouter defaults & Vector-Space compatibility helpers ────────────────
+
+export const DEFAULT_OPENROUTER_EMBEDDING_MODEL = 'mongodb/voyage-4-large';
+export const DEFAULT_OPENROUTER_RERANKER_MODEL = 'qwen/qwen3-reranker-8b';
+export const DEFAULT_OPENROUTER_TRANSCRIPTION_MODEL = 'openai/whisper-large-v3-turbo';
+export const DEFAULT_OPENROUTER_VISION_MODEL = 'google/gemini-2.5-flash';
+
+/** Maximum video clip size (15 MB) for direct OpenRouter video_url upload before keyframe fallback. */
+export const OPENROUTER_DIRECT_VIDEO_MAX_BYTES = 15 * 1024 * 1024;
+
+/**
+ * All models in the Voyage-4 family produce compatible embeddings in one shared
+ * 512d vector space — zero re-embedding needed against shipped `.rvec` packs or
+ * on-device `voyage-4-nano` fallback.
+ */
+export const VOYAGE4_SHARED_SPACE_MODELS = [
+  'voyage-4-nano',
+  'mongodb/voyage-4-nano',
+  'mongodb/voyage-4-lite',
+  'mongodb/voyage-4',
+  'mongodb/voyage-4-large',
+  'voyageai/voyage-4-lite',
+  'voyageai/voyage-4',
+  'voyageai/voyage-4-large',
+] as const;
+
+export function isVoyage4SharedSpace(modelId: string | null | undefined): boolean {
+  if (!modelId) return true;
+  const norm = modelId.trim().toLowerCase();
+  if (norm === 'voyage-4-nano') return true;
+  return (
+    norm.endsWith('/voyage-4-nano') ||
+    norm.endsWith('/voyage-4-lite') ||
+    norm.endsWith('/voyage-4') ||
+    norm.endsWith('/voyage-4-large')
+  );
+}
+
+/**
+ * Canonical vector-space identifier. Any two models with the same spaceId
+ * can be compared directly via cosine similarity without re-embedding.
+ */
+export function getVectorSpaceId(modelId: string | null | undefined): string {
+  if (!modelId || isVoyage4SharedSpace(modelId)) return 'voyage-4:512';
+  return modelId.trim().toLowerCase();
+}
+
+/** Whether an OpenRouter embedding model supports `input_type: 'document' | 'query'`. */
+export function modelSupportsInputType(modelId: string): boolean {
+  const norm = modelId.toLowerCase();
+  return (
+    norm.includes('voyage') ||
+    norm.includes('cohere/') ||
+    norm.includes('perplexity/pplx-embed')
+  );
+}
+
+/** Whether an OpenRouter embedding model supports contextual nested `string[][]` batches. */
+export function modelSupportsContextualEmbeddings(modelId: string): boolean {
+  const norm = modelId.toLowerCase();
+  return norm.includes('pplx-embed-v2-context') || norm.includes('voyage-context');
+}
+
+/** Whether an OpenRouter embedding model supports native `image_url` multimodal embeddings. */
+export function modelSupportsMultimodalEmbeddings(modelId: string): boolean {
+  const norm = modelId.toLowerCase();
+  return (
+    norm.includes('gemini-embedding-2') ||
+    norm.includes('cohere/embed-5') ||
+    norm.includes('cohere/embed-v4') ||
+    norm.includes('pplx-embed-v2') ||
+    norm.includes('voyage-multimodal') ||
+    norm.includes('titan-embed-image')
+  );
+}
+
+/** Whether an OpenRouter embedding model accepts Matryoshka `dimensions` downscaling. */
+export function getPreferredOpenRouterEmbedDim(modelId: string): number | undefined {
+  if (isVoyage4SharedSpace(modelId)) return EMBEDDING_DIM; // 512d matches shipped .rvec packs
+  const norm = modelId.toLowerCase();
+  if (
+    norm.includes('openai/text-embedding-3') ||
+    norm.includes('gemini-embedding') ||
+    norm.includes('qwen3-embedding') ||
+    norm.includes('cohere/embed-5') ||
+    norm.includes('voyage')
+  ) {
+    return 1024;
+  }
+  return undefined;
+}
+
+/** Whether an OpenRouter vision model accepts native `video_url` inputs. */
+export function modelSupportsDirectVideoInput(modelId: string): boolean {
+  const norm = modelId.toLowerCase();
+  return (
+    norm.includes('google/gemini') ||
+    norm.includes('qwen/qwen2.5-vl') ||
+    norm.includes('qwen/qwen3-vl') ||
+    norm.includes('qwen/qwen-vl')
+  );
+}
+
+/** Estimate OpenRouter USD cost from token count and per-1M price. */
+export function estimateTokenCostUsd(tokens: number, pricePerMillion: number): number {
+  if (!Number.isFinite(tokens) || !Number.isFinite(pricePerMillion) || tokens <= 0 || pricePerMillion <= 0) {
+    return 0;
+  }
+  return (tokens / 1_000_000) * pricePerMillion;
+}
+
