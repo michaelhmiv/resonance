@@ -1523,27 +1523,49 @@ function PersonalLibraryImportModalInner({
               <>
                 <View style={styles.card}>
                   <View style={styles.cardRowBetween}>
-                    <Text style={styles.cardTitle}>On-Device Embedding Status</Text>
+                    <Text style={styles.cardTitle}>Embedding Status</Text>
                     <View style={styles.formatPill}>
                       <Text style={styles.formatPillText}>
                         {liveEditingWork.sourceFormat.toUpperCase()}
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.cardMeta}>
-                    {liveEditingWork.embeddingStatus === 'ready'
-                      ? `Embedded (${liveEditingWork.embeddedChunks}/${liveEditingWork.totalChunks} passages · Voyage-4-Nano 512d int8)`
-                      : liveEditingWork.embeddingStatus === 'embedding' ||
-                          embeddingActiveBookId === liveEditingWork.bookId
-                        ? `Embedding automatically (${liveEditingWork.embeddedChunks} / ${liveEditingWork.totalChunks} passages)…`
-                        : liveEditingWork.embeddingStatus === 'error'
-                          ? liveEditingWork.lastError ?? 'Embedding paused before finishing.'
-                          : !embedderReady
-                            ? `Waiting for Offline Engine (${liveEditingWork.totalChunks} passages readable now${autoEmbedPersonalFiles ? ' — will embed automatically' : ''})`
-                            : autoEmbedPersonalFiles
-                              ? `Queued for automatic embedding (${liveEditingWork.embeddedChunks}/${liveEditingWork.totalChunks} passages)`
-                              : `Not embedded yet (${liveEditingWork.totalChunks} passages · auto-embedding is off in Settings)`}
-                  </Text>
+                  {(() => {
+                    const activeBookModel = useOpenRouterStore.getState().hasKey &&
+                      useOpenRouterStore.getState().routingMode !== 'local_only' &&
+                      useOpenRouterStore.getState().features.embeddings
+                      ? useOpenRouterStore.getState().embeddingModel
+                      : 'voyage-4-nano';
+                    const storedModel = liveEditingWork.embeddingModel || 'voyage-4-nano';
+                    const isStoredCloud = storedModel !== 'voyage-4-nano';
+                    const storedSpaceMatches =
+                      storedModel === activeBookModel ||
+                      (storedModel.toLowerCase().includes('voyage-4') &&
+                        activeBookModel.toLowerCase().includes('voyage-4'));
+                    return (
+                      <>
+                        <Text style={styles.cardMeta}>
+                          {liveEditingWork.embeddingStatus === 'ready'
+                            ? `Embedded (${liveEditingWork.embeddedChunks}/${liveEditingWork.totalChunks} passages · ${isStoredCloud ? `OpenRouter: ${storedModel}` : 'On-Device: Voyage-4-Nano 512d'})`
+                            : liveEditingWork.embeddingStatus === 'embedding' ||
+                                embeddingActiveBookId === liveEditingWork.bookId
+                              ? `Embedding via ${openRouterEmbedReady ? `OpenRouter (${activeBookModel})` : 'On-Device (Voyage-4-Nano)'} (${liveEditingWork.embeddedChunks} / ${liveEditingWork.totalChunks} passages)…`
+                              : liveEditingWork.embeddingStatus === 'error'
+                                ? liveEditingWork.lastError ?? 'Embedding paused before finishing.'
+                                : !embedderReady
+                                  ? `Waiting for embedder — download Offline Engine or connect OpenRouter in Settings (${liveEditingWork.totalChunks} passages readable now)`
+                                  : autoEmbedPersonalFiles
+                                    ? `Queued for ${openRouterEmbedReady ? `OpenRouter (${activeBookModel})` : 'On-Device'} embedding (${liveEditingWork.embeddedChunks}/${liveEditingWork.totalChunks} passages)`
+                                    : `Not embedded yet (${liveEditingWork.totalChunks} passages · auto-embedding is off in Settings)`}
+                        </Text>
+                        {liveEditingWork.embeddingStatus === 'ready' && !storedSpaceMatches ? (
+                          <Text style={[styles.cardMeta, { color: '#9c6419', marginTop: 4 }]}>
+                            Note: embedded with {storedModel}, but your active model is {activeBookModel}. Tap Re-embed below to include this book in your active space.
+                          </Text>
+                        ) : null}
+                      </>
+                    );
+                  })()}
 
                   {liveEditingWork.ocrRequired ? (
                     <View style={styles.inlineBtnRow}>

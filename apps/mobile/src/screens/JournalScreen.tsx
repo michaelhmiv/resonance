@@ -604,7 +604,18 @@ export function JournalScreen(): ReactNode {
       >
         <View style={styles.echoSheet}>
           <View style={styles.echoHeader}>
-            <Text style={styles.echoTitle}>✦ Echoes</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.echoTitle}>✦ Echoes</Text>
+              <Text style={styles.echoEngineSub} numberOfLines={1}>
+                {hasOpenRouterKey && routingMode !== 'local_only' && orFeatures.embeddings
+                  ? `OpenRouter · ${useOpenRouterStore.getState().embeddingModel}${
+                      routingMode === 'cloud_with_fallback' && orFeatures.reranking
+                        ? ` + ${useOpenRouterStore.getState().rerankerModel.split('/').pop()}`
+                        : ''
+                    }`
+                  : 'On-Device · Voyage-4-Nano 512d'}
+              </Text>
+            </View>
             <Pressable onPress={() => setEchoModalOpen(false)} hitSlop={10}>
               <Feather name="x" size={22} color={colors.textPrimary} />
             </Pressable>
@@ -619,10 +630,26 @@ export function JournalScreen(): ReactNode {
               echoResult.voices.length === 0 &&
               echoResult.pastEntries.length === 0 &&
               (echoResult.highlights?.length ?? 0) === 0) ? (
-            <View style={[styles.center, { flex: 1, padding: spacing.xl }]}>
+            <View style={[styles.center, { flex: 1, padding: spacing.xl, gap: spacing.md }]}>
               <Text style={styles.echoEmpty}>
                 Quiet — no strong echoes surfaced for this memory yet.
               </Text>
+              {hasOpenRouterKey &&
+              routingMode !== 'local_only' &&
+              orFeatures.embeddings &&
+              !useOpenRouterStore.getState().embeddingModel.toLowerCase().includes('voyage-4') ? (
+                <Pressable
+                  onPress={() => {
+                    setEchoModalOpen(false);
+                    navigation.navigate('Settings' as never);
+                  }}
+                  style={styles.echoSettingsBtn}
+                >
+                  <Text style={styles.echoSettingsBtnText}>
+                    Check index coverage &amp; Re-embed in Settings
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
           ) : (
             <ScrollView contentContainerStyle={styles.echoList}>
@@ -982,6 +1009,25 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.serifSemibold,
     fontSize: 22,
     color: colors.textPrimary,
+  },
+  echoEngineSub: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 11.5,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  echoSettingsBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  echoSettingsBtnText: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 13,
+    color: colors.accent,
   },
   echoEmpty: {
     fontFamily: fontFamilies.serifItalic,

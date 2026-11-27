@@ -23,6 +23,11 @@ import { Feather } from '@expo/vector-icons';
 import { colors, fontFamilies, radii, spacing } from '@resonance/theme';
 import { usePersonalLibraryStore } from '../personal/personalLibraryService';
 import { useOfflineEngineStore } from '../packages/offlineEngineManager';
+import {
+  getActiveEmbeddingModelId,
+  useOpenRouterStore,
+} from '../openrouter/openrouterStore';
+import { formatShortModelName } from '../openrouter/indexStatusService';
 
 interface EmbeddingProgressCardProps {
   /** Optional compact styling when pinned inside a modal header/banner. */
@@ -44,11 +49,24 @@ export function EmbeddingProgressCard({
   const processEmbeddingQueue = usePersonalLibraryStore((s) => s.processEmbeddingQueue);
   const clearEmbeddingError = usePersonalLibraryStore((s) => s.clearEmbeddingError);
 
-  const embedderReady = useOfflineEngineStore(
+  const localEmbedderReady = useOfflineEngineStore(
     (s) => s.phase === 'ready' || s.groups.embedder.ready
   );
   const enginePhase = useOfflineEngineStore((s) => s.phase);
   const setEngineSheetVisible = useOfflineEngineStore((s) => s.setSheetVisible);
+
+  const openRouterEmbedReady = useOpenRouterStore(
+    (s) =>
+      s.hasKey &&
+      s.routingMode !== 'local_only' &&
+      s.features.embeddings &&
+      !s.creditsExhausted
+  );
+  // Subscribe to embeddingModel so caption updates immediately if user switches models
+  useOpenRouterStore((s) => s.embeddingModel);
+  const activeBookModel = getActiveEmbeddingModelId('books');
+  const activeShortModel = formatShortModelName(activeBookModel);
+  const embedderReady = localEmbedderReady || openRouterEmbedReady;
 
   const pendingWorks = works.filter(
     (w) =>
@@ -57,7 +75,7 @@ export function EmbeddingProgressCard({
       (w.embeddingStatus === 'pending' || w.embeddingStatus === 'embedding')
   );
 
-  // 1. Active model load
+  // 1. Active model load (on-device ONNX only)
   if (embeddingProgress?.phase === 'loading_model') {
     const queueLabel =
       embeddingProgress.queueTotal > 1
@@ -88,7 +106,7 @@ export function EmbeddingProgressCard({
           <View style={[styles.fill, styles.fillLoading]} />
         </View>
         <Text style={styles.caption}>
-          First load takes a few seconds · runs 100% locally in background
+          On-Device · First load takes a few seconds · runs 100% locally in background
         </Text>
       </View>
     );
@@ -128,9 +146,18 @@ export function EmbeddingProgressCard({
         <View style={styles.track}>
           <View style={[styles.fill, { width: `${fillPct}%` }]} />
         </View>
-        <Text style={styles.caption}>
-          Voyage-4-Nano 512d on-device · continues in background if closed
-        </Text>
+        <View style={styles.engineRow}>
+          <Feather
+            name={openRouterEmbedReady ? 'cloud' : 'smartphone'}
+            size={11}
+            color={openRouterEmbedReady ? '#2f603d' : '#34506b'}
+          />
+          <Text style={styles.caption}>
+            {openRouterEmbedReady
+              ? `OpenRouter Cloud · ${activeShortModel} · fast cloud batch`
+              : 'On-Device · Voyage-4-Nano 512d · continues locally in background'}
+          </Text>
+        </View>
       </View>
     );
   }
@@ -150,7 +177,7 @@ export function EmbeddingProgressCard({
             </Text>
             <Text style={styles.errorBody}>
               {embeddingProgress.error ??
-                'On-device embedding could not complete.'}
+                'Embedding could not complete.'}
             </Text>
           </View>
         </View>
@@ -179,7 +206,7 @@ export function EmbeddingProgressCard({
     );
   }
 
-  // 4. Queued works waiting on Offline Engine download
+  // 4. Queued works waiting on an embedding backend (neither OpenRouter nor Local ready)
   if (!embedderReady && pendingWorks.length > 0) {
     return (
       <View style={[styles.card, compact && styles.cardCompact, style]}>
@@ -193,7 +220,7 @@ export function EmbeddingProgressCard({
             <Text style={styles.sub} numberOfLines={2}>
               {enginePhase === 'downloading'
                 ? 'Offline Engine is downloading — embedding will start automatically once ready.'
-                : 'Download the Offline Engine to embed books locally for echoes and semantic search.'}
+                : 'Download the Offline Engine or connect OpenRouter in Settings to embed these books.'}
             </Text>
           </View>
           <Pressable
@@ -271,6 +298,11 @@ const styles = StyleSheet.create({
   fillLoading: {
     width: '28%',
     opacity: 0.7,
+  },
+  engineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   caption: {
     fontFamily: fontFamilies.sans,

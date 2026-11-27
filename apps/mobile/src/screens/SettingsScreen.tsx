@@ -37,7 +37,13 @@ import { PersonalLibraryImportModal } from '../components/PersonalLibraryImportM
 import { LibraryCatalogModal } from '../components/LibraryCatalogModal';
 import { EmbeddingProgressCard } from '../components/EmbeddingProgressCard';
 import { OpenRouterSettingsSection } from '../components/OpenRouterSettingsSection';
-import { useOpenRouterStore } from '../openrouter/openrouterStore';
+import { ResonanceEngineOverviewCard } from '../components/ResonanceEngineOverviewCard';
+import {
+  getActiveEmbeddingModelId,
+  useOpenRouterStore,
+} from '../openrouter/openrouterStore';
+import { formatShortModelName } from '../openrouter/indexStatusService';
+import { isVoyage4SharedSpace } from '@resonance/core';
 import {
   getStorageInfo,
   clearAllJournalData,
@@ -62,6 +68,10 @@ import { LICENSE_GROUPS } from './settings/licenses';
 export function SettingsScreen(): ReactNode {
   const loaded = useSettingsStore((s) => s.loaded);
   const load = useSettingsStore((s) => s.load);
+  const [reembedTrigger, setReembedTrigger] = useState<{
+    modelId: string;
+    nonce: number;
+  } | null>(null);
 
   // Load persisted settings once the SQLite connection is live.
   useEffect(() => {
@@ -84,8 +94,13 @@ export function SettingsScreen(): ReactNode {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
+      <ResonanceEngineOverviewCard
+        onOpenReembedSheet={(modelId) =>
+          setReembedTrigger({ modelId, nonce: Date.now() })
+        }
+      />
+      <OpenRouterSettingsSection reembedTrigger={reembedTrigger} />
       <OfflineEngineSection />
-      <OpenRouterSettingsSection />
       <PersonalLibrarySection />
       <ReadingPreferencesSection />
       <PrivacyDataSection />
@@ -95,7 +110,7 @@ export function SettingsScreen(): ReactNode {
 
       <Text style={styles.footer}>
         Resonance — a private, offline-first spiritual journal.{'\n'}
-        Everything you read and write stays on this device.
+        Everything you read and write stays on this device unless you opt into OpenRouter.
       </Text>
     </ScrollView>
   );
@@ -159,14 +174,43 @@ function OfflineEngineSection(): ReactNode {
             ? 'Interrupted — tap to retry'
             : `Not downloaded (~${coreSizeLabel})`;
 
+  const orHasKey = useOpenRouterStore((s) => s.hasKey);
+  const orRoutingMode = useOpenRouterStore((s) => s.routingMode);
+  const orFeatures = useOpenRouterStore((s) => s.features);
+  const orEmbeddingModel = useOpenRouterStore((s) => s.embeddingModel);
+  const orCreditsExhausted = useOpenRouterStore((s) => s.creditsExhausted);
+
+  const cloudEmbedActive =
+    orHasKey && orRoutingMode !== 'local_only' && orFeatures.embeddings && !orCreditsExhausted;
+  const cloudRerankActive =
+    orHasKey &&
+    orRoutingMode === 'cloud_with_fallback' &&
+    orFeatures.reranking &&
+    !orCreditsExhausted;
+  const cloudIsVoyage4 = isVoyage4SharedSpace(orEmbeddingModel);
+
+  const embedderStatusLabel = groups.embedder.ready
+    ? cloudEmbedActive
+      ? cloudIsVoyage4
+        ? 'Voyage-4-Nano · Standby (offline fallback)'
+        : 'Voyage-4-Nano · Standby (cloud custom model active)'
+      : 'Voyage-4-Nano 512d · Active'
+    : cloudEmbedActive
+      ? `Optional · Cloud active (${formatBytes(groups.embedder.totalBytes)})`
+      : `Not downloaded · ${formatBytes(groups.embedder.totalBytes)}`;
+
   const rerankerLabel =
     rerankerPhase === 'ready' || groups.reranker.ready
-      ? 'Qwen3-Reranker-0.6B · Ready'
+      ? cloudRerankActive
+        ? 'Qwen3-0.6B · Standby (Cloud reranker active)'
+        : 'Qwen3-Reranker-0.6B · Active'
       : rerankerPhase === 'downloading'
         ? `Downloading (${rerankerPct}%)`
         : rerankerPhase === 'paused'
           ? `Paused (${rerankerPct}%)`
-          : `Optional · ${rerankerSizeLabel}`;
+          : cloudRerankActive
+            ? `Not needed · Cloud reranker active (${rerankerSizeLabel})`
+            : `Optional · ${rerankerSizeLabel}`;
 
   const totalCatalogWorks = corpusManifest.works?.length || 72;
 
@@ -188,28 +232,24 @@ function OfflineEngineSection(): ReactNode {
 
   return (
     <Section
-      title="Offline Resonance Engine"
+      title="Offline Engine & Pre-Embedded Packs"
       description={
-        'Local-only passage search & relevance scoring. Never generates prose, ' +
-        'prayers, or advice — only surfaces real passages from Scripture and your Library.'
+        cloudEmbedActive
+          ? cloudIsVoyage4
+            ? `OpenRouter (${formatShortModelName(orEmbeddingModel)}) is active online. The WEB Bible & Church Library packs below ship pre-embedded in the same Voyage-4 512d space (zero API cost). The 411 MB local model is optional for offline fallback.`
+            : `OpenRouter (${formatShortModelName(orEmbeddingModel)}) is active in its own vector space. The 411 MB local embedder and 583 MB local reranker are optional unless you switch back to On-Device mode.`
+          : 'On-device passage search & pre-embedded Voyage-4 512d library packs. Never generates prose, prayers, or advice.'
       }
     >
-      <InfoRow label="Core engine" value={phaseLabel} />
+      <InfoRow label="Pre-embedded Bible pack" value={groups.corpus.ready ? 'Ready (~4 MB · Voyage-4)' : phaseLabel} />
+      <RowDivider />
+      <InfoRow label="Local embedder" value={embedderStatusLabel} />
+      <RowDivider />
+      <InfoRow label="Local reranker" value={rerankerLabel} />
       <RowDivider />
       <InfoRow
-        label="Embedder"
-        value={
-          groups.embedder.ready
-            ? 'Voyage-4-Nano 512d · Ready'
-            : `Voyage-4-Nano 512d · ${formatBytes(groups.embedder.totalBytes)}`
-        }
-      />
-      <RowDivider />
-      <InfoRow label="Reranker (optional)" value={rerankerLabel} />
-      <RowDivider />
-      <InfoRow
-        label="Church Library"
-        value={`${installedWorkIds.length} / ${totalCatalogWorks} books downloaded`}
+        label="Church Library packs"
+        value={`${installedWorkIds.length} / ${totalCatalogWorks} pre-embedded books`}
       />
       <RowDivider />
       <InfoRow
@@ -390,18 +430,29 @@ function PersonalLibrarySection(): ReactNode {
   );
 
   const manualEmbedCount = pendingCount + errorCount;
+  useOpenRouterStore((s) => s.embeddingModel);
+  const activeBookModel = getActiveEmbeddingModelId('books');
+  const activeBookEngineLabel = openRouterEmbedReady
+    ? `OpenRouter · ${formatShortModelName(activeBookModel)}`
+    : 'On-Device · Voyage-4-Nano';
 
   return (
     <Section
       title="Personal Library"
       description={
-        'Import individual books or link a folder from your device, Google Drive, or iCloud ' +
-        '(EPUB, PDF, DOCX, HTML, Markdown, TXT). Extracted, editable, and embedded 100% locally.'
+        openRouterEmbedReady
+          ? `Import individual books or link a folder (EPUB, PDF, DOCX, HTML, Markdown, TXT). Files stay stored on your phone and embed via ${activeBookEngineLabel}.`
+          : 'Import individual books or link a folder from your device, Google Drive, or iCloud (EPUB, PDF, DOCX, HTML, Markdown, TXT). Extracted, editable, and embedded 100% locally.'
       }
     >
       <InfoRow
         label="Connected folder"
         value={connectedFolderLabel ?? 'Not linked'}
+      />
+      <RowDivider />
+      <InfoRow
+        label="Active book embedder"
+        value={activeBookEngineLabel}
       />
       <RowDivider />
       <InfoRow
@@ -415,7 +466,11 @@ function PersonalLibrarySection(): ReactNode {
       <RowDivider />
       <ToggleRow
         label="Auto-embed added files"
-        hint="Automatically embed newly imported books and notes on-device for Resonance echoes and semantic search."
+        hint={
+          openRouterEmbedReady
+            ? `Automatically embed newly imported books via OpenRouter (${formatShortModelName(activeBookModel)}) for echoes and semantic search.`
+            : 'Automatically embed newly imported books and notes on-device for Resonance echoes and semantic search.'
+        }
         value={autoEmbedPersonalFiles}
         onToggle={handleToggleAutoEmbed}
       />

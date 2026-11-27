@@ -68,7 +68,8 @@ assert.match(journal, /<MemoriesAndPeopleSheet/);
 assert.match(journal, /searchDiarySemantic/);
 
 const settings = read('apps/mobile/src/screens/SettingsScreen.tsx');
-assert.match(settings, /<OpenRouterSettingsSection \/>/);
+assert.match(settings, /<ResonanceEngineOverviewCard\b/);
+assert.match(settings, /<OpenRouterSettingsSection\b/);
 
 const patterns = read('apps/mobile/src/screens/PatternsScreen.tsx');
 assert.match(patterns, /People & Moments/);

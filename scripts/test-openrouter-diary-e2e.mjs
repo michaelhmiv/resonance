@@ -493,6 +493,31 @@ await test('Multi-model vectors coexist non-destructively across passage/journal
   assert.equal(db.prepare(`SELECT COUNT(*) AS c FROM journal_segment_vectors WHERE model_id = 'voyage-4-nano'`).get().c, 1);
   assert.equal(db.prepare(`SELECT COUNT(*) AS c FROM highlight_vectors WHERE model_id = 'voyage-4-nano'`).get().c, 1);
 
+  // Verify indexStatusService.ts local vs cloud breakdown SQL works with shared Voyage-4 models
+  db.prepare(
+    `INSERT INTO passage_vectors (passage_id, book_id, model_id, dim, scale, vector_int8, updated_at)
+     VALUES (?, 'pers_1', 'mongodb/voyage-4-large', 512, 0.01, ?, ?);`
+  ).run(persId, makeInt8Vec(512, 11), now);
+
+  const persCoverage = db
+    .prepare(
+      `SELECT
+         COUNT(DISTINCT p.id) AS total,
+         COUNT(DISTINCT CASE WHEN pv.passage_id IS NOT NULL THEN p.id END) AS sql_done,
+         COUNT(DISTINCT CASE WHEN pv.model_id IS NOT NULL AND pv.model_id != ? THEN p.id END) AS cloud_done,
+         COUNT(DISTINCT CASE WHEN pv.model_id = ? THEN p.id END) AS local_done
+       FROM passages p
+       JOIN personal_books pb ON pb.book_id = p.book_id
+       LEFT JOIN passage_vectors pv
+         ON pv.passage_id = p.id AND pv.model_id IN (?, ?)
+       WHERE pb.ocr_required = 0;`
+    )
+    .get('voyage-4-nano', 'voyage-4-nano', 'voyage-4-nano', 'mongodb/voyage-4-large');
+  assert.equal(persCoverage.total, 1);
+  assert.equal(persCoverage.sql_done, 1);
+  assert.equal(persCoverage.local_done, 1);
+  assert.equal(persCoverage.cloud_done, 1);
+
   db.close();
 });
 

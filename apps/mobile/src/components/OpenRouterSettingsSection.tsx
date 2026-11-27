@@ -73,7 +73,11 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function OpenRouterSettingsSection(): ReactNode {
+export function OpenRouterSettingsSection({
+  reembedTrigger,
+}: {
+  reembedTrigger?: { modelId: string; nonce: number } | null;
+} = {}): ReactNode {
   const {
     hasKey,
     keyStatus,
@@ -205,6 +209,12 @@ export function OpenRouterSettingsSection(): ReactNode {
       setReembedPlanLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (reembedTrigger?.nonce) {
+      void openReembedSheet(reembedTrigger.modelId || embeddingModel);
+    }
+  }, [reembedTrigger, embeddingModel, openReembedSheet]);
 
   const handlePickModel = useCallback(
     (modelId: string) => {
@@ -580,20 +590,20 @@ export function OpenRouterSettingsSection(): ReactNode {
               badge={isVoyage4 ? 'Zero re-embed' : 'Custom space'}
               onPress={() => void openModelPicker('embedding')}
             />
-            {!isVoyage4 ? (
-              <Pressable
-                onPress={() => void openReembedSheet(embeddingModel)}
-                style={styles.reembedCallout}
-              >
-                <Feather name="layers" size={15} color={colors.accent} />
-                <Text style={styles.reembedCalloutText}>
-                  {reembed.running
-                    ? `Re-embedding (${reembed.completed}/${reembed.total})…`
+            <Pressable
+              onPress={() => void openReembedSheet(embeddingModel)}
+              style={styles.reembedCallout}
+            >
+              <Feather name="layers" size={15} color={colors.accent} />
+              <Text style={styles.reembedCalloutText}>
+                {reembed.running
+                  ? `Re-embedding (${reembed.completed}/${reembed.total})…`
+                  : isVoyage4
+                    ? 'Inspect or re-embed Journal, Highlights & Personal books'
                     : 'Re-embed Bible, Church & Personal libraries for this model'}
-                </Text>
-                <Feather name="chevron-right" size={16} color={colors.accent} />
-              </Pressable>
-            ) : null}
+              </Text>
+              <Feather name="chevron-right" size={16} color={colors.accent} />
+            </Pressable>
             <View style={styles.divider} />
             <ModelPickerRow
               label="Reranker model"
