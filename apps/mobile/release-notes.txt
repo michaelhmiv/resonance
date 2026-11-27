@@ -1,4 +1,4 @@
-Resonance Android Preview — Floating Life Diary Icons & Monotonic Build Versioning:
-• Redesigned Journal Voice, Photo, Video, and ✦ Echoes controls into a minimal floating cream-paper icon capsule in the bottom-right corner — matching Resonance's quiet editorial aesthetic with zero text button clutter.
-• Compact floating recording pill when recording a voice note (timer + discard + save check), hovering cleanly above the keyboard or bottom bar.
-• Auto-incremented Android versionCode/versionName per Firebase preview release so Firebase App Tester clearly distinguishes every update.
+Resonance Android Preview — Crystal-Clear Engine & Embedding Coverage Overhaul:
+• New "Active Engine & Index Status" dashboard at the top of Settings: shows at a glance whether Books, Journal, Reranker, and Life Diary are running On-Device or via OpenRouter Cloud, explains Shared Voyage-4 vs Custom vector spaces, and displays live coverage across Bible, Church Library, Personal Library, Journal, and Highlights (with Pre-embedded pack / On-Device / OpenRouter badges and one-tap Re-embed).
+• OpenRouter-aware Offline Engine & Personal Library sections: clearly marks local models as Active, Standby (offline fallback), or Optional when OpenRouter is running, and accurately shows which model/engine embeds Personal Library books.
+• Live indicators inside the app: Embedding Progress cards, Personal Library book cards, and Journal ✦ Echoes now clearly indicate OpenRouter Cloud vs On-Device model usage (plus mismatch/re-embed prompts when switching to a custom model).
