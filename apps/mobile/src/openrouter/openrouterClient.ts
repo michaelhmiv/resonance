@@ -433,6 +433,12 @@ async function openRouterFetch<T>(
       continue;
     }
 
+    if (resp.status === 404 && useOpenRouterStore.getState().zeroDataRetention && /data policy|zero data|endpoints/i.test(detail)) {
+      const msg = `${detail} — try disabling "Zero Data Retention" in Settings → OpenRouter or choose another model.`;
+      useOpenRouterStore.getState().setLastError(msg);
+      throw new OpenRouterApiError(msg, 404, 'bad_request');
+    }
+
     const code: OpenRouterErrorCode =
       resp.status === 429
         ? 'rate_limited'
@@ -621,7 +627,13 @@ export async function fetchOpenRouterCatalog(
 
   try {
     const endpoint =
-      slot === 'embedding' ? '/embeddings/models' : '/models';
+      slot === 'embedding'
+        ? '/embeddings/models'
+        : slot === 'reranker'
+          ? '/models?endpoints=/api/v1/rerank'
+          : slot === 'transcription'
+            ? '/models?endpoints=/api/v1/audio/transcriptions'
+            : '/models';
     const resp = await fetch(`${OPENROUTER_BASE}${endpoint}`, {
       method: 'GET',
       headers: {
@@ -637,23 +649,8 @@ export async function fetchOpenRouterCatalog(
       const idLower = m.id.toLowerCase();
       const outMods = m.architecture?.output_modalities ?? [];
       const inMods = m.architecture?.input_modalities ?? [];
-      const eps = m.endpoints ?? [];
-      if (slot === 'embedding') return true;
-      if (slot === 'reranker') {
-        return (
-          eps.some((e) => e.includes('rerank')) ||
-          outMods.includes('rerank') ||
-          idLower.includes('rerank')
-        );
-      }
-      if (slot === 'transcription') {
-        return (
-          eps.some((e) => e.includes('transcription')) ||
-          idLower.includes('whisper') ||
-          idLower.includes('transcribe') ||
-          idLower.includes('stt') ||
-          idLower.includes('chirp')
-        );
+      if (slot === 'embedding' || slot === 'reranker' || slot === 'transcription') {
+        return true;
       }
       // vision / video
       return (

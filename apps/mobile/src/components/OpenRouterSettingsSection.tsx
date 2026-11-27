@@ -484,6 +484,41 @@ export function OpenRouterSettingsSection(): ReactNode {
                       ? 'Uses OpenRouter when online and falls back seamlessly to on-device Voyage-4-Nano when offline.'
                       : 'Uses your custom OpenRouter embedding space when online. Diary captures made offline auto-queue until reconnected.'}
               </Text>
+              <View
+                style={[
+                  styles.diaryStatusPill,
+                  routingMode === 'cloud_with_fallback' &&
+                  (features.voice || features.photosAndVideos)
+                    ? styles.diaryStatusPillActive
+                    : styles.diaryStatusPillPaused,
+                ]}
+              >
+                <Feather
+                  name={
+                    routingMode === 'cloud_with_fallback' &&
+                    (features.voice || features.photosAndVideos)
+                      ? 'check-circle'
+                      : 'info'
+                  }
+                  size={13}
+                  color={
+                    routingMode === 'cloud_with_fallback' &&
+                    (features.voice || features.photosAndVideos)
+                      ? '#3f6d4c'
+                      : colors.textSecondary
+                  }
+                />
+                <Text style={styles.diaryStatusText}>
+                  {routingMode === 'cloud_with_fallback' &&
+                  (features.voice || features.photosAndVideos)
+                    ? 'Life Diary active in Journal — Voice, Photo, Video & Memories are unlocked.'
+                    : routingMode === 'hybrid_books_only'
+                      ? 'Hybrid mode keeps Journal local — switch to OpenRouter Cloud to show Voice, Photo & Video in Journal.'
+                      : routingMode === 'local_only'
+                        ? 'Paused — switch to OpenRouter Cloud to unlock Voice, Photo & Video in Journal.'
+                        : 'Enable Voice or Photos & Videos below to show the capture bar in Journal.'}
+                </Text>
+              </View>
             </View>
 
             <View style={styles.divider} />
@@ -509,14 +544,22 @@ export function OpenRouterSettingsSection(): ReactNode {
             <View style={styles.divider} />
             <ToggleLine
               label="Voice Diary & Transcription"
-              hint="Unlock the Voice recorder in Journal with OpenRouter speech-to-text."
+              hint={
+                routingMode === 'cloud_with_fallback'
+                  ? 'Unlock the Voice recorder in Journal with OpenRouter speech-to-text.'
+                  : 'Requires Routing Mode = OpenRouter Cloud to appear in Journal.'
+              }
               value={features.voice}
               onChange={(v) => setFeature('voice', v)}
             />
             <View style={styles.divider} />
             <ToggleLine
               label="Photos & Videos (Life Diary)"
-              hint="Unlock Photo & Video capture, People tags, handwritten OCR, and Memories gallery."
+              hint={
+                routingMode === 'cloud_with_fallback'
+                  ? 'Unlock Photo & Video capture, People tags, handwritten OCR, and Memories gallery.'
+                  : 'Requires Routing Mode = OpenRouter Cloud to appear in Journal.'
+              }
               value={features.photosAndVideos}
               onChange={(v) => setFeature('photosAndVideos', v)}
             />
@@ -1160,6 +1203,31 @@ const styles = StyleSheet.create({
   },
   modePillTextActive: {
     color: '#ffffff',
+  },
+  diaryStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginTop: spacing.xs,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+  },
+  diaryStatusPillActive: {
+    backgroundColor: '#eef5f0',
+    borderColor: '#c5dccb',
+  },
+  diaryStatusPillPaused: {
+    backgroundColor: '#f5f1e8',
+    borderColor: colors.border,
+  },
+  diaryStatusText: {
+    flex: 1,
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.textPrimary,
   },
   toggleRow: {
     flexDirection: 'row',

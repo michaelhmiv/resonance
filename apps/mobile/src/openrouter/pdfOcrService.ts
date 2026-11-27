@@ -79,18 +79,18 @@ export async function transcribeScannedPersonalPdf(bookId: string): Promise<{
 
   const row = await db.getFirstAsync<{
     book_id: string;
-    file_name: string;
-    file_uri: string;
+    source_filename: string;
+    local_file_path: string;
     file_size_bytes: number;
   }>(
-    `SELECT book_id, file_name, file_uri, file_size_bytes
+    `SELECT book_id, source_filename, local_file_path, file_size_bytes
      FROM personal_books WHERE book_id = ?;`,
     [bookId]
   );
 
   if (!row) throw new Error('Personal library book not found.');
 
-  const info = await FileSystem.getInfoAsync(row.file_uri);
+  const info = await FileSystem.getInfoAsync(row.local_file_path);
   if (!info.exists) {
     throw new Error('Original PDF file is no longer accessible on device.');
   }
@@ -105,13 +105,13 @@ export async function transcribeScannedPersonalPdf(bookId: string): Promise<{
     );
   }
 
-  const pdfBase64 = await FileSystem.readAsStringAsync(row.file_uri, {
+  const pdfBase64 = await FileSystem.readAsStringAsync(row.local_file_path, {
     encoding: FileSystem.EncodingType.Base64,
   });
 
   const { text, modelUsed } = await ocrPdfViaOpenRouter({
     pdfBase64,
-    filename: row.file_name,
+    filename: row.source_filename,
   });
 
   const chunks = splitTranscribedTextIntoChunks(text);
@@ -138,7 +138,7 @@ export async function transcribeScannedPersonalPdf(bookId: string): Promise<{
          total_chunks = ?,
          embedded_chunks = 0,
          embedding_status = 'pending',
-         embedding_error = NULL,
+         last_error = NULL,
          updated_at = ?
      WHERE book_id = ?;`,
     [chunks.length, Date.now(), bookId]

@@ -127,9 +127,15 @@ export async function flushPending(): Promise<void> {
     await db.withTransactionAsync(async () => {
       for (const seg of toWrite) {
         await db.runAsync(
-          `INSERT OR REPLACE INTO journal_segments
+          `INSERT INTO journal_segments
             (id, created_at, updated_at, segment_type, text, position_index, parent_date)
-           VALUES (?, ?, ?, ?, ?, ?, ?);`,
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             updated_at = excluded.updated_at,
+             segment_type = excluded.segment_type,
+             text = excluded.text,
+             position_index = excluded.position_index,
+             parent_date = excluded.parent_date;`,
           seg.id,
           seg.created_at,
           seg.updated_at,

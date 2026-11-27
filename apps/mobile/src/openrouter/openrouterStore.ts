@@ -229,9 +229,11 @@ export const useOpenRouterStore = create<OpenRouterStoreState>((set, get) => ({
       await get().clearApiKey();
       return;
     }
+    let secureErr: string | null = null;
     try {
       await SecureStore.setItemAsync(SECURE_KEY_NAME, cleaned);
     } catch (err) {
+      secureErr = `Warning: keychain save failed (${err instanceof Error ? err.message : String(err)}). Key is active for this session only.`;
       console.warn('[openrouterStore] SecureStore save failed:', err);
     }
     const nextMode: OpenRouterRoutingMode =
@@ -242,7 +244,7 @@ export const useOpenRouterStore = create<OpenRouterStoreState>((set, get) => ({
       hasKey: true,
       routingMode: nextMode,
       creditsExhausted: false,
-      lastError: null,
+      lastError: secureErr,
     });
   },
 

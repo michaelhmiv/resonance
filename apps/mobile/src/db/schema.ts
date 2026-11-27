@@ -537,6 +537,40 @@ export const MIGRATIONS: Migration[] = [
         ON openrouter_usage_log (created_at DESC);
     `,
   },
+  {
+    version: 6,
+    description: 'allow multimodal diary segment types (voice, photo, video) in journal_segments',
+    sql: `
+      CREATE TABLE journal_segments_v6_new (
+        id             TEXT PRIMARY KEY,
+        created_at     INTEGER NOT NULL,
+        updated_at     INTEGER NOT NULL,
+        segment_type   TEXT    NOT NULL CHECK (
+          segment_type IN (
+            'text',
+            'date_divider',
+            'verse_day',
+            'footnote',
+            'resonance_cards',
+            'voice',
+            'photo',
+            'video'
+          )
+        ),
+        text           TEXT,
+        position_index INTEGER NOT NULL,
+        parent_date    TEXT
+      );
+      INSERT INTO journal_segments_v6_new
+        (id, created_at, updated_at, segment_type, text, position_index, parent_date)
+      SELECT id, created_at, updated_at, segment_type, text, position_index, parent_date
+      FROM journal_segments;
+      DROP TABLE journal_segments;
+      ALTER TABLE journal_segments_v6_new RENAME TO journal_segments;
+      CREATE INDEX IF NOT EXISTS idx_journal_segments_date
+        ON journal_segments (parent_date, position_index);
+    `,
+  },
 ];
 
 /** The current target schema version (max across migrations). */

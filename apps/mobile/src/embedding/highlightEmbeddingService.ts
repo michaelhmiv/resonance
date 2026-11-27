@@ -228,10 +228,13 @@ export async function backfillUnembeddedHighlights(limit = 40): Promise<number> 
           (h.note_text && h.note_text.trim().length >= 3))
     );
     if (pending.length === 0) return 0;
-    if (!(await ensureEmbeddingReady())) return 0;
+    if (!(await ensureEmbeddingReady('journal'))) return 0;
 
+    const { isOpenRouterEnabledForFeature } = await import('../openrouter/openrouterStore');
     for (const hl of pending.slice(0, limit)) {
-      if (!isEmbeddingReady()) break;
+      if (!isEmbeddingReady() && !isOpenRouterEnabledForFeature('embeddings', 'journal')) {
+        break;
+      }
       await syncHighlightToResonance(hl, 'updated');
       embedded++;
     }

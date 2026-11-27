@@ -55,17 +55,28 @@ export async function runMigrations(
     (a, b) => a.version - b.version
   );
 
-  for (const migration of pending) {
-    await db.withTransactionAsync(async () => {
-      await db.execAsync(migration.sql);
-      // Record this version. The tracking table always has at most one row.
-      await db.runAsync(
-        `INSERT INTO schema_version (singleton, version) VALUES (1, ?)
-         ON CONFLICT(singleton) DO UPDATE SET version = excluded.version;`,
-        migration.version
-      );
-      applied.push(migration.version);
-    });
+  if (pending.length === 0) {
+    return { fromVersion, toVersion: CURRENT_SCHEMA_VERSION, applied };
+  }
+
+  // SQLite requires PRAGMA foreign_keys = OFF outside any transaction so table-rebuild
+  // migrations (e.g. expanding CHECK constraints) preserve child rows & FK targets cleanly.
+  await db.execAsync('PRAGMA foreign_keys = OFF;');
+  try {
+    for (const migration of pending) {
+      await db.withTransactionAsync(async () => {
+        await db.execAsync(migration.sql);
+        // Record this version. The tracking table always has at most one row.
+        await db.runAsync(
+          `INSERT INTO schema_version (singleton, version) VALUES (1, ?)
+           ON CONFLICT(singleton) DO UPDATE SET version = excluded.version;`,
+          migration.version
+        );
+        applied.push(migration.version);
+      });
+    }
+  } finally {
+    await db.execAsync('PRAGMA foreign_keys = ON;');
   }
 
   return { fromVersion, toVersion: CURRENT_SCHEMA_VERSION, applied };

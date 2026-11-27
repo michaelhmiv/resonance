@@ -7,7 +7,7 @@
  *   - Gallery: Photos, Videos, and Voice archive → tap to jump to that memory
  */
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Image,
   Modal,
@@ -42,6 +42,12 @@ export function MemoriesAndPeopleSheet({
 
   const [tab, setTab] = useState<'people' | 'gallery'>(initialTab);
   const [kindFilter, setKindFilter] = useState<'all' | DiaryMediaKind>('all');
+
+  useEffect(() => {
+    if (visible) {
+      setTab(initialTab);
+    }
+  }, [visible, initialTab]);
 
   const filteredMedia = useMemo(() => {
     if (kindFilter === 'all') return allMedia;
