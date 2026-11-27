@@ -794,7 +794,8 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: layout.screenPaddingX,
-    paddingVertical: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: 78,
   },
   continueWritingBtn: {
     paddingVertical: spacing.md,

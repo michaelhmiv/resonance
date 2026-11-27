@@ -67,6 +67,18 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts
+      - name: Stamp monotonic preview versionCode
+        working-directory: apps/mobile
+        run: |
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+            const run = Number(process.env.GITHUB_RUN_NUMBER || 1);
+            cfg.expo.version = '1.0.' + run;
+            cfg.expo.android.versionCode = run;
+            fs.writeFileSync('app.json', JSON.stringify(cfg, null, 2) + '\n');
+            console.log('Stamped preview version:', cfg.expo.version, 'versionCode:', cfg.expo.android.versionCode);
+          "
       - name: Expo prebuild (generates android/)
         working-directory: apps/mobile
         run: npx expo prebuild --platform android --no-install

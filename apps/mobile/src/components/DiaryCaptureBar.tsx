@@ -127,43 +127,46 @@ function VoiceRecorderStrip({
   }, [saving, recorder, recorderState.durationMillis, onFinished, onCancel]);
 
   return (
-    <View style={styles.recordingBar}>
-      <View style={styles.recLeft}>
-        <View style={styles.recDot} />
-        <Text style={styles.recTimer}>
-          Recording · {formatDuration(recorderState.durationMillis ?? 0)}
-        </Text>
-      </View>
-      <View style={styles.recActions}>
-        <Pressable
-          onPress={() => void handleCancel()}
-          disabled={saving}
-          style={styles.recCancelBtn}
-          hitSlop={8}
-        >
-          <Feather name="trash-2" size={16} color={colors.textSecondary} />
-        </Pressable>
-        <Pressable
-          onPress={() => void handleSave()}
-          disabled={saving}
-          style={styles.recSaveBtn}
-          hitSlop={8}
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <>
+    <View style={styles.recordingFloatingWrap} pointerEvents="box-none">
+      <View style={styles.recordingPill}>
+        <View style={styles.recLeft}>
+          <View style={styles.recDot} />
+          <Text style={styles.recTimer}>
+            {formatDuration(recorderState.durationMillis ?? 0)}
+          </Text>
+        </View>
+        <View style={styles.recActions}>
+          <Pressable
+            onPress={() => void handleCancel()}
+            disabled={saving}
+            style={({ pressed }) => [styles.recIconBtn, pressed && styles.pressed]}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Discard voice note"
+          >
+            <Feather name="trash-2" size={16} color={colors.textSecondary} />
+          </Pressable>
+          <Pressable
+            onPress={() => void handleSave()}
+            disabled={saving}
+            style={({ pressed }) => [styles.recSaveCircle, pressed && styles.pressed]}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Save voice note"
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
               <Feather name="check" size={16} color="#ffffff" />
-              <Text style={styles.recSaveText}>Save</Text>
-            </>
-          )}
-        </Pressable>
+            )}
+          </Pressable>
+        </View>
       </View>
     </View>
   );
 }
 
-// ── Main Docked Footer Bar ──────────────────────────────────────────────────
+// ── Main Floating Icon Dock ─────────────────────────────────────────────────
 
 export function DiaryCaptureBar({
   activeEntryText,
@@ -375,61 +378,64 @@ export function DiaryCaptureBar({
           onCancel={() => setIsRecordingUi(false)}
         />
       ) : (
-        <View style={styles.footerBar}>
-          <View style={styles.footerLeft}>
+        <View style={styles.floatingWrap} pointerEvents="box-none">
+          {canEchoActive ? (
+            <Pressable
+              onPress={() => onTriggerEchoes?.(activeEntryText!.trim())}
+              style={({ pressed }) => [styles.floatingCircle, pressed && styles.pressed]}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel="Find echoes for current entry"
+            >
+              <Text style={styles.echoGlyph}>✦</Text>
+            </Pressable>
+          ) : null}
+
+          <View style={styles.floatingCapsule}>
             {voiceAllowed ? (
               <Pressable
                 onPress={() => void startVoiceRecording()}
                 disabled={busy}
-                style={styles.dockBtn}
-                hitSlop={6}
+                style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+                hitSlop={4}
                 accessibilityRole="button"
                 accessibilityLabel="Record voice diary note"
               >
-                <Feather name="mic" size={16} color={colors.accent} />
-                <Text style={styles.dockLabel}>Voice</Text>
+                <Feather name="mic" size={18} color={colors.accent} />
               </Pressable>
             ) : null}
+            {voiceAllowed && visualAllowed ? <View style={styles.hairlineDivider} /> : null}
             {visualAllowed ? (
               <>
                 <Pressable
                   onPress={() => setPickerSheet('photo')}
                   disabled={busy}
-                  style={styles.dockBtn}
-                  hitSlop={6}
+                  style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+                  hitSlop={4}
                   accessibilityRole="button"
                   accessibilityLabel="Add diary photo"
                 >
-                  <Feather name="camera" size={16} color={colors.accent} />
-                  <Text style={styles.dockLabel}>Photo</Text>
+                  <Feather name="camera" size={18} color={colors.accent} />
                 </Pressable>
+                <View style={styles.hairlineDivider} />
                 <Pressable
                   onPress={() => setPickerSheet('video')}
                   disabled={busy}
-                  style={styles.dockBtn}
-                  hitSlop={6}
+                  style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+                  hitSlop={4}
                   accessibilityRole="button"
                   accessibilityLabel="Add diary video"
                 >
-                  <Feather name="video" size={16} color={colors.accent} />
-                  <Text style={styles.dockLabel}>Video</Text>
+                  <Feather name="video" size={18} color={colors.accent} />
                 </Pressable>
               </>
             ) : null}
-            {busy ? <ActivityIndicator size="small" color={colors.accent} /> : null}
+            {busy ? (
+              <View style={styles.busyWrap}>
+                <ActivityIndicator size="small" color={colors.accent} />
+              </View>
+            ) : null}
           </View>
-
-          {canEchoActive ? (
-            <Pressable
-              onPress={() => onTriggerEchoes?.(activeEntryText!.trim())}
-              style={styles.echoPill}
-              hitSlop={6}
-              accessibilityRole="button"
-              accessibilityLabel="Find echoes for current entry"
-            >
-              <Text style={styles.echoPillText}>✦ Echoes</Text>
-            </Pressable>
-          ) : null}
         </View>
       )}
 
@@ -485,59 +491,90 @@ export function DiaryCaptureBar({
 }
 
 const styles = StyleSheet.create({
-  footerBar: {
+  floatingWrap: {
+    position: 'absolute',
+    right: 16,
+    bottom: 14,
+    zIndex: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 9,
-    backgroundColor: colors.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    gap: 10,
   },
-  footerLeft: {
+  floatingCapsule: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  dockBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
+    backgroundColor: 'rgba(249, 246, 239, 0.94)',
     borderRadius: 999,
-    backgroundColor: colors.background,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
+    paddingHorizontal: 5,
+    paddingVertical: 4,
+    shadowColor: '#2c241b',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.09,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  dockLabel: {
-    fontFamily: fontFamilies.sansMedium,
-    fontSize: 12.5,
-    color: colors.textPrimary,
-  },
-  echoPill: {
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderRadius: 999,
-    backgroundColor: '#f1ece2',
-    borderWidth: 1,
+  floatingCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(249, 246, 239, 0.94)',
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
+    shadowColor: '#2c241b',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.09,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  echoPillText: {
-    fontFamily: fontFamilies.sansMedium,
-    fontSize: 12.5,
+  echoGlyph: {
+    fontSize: 17,
     color: colors.accent,
   },
-  recordingBar: {
+  iconBtn: {
+    width: 40,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hairlineDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 18,
+    backgroundColor: colors.border,
+  },
+  busyWrap: {
+    paddingHorizontal: 8,
+  },
+  pressed: {
+    opacity: 0.55,
+  },
+  recordingFloatingWrap: {
+    position: 'absolute',
+    right: 16,
+    bottom: 14,
+    zIndex: 20,
+    alignItems: 'flex-end',
+  },
+  recordingPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
+    gap: 14,
+    backgroundColor: 'rgba(249, 246, 239, 0.97)',
+    borderRadius: 999,
+    borderWidth: 1,
     borderColor: '#d9b9b0',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
+    paddingLeft: 14,
+    paddingRight: 6,
+    paddingVertical: 6,
+    shadowColor: '#2c241b',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 5,
   },
   recLeft: {
     flexDirection: 'row',
@@ -545,41 +582,36 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   recDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
     backgroundColor: '#b84a39',
   },
   recTimer: {
     fontFamily: fontFamilies.sansMedium,
-    fontSize: 14,
+    fontSize: 13.5,
     color: colors.textPrimary,
+    fontVariant: ['tabular-nums'],
   },
   recActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
-  recCancelBtn: {
-    padding: 8,
-    borderRadius: radii.sm,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  recSaveBtn: {
-    flexDirection: 'row',
+  recIconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radii.sm,
-    backgroundColor: colors.accent,
+    justifyContent: 'center',
   },
-  recSaveText: {
-    fontFamily: fontFamilies.sansMedium,
-    fontSize: 13,
-    color: '#ffffff',
+  recSaveCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accent,
   },
   backdrop: {
     flex: 1,
