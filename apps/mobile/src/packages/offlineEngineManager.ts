@@ -391,6 +391,28 @@ async function ingestCatalogWorkIntoSqlite(work: CatalogWorkEntry): Promise<bool
     });
     await yieldToUi();
 
+    // If user is currently using a custom (non-Voyage-4) OpenRouter embedding
+    // model, auto-embed the newly downloaded Church work in the background.
+    void (async () => {
+      try {
+        const { isVoyage4SharedSpace } = await import('@resonance/core');
+        const { getActiveEmbeddingModelId, isOpenRouterEnabledForFeature } = await import(
+          '../openrouter/openrouterStore'
+        );
+        if (isOpenRouterEnabledForFeature('embeddings', 'books')) {
+          const activeModel = getActiveEmbeddingModelId('books');
+          if (!isVoyage4SharedSpace(activeModel)) {
+            const { embedBookPassagesWithOpenRouter } = await import(
+              '../openrouter/reembedService'
+            );
+            await embedBookPassagesWithOpenRouter(work.id, activeModel);
+          }
+        }
+      } catch {
+        // Non-fatal; user can re-embed anytime from Settings -> OpenRouter
+      }
+    })();
+
     return true;
   } catch {
     return false;

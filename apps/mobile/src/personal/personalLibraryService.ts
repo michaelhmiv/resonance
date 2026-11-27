@@ -49,10 +49,16 @@ import {
 } from '../db/queries/libraryQueries';
 import {
   embedPassage,
+  embedPassagesBatch,
+  ensureEmbeddingReady,
   getLastEmbeddingError,
   initEmbeddingModel,
   isEmbeddingReady,
 } from '../embedding/embeddingService';
+import {
+  getActiveEmbeddingModelId,
+  isOpenRouterEnabledForFeature,
+} from '../openrouter/openrouterStore';
 import { clearLibraryVectors } from '../embedding/resonanceService';
 import { useOfflineEngineStore } from '../packages/offlineEngineManager';
 import {
@@ -1578,14 +1584,15 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           break;
         }
 
-        // Ensure Voyage-4-Nano ONNX session is ready
-        if (!isEmbeddingReady()) {
+        const openRouterBooksEnabled = isOpenRouterEnabledForFeature('embeddings', 'books');
+        const activeBookModelId = getActiveEmbeddingModelId('books');
+
+        // Ensure embedding backend is ready (OpenRouter cloud OR local Voyage-4-Nano ONNX)
+        if (!openRouterBooksEnabled && !isEmbeddingReady()) {
           const engineState = useOfflineEngineStore.getState();
           const embedderDownloaded =
             engineState.phase === 'ready' || engineState.groups.embedder.ready;
 
-          // If the user hasn't downloaded the Offline Engine yet and didn't force an
-          // explicit manual click, stay quietly queued until the engine finishes.
           if (!embedderDownloaded && !passForce) {
             break;
           }
@@ -1605,7 +1612,7 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           });
           await yieldToUi(16);
 
-          const ok = await initEmbeddingModel(DEFAULT_LOCAL_EMBEDDING_MODEL);
+          const ok = await ensureEmbeddingReady('books');
           if (!ok) {
             const errMsg =
               getLastEmbeddingError() ??
@@ -1638,7 +1645,7 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
           set({ embeddingActiveBookId: work.bookId });
           const [passages, alreadyEmbeddedIds] = await Promise.all([
             getLibraryPassages(work.bookId),
-            getEmbeddedPassageIdsForBook(work.bookId, DEFAULT_LOCAL_EMBEDDING_MODEL),
+            getEmbeddedPassageIdsForBook(work.bookId, activeBookModelId),
           ]);
 
           let embedded = alreadyEmbeddedIds.size;
@@ -1662,7 +1669,7 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
             status: 'embedding',
             embeddedChunks: embedded,
             totalChunks: passages.length,
-            modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
+            modelId: activeBookModelId,
             error: null,
           });
           const startedWork = await getPersonalWork(work.bookId);
@@ -1672,42 +1679,59 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
             }));
           }
 
-          for (let i = 0; i < passages.length; i++) {
+          const remainingPassages = passages.filter((p) => !alreadyEmbeddedIds.has(p.id));
+          const batchSize = openRouterBooksEnabled ? 32 : 1;
+
+          for (let i = 0; i < remainingPassages.length; i += batchSize) {
             if (embeddingPauseFlag) break;
-            const p = passages[i];
-
-            // Checkpoint resume: skip chunks already embedded in passage_vectors
-            if (alreadyEmbeddedIds.has(p.id)) continue;
-
-            // Cooperatively yield to UI thread before each chunk so taps/modals stay instant
+            const batch = remainingPassages.slice(i, i + batchSize);
             await yieldToUi();
             if (embeddingPauseFlag) break;
 
-            const titleCtx = [work.title, work.author, p.division]
-              .filter(Boolean)
-              .join(' — ');
-            const vec = await embedPassage(p.text, titleCtx);
-            if (!vec) {
-              if (!isEmbeddingReady()) {
+            const batchInput = batch.map((p) => ({
+              text: p.text,
+              titleContext: [work.title, work.author, p.division]
+                .filter(Boolean)
+                .join(' — '),
+            }));
+
+            const { modelId: usedModelId, vectors } = openRouterBooksEnabled
+              ? await embedPassagesBatch(batchInput, 'books')
+              : {
+                  modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
+                  vectors: [await embedPassage(batchInput[0].text, batchInput[0].titleContext, 'books')],
+                };
+
+            let batchFailed = false;
+            for (let j = 0; j < batch.length; j++) {
+              const vec = vectors[j];
+              if (!vec || vec.length === 0) {
+                batchFailed = true;
+                break;
+              }
+              const { quantized, scale } = quantizeVectorInt8(vec, vec.length);
+              await savePassageVectorInt8({
+                passageId: batch[j].id,
+                bookId: work.bookId,
+                modelId: usedModelId,
+                dim: vec.length,
+                scale,
+                quantized,
+              });
+              alreadyEmbeddedIds.add(batch[j].id);
+            }
+
+            if (batchFailed) {
+              if (!openRouterBooksEnabled && !isEmbeddingReady()) {
                 interrupted = true;
               } else {
                 failed = true;
               }
               break;
             }
-            const { quantized, scale } = quantizeVectorInt8(vec, EMBEDDING_DIM);
-            await savePassageVectorInt8({
-              passageId: p.id,
-              bookId: work.bookId,
-              modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
-              dim: EMBEDDING_DIM,
-              scale,
-              quantized,
-            });
-            alreadyEmbeddedIds.add(p.id);
+
             embedded = alreadyEmbeddedIds.size;
 
-            // Update live progress bar on every single passage so UI feedback is immediate
             set({
               embeddingProgress: {
                 phase: 'embedding',
@@ -1721,13 +1745,17 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
               },
             });
 
-            // Persist SQLite progress on first passage, every 5 passages, and completion
-            if (embedded === 1 || embedded % 5 === 0 || embedded === passages.length) {
+            if (
+              openRouterBooksEnabled ||
+              embedded === 1 ||
+              embedded % 5 === 0 ||
+              embedded === passages.length
+            ) {
               await updatePersonalEmbeddingState(work.bookId, {
                 status: 'embedding',
                 embeddedChunks: embedded,
                 totalChunks: passages.length,
-                modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
+                modelId: usedModelId,
               });
               const latest = await getPersonalWork(work.bookId);
               if (latest) {
@@ -1743,7 +1771,7 @@ export const usePersonalLibraryStore = create<PersonalLibraryState>((set, get) =
               status: 'pending',
               embeddedChunks: embedded,
               totalChunks: passages.length,
-              modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
+              modelId: activeBookModelId,
             });
             await get().refreshWorks();
             break;

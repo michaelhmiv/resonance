@@ -845,7 +845,7 @@ export async function saveHighlightVectorInt8(params: {
     params.quantized.byteOffset,
     params.quantized.byteLength
   );
-  const vecId = `${params.highlightId}:${params.kind}`;
+  const vecId = `${params.highlightId}:${params.kind}:${params.modelId}`;
   try {
     await db.runAsync(
       `INSERT OR REPLACE INTO highlight_vectors (

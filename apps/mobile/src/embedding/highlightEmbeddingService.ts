@@ -125,10 +125,12 @@ export async function syncHighlightToResonance(
     // Non-fatal: never interrupt the reader UX
   }
 
-  // 2. Embed immediately on-device if Voyage-4-Nano is downloaded/ready
-  if (!(await ensureEmbeddingReady())) return;
+  // 2. Embed immediately via OpenRouter (if active) or on-device Voyage-4-Nano
+  if (!(await ensureEmbeddingReady('journal'))) return;
 
   try {
+    const { getActiveEmbeddingModelId } = await import('../openrouter/openrouterStore');
+    const activeModel = getActiveEmbeddingModelId('journal');
     let changed = false;
 
     if (selectedText.length >= 4) {
@@ -139,14 +141,14 @@ export async function syncHighlightToResonance(
         contextText: extra?.contextText,
         tags: highlight.tags,
       });
-      const vec = await embedPassage(hlPrompt);
-      if (vec && vec.length === EMBEDDING_DIM) {
-        const { quantized, scale } = quantizeVectorInt8(vec);
+      const vec = await embedPassage(hlPrompt, null, 'journal');
+      if (vec && vec.length > 0) {
+        const { quantized, scale } = quantizeVectorInt8(vec, vec.length);
         await saveHighlightVectorInt8({
           highlightId: highlight.id,
           kind: 'highlight',
-          modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
-          dim: EMBEDDING_DIM,
+          modelId: activeModel,
+          dim: vec.length,
           scale,
           quantized,
           sourceLabel,
@@ -163,14 +165,14 @@ export async function syncHighlightToResonance(
         noteText,
         tags: highlight.tags,
       });
-      const noteVec = await embedPassage(notePrompt);
-      if (noteVec && noteVec.length === EMBEDDING_DIM) {
-        const { quantized, scale } = quantizeVectorInt8(noteVec);
+      const noteVec = await embedPassage(notePrompt, null, 'journal');
+      if (noteVec && noteVec.length > 0) {
+        const { quantized, scale } = quantizeVectorInt8(noteVec, noteVec.length);
         await saveHighlightVectorInt8({
           highlightId: highlight.id,
           kind: 'note',
-          modelId: DEFAULT_LOCAL_EMBEDDING_MODEL,
-          dim: EMBEDDING_DIM,
+          modelId: activeModel,
+          dim: noteVec.length,
           scale,
           quantized,
           sourceLabel,

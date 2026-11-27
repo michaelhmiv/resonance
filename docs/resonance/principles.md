@@ -23,14 +23,25 @@ Allowed LLM uses:
   packs + `Qwen3-Reranker-0.6B` INT8 ONNX yes/no scorer, both Apache 2.0,
   generating zero user-facing prose; see `bakeoff-v2-decision.md`.)*
 
+- **opt-in BYOK OpenRouter compute (ruled by Michael, 2026-11-27):** the
+  default product remains 100% local, offline, and text-focused. Users who
+  explicitly configure their own OpenRouter API key may opt into cloud
+  embeddings (any model, including non-destructive library re-embedding),
+  cloud reranking, speech-to-text voice transcription, factual photo/video
+  memory indexing, and scanned PDF OCR. Even via OpenRouter, AI remains
+  strictly a *librarian and factual memory indexer — never an author of
+  spiritual advice, diagnoses, or devotional prose*. Zero Data Retention
+  (`data_collection: "deny"`) is enabled by default, and all media and
+  transcripts remain stored locally on the user's device.
+
 Disallowed posture:
 
 - generated prayers/advice as the primary product
 - generated reflection questions or devotional prompts (Michael, 2026-11-24:
   no boilerplate questions wasting the user's time — the app leads people to
   real texts; it does not manufacture engagement filler)
-- any cloud LLM in the product path (Michael, 2026-11-24: the reader is
-  local, on-device, or there is no reader)
+- any non-opt-in cloud LLM in the default product path (without a user-supplied
+  BYOK OpenRouter key, nothing leaves the device)
 - confident spiritual diagnosis
 - treating model interpretations as source-of-truth
 

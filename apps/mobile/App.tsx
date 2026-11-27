@@ -30,6 +30,8 @@ import { useDbStore } from './src/db/dbStore';
 import { useSettingsStore } from './src/settings/settingsStore';
 import { useOfflineEngineStore } from './src/packages/offlineEngineManager';
 import { usePersonalLibraryStore } from './src/personal/personalLibraryService';
+import { useOpenRouterStore } from './src/openrouter/openrouterStore';
+import { useDiaryMediaStore } from './src/diary/diaryMediaService';
 import { backfillUnembeddedHighlights } from './src/embedding/highlightEmbeddingService';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
@@ -57,15 +59,17 @@ function AppContent(): ReactNode {
     openDatabase()
       .then((db) => {
         setReady(db);
-        // Load persisted user preferences before personal library background work
-        // so auto-embed & accessibility choices take effect from first paint.
-        void useSettingsStore
-          .getState()
-          .load()
-          .finally(() => {
-            void useOfflineEngineStore.getState().initialize();
-            void usePersonalLibraryStore.getState().initialize();
-          });
+        // Load persisted user preferences & encrypted OpenRouter key before background work
+        // so routing mode, auto-embed, and Life Diary gating take effect from first paint.
+        void Promise.all([
+          useSettingsStore.getState().load(),
+          useOpenRouterStore.getState().load(),
+          useDiaryMediaStore.getState().loadAll(),
+        ]).finally(() => {
+          void useOfflineEngineStore.getState().initialize();
+          void usePersonalLibraryStore.getState().initialize();
+          void useDiaryMediaStore.getState().processPendingMediaQueue();
+        });
         return db;
       })
       .catch((err) => {
@@ -76,8 +80,8 @@ function AppContent(): ReactNode {
       });
   }, [fontsLoaded, setLoading, setReady, setError]);
 
-  // Keep downloads, catalog syncs, personal batch imports, and embeddings resilient
-  // across backgrounding / foregrounding, and backfill highlight vectors on ready.
+  // Keep downloads, catalog syncs, personal batch imports, embeddings, and queued
+  // diary media resilient across backgrounding / foregrounding.
   useEffect(() => {
     if (status !== 'ready') return;
     const unsubReady = useOfflineEngineStore.getState().registerOnReady(() => {
@@ -87,6 +91,7 @@ function AppContent(): ReactNode {
       useOfflineEngineStore.getState().handleAppStateChange(nextState);
       if (nextState === 'active') {
         void usePersonalLibraryStore.getState().resumeBackgroundWork();
+        void useDiaryMediaStore.getState().processPendingMediaQueue();
         void backfillUnembeddedHighlights();
       }
     });

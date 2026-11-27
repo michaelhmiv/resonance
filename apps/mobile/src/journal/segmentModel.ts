@@ -16,7 +16,10 @@ export type SegmentType =
   | 'date_divider'
   | 'verse_day'
   | 'footnote'
-  | 'resonance_cards';
+  | 'resonance_cards'
+  | 'voice'
+  | 'photo'
+  | 'video';
 
 /** The full runtime shape of one journal segment. */
 export interface JournalSegment {
@@ -60,6 +63,14 @@ export function rowToSegment(row: SegmentRow): JournalSegment {
 
 export function isTextSegment(s: JournalSegment): boolean {
   return s.segment_type === 'text';
+}
+
+export function isMediaSegment(s: JournalSegment): boolean {
+  return (
+    s.segment_type === 'voice' ||
+    s.segment_type === 'photo' ||
+    s.segment_type === 'video'
+  );
 }
 
 export function isNonTextSegment(s: JournalSegment): boolean {

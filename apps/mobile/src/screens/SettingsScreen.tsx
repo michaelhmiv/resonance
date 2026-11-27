@@ -36,6 +36,8 @@ import { usePersonalLibraryStore } from '../personal/personalLibraryService';
 import { PersonalLibraryImportModal } from '../components/PersonalLibraryImportModal';
 import { LibraryCatalogModal } from '../components/LibraryCatalogModal';
 import { EmbeddingProgressCard } from '../components/EmbeddingProgressCard';
+import { OpenRouterSettingsSection } from '../components/OpenRouterSettingsSection';
+import { useOpenRouterStore } from '../openrouter/openrouterStore';
 import {
   getStorageInfo,
   clearAllJournalData,
@@ -83,6 +85,7 @@ export function SettingsScreen(): ReactNode {
       keyboardShouldPersistTaps="handled"
     >
       <OfflineEngineSection />
+      <OpenRouterSettingsSection />
       <PersonalLibrarySection />
       <ReadingPreferencesSection />
       <PrivacyDataSection />
@@ -336,9 +339,13 @@ function PersonalLibrarySection(): ReactNode {
 
   const autoEmbedPersonalFiles = useSettingsStore((s) => s.autoEmbedPersonalFiles);
   const setAutoEmbedPersonalFiles = useSettingsStore((s) => s.setAutoEmbedPersonalFiles);
-  const embedderReady = useOfflineEngineStore(
+  const localEmbedderReady = useOfflineEngineStore(
     (s) => s.phase === 'ready' || s.groups.embedder.ready
   );
+  const openRouterEmbedReady = useOpenRouterStore(
+    (s) => s.hasKey && s.routingMode !== 'local_only' && s.features.embeddings && !s.creditsExhausted
+  );
+  const embedderReady = localEmbedderReady || openRouterEmbedReady;
 
   const [importVisible, setImportVisible] = useState(false);
 

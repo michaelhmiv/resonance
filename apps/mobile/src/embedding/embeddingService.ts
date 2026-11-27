@@ -19,13 +19,24 @@ import {
   blobToVector,
   cosineSimilarity,
   getModelInfo,
+  isVoyage4SharedSpace,
   l2Normalize,
+  modelSupportsContextualEmbeddings,
+  modelSupportsMultimodalEmbeddings,
   quantizeVectorInt8,
   vectorToBlob,
   type EmbeddingModelId,
   type EmbeddingModelInfo,
 } from '@resonance/core';
 import { getEmbedderModelPaths } from '../packages/offlineEngineManager';
+import {
+  getActiveEmbeddingModelId,
+  isOpenRouterEnabledForFeature,
+} from '../openrouter/openrouterStore';
+import {
+  embedMultimodalViaOpenRouter,
+  embedTextsViaOpenRouter,
+} from '../openrouter/openrouterClient';
 
 export {
   EMBEDDING_DIM,
@@ -298,10 +309,18 @@ export async function initEmbeddingModel(
 }
 
 /**
- * Lazily initializes the Voyage-4-Nano ONNX session if weights are downloaded
- * on disk and the session hasn't been loaded yet in this app launch.
+ * Ensures an embedding backend is ready for the given scope:
+ *   - If OpenRouter embeddings are enabled for this scope, returns `true`
+ *     immediately (no local 411 MB model download required!).
+ *   - Otherwise lazily initializes on-device Voyage-4-Nano ONNX.
  */
-export async function ensureEmbeddingReady(): Promise<boolean> {
+export async function ensureEmbeddingReady(
+  scope: 'books' | 'journal' | 'general' = 'general'
+): Promise<boolean> {
+  if (isOpenRouterEnabledForFeature('embeddings', scope)) {
+    lastEmbeddingError = null;
+    return true;
+  }
   if (isEmbeddingReady()) return true;
   return initEmbeddingModel(DEFAULT_LOCAL_EMBEDDING_MODEL);
 }
@@ -409,24 +428,180 @@ async function embedRawText(text: string): Promise<Float32Array | null> {
   }
 }
 
-/** Embed a user journal query (applies Voyage-4-Nano query instruction prefix). */
-export async function embedQuery(text: string): Promise<Float32Array | null> {
-  return embedRawText(`${VOYAGE_QUERY_PREFIX}${text.trim()}`);
+/**
+ * Embed a user journal or search query via OpenRouter (if enabled) or
+ * on-device Voyage-4-Nano. When using a Voyage-4 OpenRouter model and offline,
+ * falls back cleanly to local Voyage-4-Nano if installed.
+ */
+export async function embedQuery(
+  text: string,
+  scope: 'journal' | 'general' = 'journal'
+): Promise<Float32Array | null> {
+  const cleaned = text.trim();
+  if (!cleaned) return null;
+
+  if (isOpenRouterEnabledForFeature('embeddings', scope)) {
+    const modelId = getActiveEmbeddingModelId(scope === 'journal' ? 'journal' : 'search');
+    try {
+      const [vec] = await embedTextsViaOpenRouter([cleaned], {
+        modelId,
+        inputType: 'query',
+      });
+      if (vec && vec.length > 0) {
+        lastEmbeddingError = null;
+        return vec;
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      lastEmbeddingError = `OpenRouter embedding failed: ${msg}`;
+      if (!isVoyage4SharedSpace(modelId)) {
+        // Never mix incompatible local Voyage-4 vectors into a custom model space
+        return null;
+      }
+      // Fall back to local Voyage-4-Nano when in shared Voyage-4 space
+      if (!isEmbeddingReady()) {
+        await initEmbeddingModel(DEFAULT_LOCAL_EMBEDDING_MODEL);
+      }
+    }
+  }
+
+  return embedRawText(`${VOYAGE_QUERY_PREFIX}${cleaned}`);
 }
 
-/** Embed a Library or Personal Library passage (exact bake-off v2 document prefix). */
+/**
+ * Embed a Library, Personal Library, or Highlight passage via OpenRouter (if
+ * enabled for the given scope) or on-device Voyage-4-Nano.
+ */
 export async function embedPassage(
   text: string,
-  titleContext?: string | null
+  titleContext?: string | null,
+  scope: 'books' | 'journal' | 'general' = 'books'
 ): Promise<Float32Array | null> {
-  const payload =
+  const cleaned = text.trim();
+  if (!cleaned) return null;
+  const docBody =
     titleContext && titleContext.trim().length > 0
-      ? `${VOYAGE_DOC_PREFIX}[${titleContext.trim()}]\n${text.trim()}`
-      : `${VOYAGE_DOC_PREFIX}${text.trim()}`;
-  return embedRawText(payload);
+      ? `[${titleContext.trim()}]\n${cleaned}`
+      : cleaned;
+
+  if (isOpenRouterEnabledForFeature('embeddings', scope)) {
+    const modelId = getActiveEmbeddingModelId(scope === 'books' ? 'books' : 'journal');
+    try {
+      const [vec] = await embedTextsViaOpenRouter([docBody], {
+        modelId,
+        inputType: 'document',
+      });
+      if (vec && vec.length > 0) {
+        lastEmbeddingError = null;
+        return vec;
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      lastEmbeddingError = `OpenRouter embedding failed: ${msg}`;
+      if (!isVoyage4SharedSpace(modelId)) {
+        return null;
+      }
+      if (!isEmbeddingReady()) {
+        await initEmbeddingModel(DEFAULT_LOCAL_EMBEDDING_MODEL);
+      }
+    }
+  }
+
+  return embedRawText(`${VOYAGE_DOC_PREFIX}${docBody}`);
+}
+
+/**
+ * High-throughput batch passage embedding:
+ *   - Uses a single OpenRouter batch request when OpenRouter is active
+ *     (making Personal Library book embedding ~20x faster).
+ *   - Falls back to sequential local ONNX otherwise.
+ */
+export async function embedPassagesBatch(
+  items: Array<{ text: string; titleContext?: string | null }>,
+  scope: 'books' | 'journal' = 'books'
+): Promise<{ modelId: string; vectors: Array<Float32Array | null> }> {
+  if (items.length === 0) {
+    return { modelId: getActiveEmbeddingModelId(scope), vectors: [] };
+  }
+
+  if (isOpenRouterEnabledForFeature('embeddings', scope)) {
+    const modelId = getActiveEmbeddingModelId(scope);
+    const docs = items.map((item) => {
+      const cleaned = item.text.trim();
+      return item.titleContext && item.titleContext.trim().length > 0
+        ? `[${item.titleContext.trim()}]\n${cleaned}`
+        : cleaned;
+    });
+    try {
+      const vecs = await embedTextsViaOpenRouter(docs, {
+        modelId,
+        inputType: 'document',
+        contextualDocumentChunks: modelSupportsContextualEmbeddings(modelId),
+      });
+      lastEmbeddingError = null;
+      return {
+        modelId,
+        vectors: items.map((_, i) => vecs[i] ?? null),
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      lastEmbeddingError = `OpenRouter batch embedding failed: ${msg}`;
+      if (!isVoyage4SharedSpace(modelId)) {
+        return { modelId, vectors: items.map(() => null) };
+      }
+      if (!isEmbeddingReady()) {
+        await initEmbeddingModel(DEFAULT_LOCAL_EMBEDDING_MODEL);
+      }
+    }
+  }
+
+  const out: Array<Float32Array | null> = [];
+  for (const item of items) {
+    const cleaned = item.text.trim();
+    const docBody =
+      item.titleContext && item.titleContext.trim().length > 0
+        ? `[${item.titleContext.trim()}]\n${cleaned}`
+        : cleaned;
+    out.push(await embedRawText(`${VOYAGE_DOC_PREFIX}${docBody}`));
+  }
+  return { modelId: DEFAULT_LOCAL_EMBEDDING_MODEL, vectors: out };
+}
+
+/**
+ * Embed a photo memory — uses direct multimodal `image_url` + text embedding
+ * automatically when the user's active OpenRouter embedding model supports
+ * image inputs (`cohere/embed-5-pro`, `gemini-embedding-2-preview`, etc.),
+ * otherwise embeds the rich factual text (`caption + people + summary + OCR`).
+ */
+export async function embedMultimodalMemory(params: {
+  text: string;
+  imageDataUri?: string | null;
+}): Promise<{ modelId: string; vector: Float32Array | null }> {
+  const modelId = getActiveEmbeddingModelId('journal');
+  if (
+    params.imageDataUri &&
+    isOpenRouterEnabledForFeature('embeddings', 'journal') &&
+    modelSupportsMultimodalEmbeddings(modelId)
+  ) {
+    try {
+      const vec = await embedMultimodalViaOpenRouter({
+        imageDataUri: params.imageDataUri,
+        text: params.text,
+        modelId,
+      });
+      if (vec && vec.length > 0) {
+        return { modelId, vector: vec };
+      }
+    } catch (err) {
+      console.warn('[embeddingService] multimodal embed fallback to text:', err);
+    }
+  }
+
+  const textVec = await embedQuery(params.text, 'journal');
+  return { modelId, vector: textVec };
 }
 
 /** Backward-compatible alias used by existing journal callers. */
 export async function embedText(text: string): Promise<Float32Array | null> {
-  return embedQuery(text);
+  return embedQuery(text, 'journal');
 }
