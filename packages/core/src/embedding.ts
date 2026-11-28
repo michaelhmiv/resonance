@@ -658,7 +658,8 @@ export function modelSupportsMultimodalEmbeddings(modelId: string): boolean {
     norm.includes('cohere/embed-v4') ||
     norm.includes('pplx-embed-v2') ||
     norm.includes('voyage-multimodal') ||
-    norm.includes('titan-embed-image')
+    norm.includes('titan-embed-image') ||
+    norm.includes('nemotron-3.5-embed')
   );
 }
 
