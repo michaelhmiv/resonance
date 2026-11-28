@@ -23,6 +23,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import {
   isVoyage4SharedSpace,
+  modelSupportsMultimodalEmbeddings,
   type OpenRouterModelCatalogEntry,
   type OpenRouterRoutingMode,
 } from '@resonance/core';
@@ -587,7 +588,13 @@ export function OpenRouterSettingsSection({
             <ModelPickerRow
               label="Embedding model"
               value={embeddingModel}
-              badge={isVoyage4 ? 'Zero re-embed' : 'Custom space'}
+              badge={
+                isVoyage4
+                  ? 'Zero re-embed'
+                  : modelSupportsMultimodalEmbeddings(embeddingModel)
+                    ? 'Pixel + Text'
+                    : 'Custom space'
+              }
               onPress={() => void openModelPicker('embedding')}
             />
             <Pressable
@@ -713,6 +720,14 @@ export function OpenRouterSettingsSection({
           </View>
 
           <View style={styles.modalSearchWrap}>
+            {pickerSlot === 'embedding' ? (
+              <Text style={styles.pickerGuideNote}>
+                Voice, Photos &amp; Videos work with any embedding model — your Transcription &amp;
+                Vision models turn them into searchable text first. Pick Voyage 4 for zero
+                re-embedding, or choose Gemini Embedding 2 / Cohere Embed 5 if you also want raw
+                image pixels embedded directly (requires one-time library re-embed).
+              </Text>
+            ) : null}
             <TextInput
               value={catalogSearch}
               onChangeText={setCatalogSearch}
@@ -1307,6 +1322,18 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
     borderBottomWidth: 1,
     borderColor: colors.border,
+  },
+  pickerGuideNote: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.textSecondary,
+    backgroundColor: '#f5f1e8',
+    borderRadius: radii.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    padding: spacing.sm,
+    marginTop: spacing.sm,
   },
   customIdRow: {
     flexDirection: 'row',

@@ -25,6 +25,7 @@ import {
   type IndexCoverageReport,
   type ScopeCoverageStatus,
 } from '../openrouter/indexStatusService';
+import { modelSupportsMultimodalEmbeddings } from '@resonance/core';
 import { useOpenRouterStore } from '../openrouter/openrouterStore';
 import { useOfflineEngineStore } from '../packages/offlineEngineManager';
 import { usePersonalLibraryStore } from '../personal/personalLibraryService';
@@ -264,11 +265,20 @@ export function ResonanceEngineOverviewCard({
                 size={15}
                 color={pipeline.isVoyage4Space ? '#3f734e' : '#9c6419'}
               />
-              <Text style={styles.spaceCalloutText}>
-                {pipeline.isVoyage4Space
-                  ? 'Shared Voyage-4 Space: Pre-embedded Bible & Church packs work right away with zero re-embedding, and On-Device + OpenRouter Voyage-4 vectors mix seamlessly.'
-                  : `Custom Vector Space (${formatShortModelName(pipeline.activeSearchModel)}): Pre-embedded Voyage-4 packs cannot be mixed with this model. Only items marked green below are searchable until re-embedded. Your Voyage-4 packs stay safe if you switch back.`}
-              </Text>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text style={styles.spaceCalloutText}>
+                  {pipeline.isVoyage4Space
+                    ? 'Shared Voyage-4 Space: Pre-embedded Bible & Church packs work right away with zero re-embedding, and On-Device + OpenRouter Voyage-4 vectors mix seamlessly.'
+                    : `Custom Vector Space (${formatShortModelName(pipeline.activeSearchModel)}): Pre-embedded Voyage-4 packs cannot be mixed with this model. Only items marked green below are searchable until re-embedded. Your Voyage-4 packs stay safe if you switch back.`}
+                </Text>
+                {pipeline.diaryEngine === 'cloud' ? (
+                  <Text style={styles.multimodalNote}>
+                    {modelSupportsMultimodalEmbeddings(pipeline.activeSearchModel)
+                      ? `Multimodal indexing: Native pixel + text vectors via ${formatShortModelName(pipeline.activeSearchModel)} (photos are embedded directly as images + text).`
+                      : 'Multimodal indexing: Voice, Photos & Videos do NOT require a Google/multimodal embedder — Whisper & Gemini Vision turn speech, scenes, and OCR into text first, which works with Voyage-4 or any embedder. Switching to Gemini Embedding 2 or Cohere Embed 5 is optional if you also want raw image pixels embedded directly.'}
+                  </Text>
+                ) : null}
+              </View>
             </View>
 
             <View style={styles.divider} />
@@ -476,11 +486,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#fbf5e9',
   },
   spaceCalloutText: {
-    flex: 1,
     fontFamily: fontFamilies.sans,
     fontSize: 12.5,
     lineHeight: 18,
     color: colors.textPrimary,
+  },
+  multimodalNote: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.textSecondary,
   },
   coverageBlock: {
     padding: spacing.md,
