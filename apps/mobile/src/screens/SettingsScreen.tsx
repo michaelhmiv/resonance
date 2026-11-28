@@ -145,6 +145,7 @@ function OfflineEngineSection(): ReactNode {
   const [statusNote, setStatusNote] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [catalogVisible, setCatalogVisible] = useState(false);
+  const [offlineExpanded, setOfflineExpanded] = useState(false);
 
   useEffect(() => {
     void refreshStatus();
@@ -191,25 +192,23 @@ function OfflineEngineSection(): ReactNode {
 
   const embedderStatusLabel = groups.embedder.ready
     ? cloudEmbedActive
-      ? cloudIsVoyage4
-        ? 'Voyage-4-Nano · Standby (offline fallback)'
-        : 'Voyage-4-Nano · Standby (cloud custom model active)'
+      ? 'Voyage-4-Nano · Standby'
       : 'Voyage-4-Nano 512d · Active'
     : cloudEmbedActive
-      ? `Optional · Cloud active (${formatBytes(groups.embedder.totalBytes)})`
+      ? `Optional · ${formatBytes(groups.embedder.totalBytes)}`
       : `Not downloaded · ${formatBytes(groups.embedder.totalBytes)}`;
 
   const rerankerLabel =
     rerankerPhase === 'ready' || groups.reranker.ready
       ? cloudRerankActive
-        ? 'Qwen3-0.6B · Standby (Cloud reranker active)'
+        ? 'Qwen3-0.6B · Standby'
         : 'Qwen3-Reranker-0.6B · Active'
       : rerankerPhase === 'downloading'
         ? `Downloading (${rerankerPct}%)`
         : rerankerPhase === 'paused'
           ? `Paused (${rerankerPct}%)`
           : cloudRerankActive
-            ? `Not needed · Cloud reranker active (${rerankerSizeLabel})`
+            ? `Optional · ${rerankerSizeLabel}`
             : `Optional · ${rerankerSizeLabel}`;
 
   const totalCatalogWorks = corpusManifest.works?.length || 72;
@@ -230,18 +229,63 @@ function OfflineEngineSection(): ReactNode {
     }
   }, [syncCorpusManifest]);
 
+  const isDownloadingAnything =
+    phase === 'downloading' || rerankerPhase === 'downloading';
+  const isCollapsed = cloudEmbedActive && !offlineExpanded && !isDownloadingAnything;
+
+  if (isCollapsed) {
+    return (
+      <View style={styles.collapsedSectionWrap}>
+        <Pressable
+          onPress={() => setOfflineExpanded(true)}
+          style={styles.collapsedCard}
+          accessibilityRole="button"
+        >
+          <View style={{ flex: 1, paddingRight: spacing.sm }}>
+            <Text style={styles.collapsedTitle}>Offline Fallback &amp; Library Packs</Text>
+            <Text style={styles.collapsedSub} numberOfLines={1}>
+              {installedWorkIds.length} Church books ·{' '}
+              {groups.embedder.ready ? 'Local fallback ready' : 'Optional while Cloud is active'}
+            </Text>
+          </View>
+          <Text style={styles.collapsedChevron}>▾</Text>
+        </Pressable>
+        <LibraryCatalogModal
+          visible={catalogVisible}
+          onClose={() => setCatalogVisible(false)}
+        />
+      </View>
+    );
+  }
+
   return (
     <Section
-      title="Offline Engine & Pre-Embedded Packs"
+      title={
+        cloudEmbedActive
+          ? 'Offline Fallback & Library Packs'
+          : 'Offline Engine & Library Packs'
+      }
       description={
         cloudEmbedActive
           ? cloudIsVoyage4
-            ? `OpenRouter (${formatShortModelName(orEmbeddingModel)}) is active online. The WEB Bible & Church Library packs below ship pre-embedded in the same Voyage-4 512d space (zero API cost). The 411 MB local model is optional for offline fallback.`
-            : `OpenRouter (${formatShortModelName(orEmbeddingModel)}) is active in its own vector space. The 411 MB local embedder and 583 MB local reranker are optional unless you switch back to On-Device mode.`
-          : 'On-device passage search & pre-embedded Voyage-4 512d library packs. Never generates prose, prayers, or advice.'
+            ? `Cloud (${formatShortModelName(orEmbeddingModel)}) is active. Bible & Church packs ship pre-embedded in Voyage-4 512d; local models are optional for offline fallback.`
+            : `Cloud (${formatShortModelName(orEmbeddingModel)}) is active. Local ONNX models are only needed if you switch back to On-Device mode.`
+          : 'On-device passage search & pre-embedded Voyage-4 512d library packs.'
       }
     >
-      <InfoRow label="Pre-embedded Bible pack" value={groups.corpus.ready ? 'Ready (~4 MB · Voyage-4)' : phaseLabel} />
+      {cloudEmbedActive ? (
+        <>
+          <ActionRow
+            label="Collapse offline fallback section ▴"
+            onPress={() => setOfflineExpanded(false)}
+          />
+          <RowDivider />
+        </>
+      ) : null}
+      <InfoRow
+        label="Pre-embedded Bible pack"
+        value={groups.corpus.ready ? 'Ready (~4 MB · Voyage-4)' : phaseLabel}
+      />
       <RowDivider />
       <InfoRow label="Local embedder" value={embedderStatusLabel} />
       <RowDivider />
@@ -252,14 +296,9 @@ function OfflineEngineSection(): ReactNode {
         value={`${installedWorkIds.length} / ${totalCatalogWorks} pre-embedded books`}
       />
       <RowDivider />
-      <InfoRow
-        label="Fusion & Silence"
-        value={`α=${OFFLINE_ENGINE_MANIFEST.fusionAlpha.toFixed(2)} · τ=${OFFLINE_ENGINE_MANIFEST.silenceThreshold.toFixed(2)}`}
-      />
-      <RowDivider />
       <ToggleRow
         label="Prefer Wi-Fi for downloads"
-        hint={`Recommended for the ~${coreSizeLabel} one-time core engine download.`}
+        hint={`Recommended for the ~${coreSizeLabel} one-time download.`}
         value={wifiOnly}
         onToggle={(v) => void setWifiOnly(v)}
       />
@@ -432,27 +471,15 @@ function PersonalLibrarySection(): ReactNode {
   const manualEmbedCount = pendingCount + errorCount;
   useOpenRouterStore((s) => s.embeddingModel);
   const activeBookModel = getActiveEmbeddingModelId('books');
-  const activeBookEngineLabel = openRouterEmbedReady
-    ? `OpenRouter · ${formatShortModelName(activeBookModel)}`
-    : 'On-Device · Voyage-4-Nano';
 
   return (
     <Section
       title="Personal Library"
-      description={
-        openRouterEmbedReady
-          ? `Import individual books or link a folder (EPUB, PDF, DOCX, HTML, Markdown, TXT). Files stay stored on your phone and embed via ${activeBookEngineLabel}.`
-          : 'Import individual books or link a folder from your device, Google Drive, or iCloud (EPUB, PDF, DOCX, HTML, Markdown, TXT). Extracted, editable, and embedded 100% locally.'
-      }
+      description="Import EPUB, PDF, DOCX, Markdown, or TXT files from your device or cloud folder."
     >
       <InfoRow
         label="Connected folder"
         value={connectedFolderLabel ?? 'Not linked'}
-      />
-      <RowDivider />
-      <InfoRow
-        label="Active book embedder"
-        value={activeBookEngineLabel}
       />
       <RowDivider />
       <InfoRow
@@ -468,8 +495,8 @@ function PersonalLibrarySection(): ReactNode {
         label="Auto-embed added files"
         hint={
           openRouterEmbedReady
-            ? `Automatically embed newly imported books via OpenRouter (${formatShortModelName(activeBookModel)}) for echoes and semantic search.`
-            : 'Automatically embed newly imported books and notes on-device for Resonance echoes and semantic search.'
+            ? `Embeds newly imported books via OpenRouter (${formatShortModelName(activeBookModel)}).`
+            : 'Embeds newly imported books on-device (Voyage-4-Nano).'
         }
         value={autoEmbedPersonalFiles}
         onToggle={handleToggleAutoEmbed}
@@ -966,5 +993,34 @@ const styles = StyleSheet.create({
   },
   embeddingCard: {
     marginTop: spacing.sm,
+  },
+  collapsedSectionWrap: {
+    marginBottom: spacing.xl,
+  },
+  collapsedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 13,
+  },
+  collapsedTitle: {
+    fontFamily: fontFamilies.sansMedium,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  collapsedSub: {
+    fontFamily: fontFamilies.sans,
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  collapsedChevron: {
+    fontSize: 14,
+    color: colors.textTertiary,
   },
 });

@@ -1,3 +1,4 @@
-Resonance Android Preview — Clear Multimodal Embedding Guidance & GA Gemini Embedding 2:
-• Clarifies right inside Settings (Active Engine Overview & Embedding Model Picker) that Voice, Photos, and Videos do NOT require a Google/multimodal embedder — Whisper & Gemini Vision turn speech, scenes, and OCR into searchable text first (working seamlessly with default Voyage-4 and zero re-embedding).
-• Marks native pixel+text multimodal embedders (updated to GA google/gemini-embedding-2, plus Cohere Embed 5 Pro, Perplexity Context, Voyage Multimodal, and NVIDIA Nemotron) with clear badges as an optional upgrade for direct image-pixel embeddings.
+Resonance Android Preview — Consolidated, Clutter-Free Settings:
+• Dramatically simplified Settings: when OpenRouter Cloud is active, the entire Offline Engine & Library Packs section auto-collapses into a single quiet 1-line row (tap to expand anytime). When on pure On-Device mode, OpenRouter collapses into a single optional setup row.
+• Compact Resonance Engine overview card with collapsible Index Coverage (auto-expands only when re-embedding or a Bible pack download is needed).
+• Streamlined OpenRouter card: 1-line collapsible key status row, clean model pickers, and a collapsed "Features, Privacy & Spend" drawer so Settings stays calm and scannable.

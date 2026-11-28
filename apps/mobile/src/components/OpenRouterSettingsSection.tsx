@@ -111,6 +111,9 @@ export function OpenRouterSettingsSection({
   const [keyDraft, setKeyDraft] = useState('');
   const [editingKey, setEditingKey] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [keyManageOpen, setKeyManageOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   // Live Model Picker modal state
   const [pickerSlot, setPickerSlot] = useState<ModelSlot | null>(null);
@@ -318,23 +321,40 @@ export function OpenRouterSettingsSection({
     };
   }, [reembedPlan, selectedScopes]);
 
+  const enabledFeaturesCount = Object.values(features).filter(Boolean).length;
+
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.sectionTitle}>OpenRouter (Optional BYOK)</Text>
-      <Text style={styles.sectionDesc}>
-        Resonance works 100% offline by default. Optionally add your own OpenRouter API key
-        to unlock cloud embeddings (any model), frontier reranking, scanned PDF OCR, and the
-        Multimodal Life Diary (voice notes, photos, and videos).
-      </Text>
+      <Text style={styles.sectionTitle}>OpenRouter Cloud</Text>
 
       <View style={styles.card}>
-        {/* 1. API Key setup / status */}
-        {!hasKey || editingKey ? (
+        {/* A. No key yet -> collapses to a single quiet expandable row */}
+        {!hasKey && !setupOpen ? (
+          <Pressable
+            onPress={() => setSetupOpen(true)}
+            style={styles.actionRow}
+            accessibilityRole="button"
+          >
+            <View style={{ flex: 1, paddingRight: spacing.sm }}>
+              <Text style={styles.label}>Add OpenRouter API key (optional)</Text>
+              <Text style={styles.hint}>
+                Unlock cloud models, cloud reranking, PDF OCR &amp; Life Diary
+              </Text>
+            </View>
+            <Feather name="chevron-down" size={16} color={colors.textTertiary} />
+          </Pressable>
+        ) : !hasKey || editingKey ? (
           <View style={styles.block}>
-            <Text style={styles.label}>OpenRouter API Key</Text>
+            <View style={styles.keyHeaderRow}>
+              <Text style={styles.label}>OpenRouter API Key</Text>
+              {!hasKey ? (
+                <Pressable onPress={() => setSetupOpen(false)} hitSlop={8}>
+                  <Feather name="chevron-up" size={16} color={colors.textTertiary} />
+                </Pressable>
+              ) : null}
+            </View>
             <Text style={styles.hint}>
-              Stored encrypted in your device keychain. Text or media you process via OpenRouter
-              is sent only to your chosen provider.
+              Encrypted in Android Keystore / iOS Keychain. Zero Data Retention is on by default.
             </Text>
             <TextInput
               value={keyDraft}
@@ -358,7 +378,7 @@ export function OpenRouterSettingsSection({
                 {verifying ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.primaryBtnText}>Save & Verify Key</Text>
+                  <Text style={styles.primaryBtnText}>Save &amp; Verify Key</Text>
                 )}
               </Pressable>
               {editingKey ? (
@@ -382,77 +402,14 @@ export function OpenRouterSettingsSection({
             </View>
           </View>
         ) : (
-          <View style={styles.block}>
-            <View style={styles.keyHeaderRow}>
-              <View style={styles.keyStatusLeft}>
-                <View
-                  style={[
-                    styles.statusDot,
-                    {
-                      backgroundColor: creditsExhausted
-                        ? '#a85c5c'
-                        : keyStatus?.valid === false
-                          ? '#a85c5c'
-                          : '#4a7c59',
-                    },
-                  ]}
-                />
-                <Text style={styles.label}>
-                  {creditsExhausted
-                    ? 'Credits exhausted (HTTP 402)'
-                    : keyStatus?.valid
-                      ? `Connected${keyStatus.label ? ` · ${keyStatus.label}` : ''}`
-                      : 'API key saved'}
-                </Text>
-              </View>
-              <Pressable onPress={() => void handleRefreshKey()} hitSlop={8}>
-                {verifying ? (
-                  <ActivityIndicator size="small" color={colors.accent} />
-                ) : (
-                  <Feather name="refresh-cw" size={16} color={colors.textSecondary} />
-                )}
-              </Pressable>
-            </View>
-
-            {keyStatus?.limitRemainingUsd != null ? (
-              <Text style={styles.hint}>
-                Key remaining limit: {formatUsd(keyStatus.limitRemainingUsd)}
-                {keyStatus.limitUsd != null ? ` / ${formatUsd(keyStatus.limitUsd)}` : ''}
-              </Text>
-            ) : null}
-            {keyStatus?.error || lastError ? (
-              <Text style={styles.errorText}>{keyStatus?.error ?? lastError}</Text>
-            ) : null}
-
-            <View style={styles.btnRow}>
-              <Pressable
-                onPress={() => {
-                  setKeyDraft('');
-                  setEditingKey(true);
-                }}
-                style={styles.ghostBtn}
-              >
-                <Text style={styles.ghostBtnText}>Change key</Text>
-              </Pressable>
-              <Pressable onPress={handleRemoveKey} style={styles.dangerGhostBtn}>
-                <Text style={styles.dangerGhostText}>Remove key</Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
-
-        {/* Controls below unlock once key is configured */}
-        {hasKey ? (
           <>
-            <View style={styles.divider} />
-
-            {/* 2. Routing Mode */}
+            {/* 1. Compact Routing Mode Bar */}
             <View style={styles.block}>
-              <Text style={styles.label}>Routing Mode</Text>
+              <Text style={styles.label}>Mode</Text>
               <View style={styles.pillGroup}>
                 {(
                   [
-                    { id: 'local_only', label: 'On-Device Only' },
+                    { id: 'local_only', label: 'On-Device' },
                     { id: 'cloud_with_fallback', label: 'OpenRouter Cloud' },
                     { id: 'hybrid_books_only', label: 'Hybrid (Books)' },
                   ] as Array<{ id: OpenRouterRoutingMode; label: string }>
@@ -488,210 +445,272 @@ export function OpenRouterSettingsSection({
               </View>
               <Text style={styles.hint}>
                 {routingMode === 'local_only'
-                  ? 'Paused — all features run strictly on-device.'
+                  ? 'Cloud paused — everything runs strictly on-device.'
                   : routingMode === 'hybrid_books_only'
-                    ? 'Books & PDF OCR embed via OpenRouter; journal entries stay strictly on-device (requires Voyage-4 space).'
-                    : isVoyage4
-                      ? 'Uses OpenRouter when online and falls back seamlessly to on-device Voyage-4-Nano when offline.'
-                      : 'Uses your custom OpenRouter embedding space when online. Diary captures made offline auto-queue until reconnected.'}
+                    ? 'Books & PDF OCR run on OpenRouter; Journal stays strictly local.'
+                    : features.voice || features.photosAndVideos
+                      ? 'Life Diary (Voice, Photo, Video) & Cloud models are active.'
+                      : 'Cloud models active · Life Diary media toggles are off below.'}
               </Text>
-              <View
-                style={[
-                  styles.diaryStatusPill,
-                  routingMode === 'cloud_with_fallback' &&
-                  (features.voice || features.photosAndVideos)
-                    ? styles.diaryStatusPillActive
-                    : styles.diaryStatusPillPaused,
-                ]}
-              >
-                <Feather
-                  name={
-                    routingMode === 'cloud_with_fallback' &&
-                    (features.voice || features.photosAndVideos)
-                      ? 'check-circle'
-                      : 'info'
-                  }
-                  size={13}
-                  color={
-                    routingMode === 'cloud_with_fallback' &&
-                    (features.voice || features.photosAndVideos)
-                      ? '#3f6d4c'
-                      : colors.textSecondary
-                  }
-                />
-                <Text style={styles.diaryStatusText}>
-                  {routingMode === 'cloud_with_fallback' &&
-                  (features.voice || features.photosAndVideos)
-                    ? 'Life Diary active in Journal — Voice, Photo, Video & Memories are unlocked.'
-                    : routingMode === 'hybrid_books_only'
-                      ? 'Hybrid mode keeps Journal local — switch to OpenRouter Cloud to show Voice, Photo & Video in Journal.'
-                      : routingMode === 'local_only'
-                        ? 'Paused — switch to OpenRouter Cloud to unlock Voice, Photo & Video in Journal.'
-                        : 'Enable Voice or Photos & Videos below to show the capture bar in Journal.'}
-                </Text>
-              </View>
             </View>
 
             <View style={styles.divider} />
 
-            {/* 3. Per-Feature Toggles */}
-            <ToggleLine
-              label="Cloud Embeddings"
-              hint="Use OpenRouter to embed books, journal entries, highlights, and searches."
-              value={features.embeddings}
-              onChange={(v) => {
-                setFeature('embeddings', v);
-                clearLibraryVectors();
-                clearHighlightVectors();
-              }}
-            />
-            <View style={styles.divider} />
-            <ToggleLine
-              label="Cloud Neural Reranking"
-              hint="Rerank top matches on OpenRouter (e.g. Qwen3-Reranker-8B) without the 583 MB local model."
-              value={features.reranking}
-              onChange={(v) => setFeature('reranking', v)}
-            />
-            <View style={styles.divider} />
-            <ToggleLine
-              label="Voice Diary & Transcription"
-              hint={
-                routingMode === 'cloud_with_fallback'
-                  ? 'Unlock the Voice recorder in Journal with OpenRouter speech-to-text.'
-                  : 'Requires Routing Mode = OpenRouter Cloud to appear in Journal.'
-              }
-              value={features.voice}
-              onChange={(v) => setFeature('voice', v)}
-            />
-            <View style={styles.divider} />
-            <ToggleLine
-              label="Photos & Videos (Life Diary)"
-              hint={
-                routingMode === 'cloud_with_fallback'
-                  ? 'Unlock Photo & Video capture, People tags, handwritten OCR, and Memories gallery.'
-                  : 'Requires Routing Mode = OpenRouter Cloud to appear in Journal.'
-              }
-              value={features.photosAndVideos}
-              onChange={(v) => setFeature('photosAndVideos', v)}
-            />
-            <View style={styles.divider} />
-            <ToggleLine
-              label="Scanned PDF OCR"
-              hint="Allow transcribing image-only PDFs in your Personal Library via OpenRouter Vision."
-              value={features.scannedPdfOcr}
-              onChange={(v) => setFeature('scannedPdfOcr', v)}
-            />
-
-            <View style={styles.divider} />
-
-            {/* 4. Model Pickers */}
-            <ModelPickerRow
-              label="Embedding model"
-              value={embeddingModel}
-              badge={
-                isVoyage4
-                  ? 'Zero re-embed'
-                  : modelSupportsMultimodalEmbeddings(embeddingModel)
-                    ? 'Pixel + Text'
-                    : 'Custom space'
-              }
-              onPress={() => void openModelPicker('embedding')}
-            />
+            {/* 2. Collapsible 1-line Key Status Row */}
             <Pressable
-              onPress={() => void openReembedSheet(embeddingModel)}
-              style={styles.reembedCallout}
+              onPress={() => setKeyManageOpen((v) => !v)}
+              style={styles.actionRow}
             >
-              <Feather name="layers" size={15} color={colors.accent} />
-              <Text style={styles.reembedCalloutText}>
-                {reembed.running
-                  ? `Re-embedding (${reembed.completed}/${reembed.total})…`
-                  : isVoyage4
-                    ? 'Inspect or re-embed Journal, Highlights & Personal books'
-                    : 'Re-embed Bible, Church & Personal libraries for this model'}
-              </Text>
-              <Feather name="chevron-right" size={16} color={colors.accent} />
-            </Pressable>
-            <View style={styles.divider} />
-            <ModelPickerRow
-              label="Reranker model"
-              value={rerankerModel}
-              onPress={() => void openModelPicker('reranker')}
-            />
-            <View style={styles.divider} />
-            <ModelPickerRow
-              label="Voice transcription model"
-              value={transcriptionModel}
-              onPress={() => void openModelPicker('transcription')}
-            />
-            <View style={styles.divider} />
-            <ModelPickerRow
-              label="Vision / Video / OCR model"
-              value={visionModel}
-              onPress={() => void openModelPicker('vision')}
-            />
-
-            <View style={styles.divider} />
-
-            {/* 5. Privacy & Spend Guardrails */}
-            <ToggleLine
-              label="Zero Data Retention (deny logging)"
-              hint="Sends provider.data_collection = 'deny' so providers do not store or train on your diary."
-              value={zeroDataRetention}
-              onChange={setZeroDataRetention}
-            />
-            <View style={styles.divider} />
-
-            <View style={styles.block}>
-              <Text style={styles.label}>Monthly spend alert</Text>
-              <View style={styles.pillGroup}>
-                {BUDGET_PRESETS.map((p) => {
-                  const active = monthlyBudgetUsd === p.value;
-                  return (
-                    <Pressable
-                      key={p.label}
-                      onPress={() => setMonthlyBudgetUsd(p.value)}
-                      style={[styles.budgetPill, active && styles.modePillActive]}
-                    >
-                      <Text
-                        style={[
-                          styles.modePillText,
-                          active && styles.modePillTextActive,
-                        ]}
-                      >
-                        {p.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+              <View style={styles.keyStatusLeft}>
+                <View
+                  style={[
+                    styles.statusDot,
+                    {
+                      backgroundColor: creditsExhausted
+                        ? '#a85c5c'
+                        : keyStatus?.valid === false
+                          ? '#a85c5c'
+                          : '#4a7c59',
+                    },
+                  ]}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label} numberOfLines={1}>
+                    {creditsExhausted
+                      ? 'Credits exhausted (HTTP 402)'
+                      : keyStatus?.valid
+                        ? 'OpenRouter Connected'
+                        : 'API key saved'}
+                  </Text>
+                  {keyStatus?.limitRemainingUsd != null ? (
+                    <Text style={styles.hint}>
+                      {formatUsd(keyStatus.limitRemainingUsd)} remaining
+                    </Text>
+                  ) : null}
+                </View>
               </View>
-              <View style={styles.usageRow}>
-                <Text style={[styles.hint, budgetWarn && styles.errorText]}>
-                  This month: {formatUsd(usage.monthCostUsd)} · Lifetime:{' '}
-                  {formatUsd(usage.totalCostUsd)} ({usage.requestCount} calls)
-                </Text>
-                {usage.requestCount > 0 ? (
-                  <Pressable onPress={() => void resetUsageLog()} hitSlop={8}>
-                    <Text style={styles.linkText}>Reset</Text>
+              <Feather
+                name={keyManageOpen ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color={colors.textTertiary}
+              />
+            </Pressable>
+
+            {keyStatus?.error || lastError ? (
+              <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.sm }}>
+                <Text style={styles.errorText}>{keyStatus?.error ?? lastError}</Text>
+              </View>
+            ) : null}
+
+            {keyManageOpen ? (
+              <View style={[styles.block, { paddingTop: 0 }]}>
+                <View style={styles.btnRow}>
+                  <Pressable
+                    onPress={() => void handleRefreshKey()}
+                    style={styles.ghostBtn}
+                  >
+                    <Text style={styles.ghostBtnText}>
+                      {verifying ? 'Checking…' : 'Check balance'}
+                    </Text>
                   </Pressable>
-                ) : null}
+                  <Pressable
+                    onPress={() => {
+                      setKeyDraft('');
+                      setEditingKey(true);
+                    }}
+                    style={styles.ghostBtn}
+                  >
+                    <Text style={styles.ghostBtnText}>Change key</Text>
+                  </Pressable>
+                  <Pressable onPress={handleRemoveKey} style={styles.dangerGhostBtn}>
+                    <Text style={styles.dangerGhostText}>Remove</Text>
+                  </Pressable>
+                </View>
               </View>
-              {budgetWarn ? (
-                <Text style={styles.errorText}>
-                  Heads up: monthly estimated spend exceeded your {formatUsd(monthlyBudgetUsd!)}{' '}
-                  warning threshold.
-                </Text>
-              ) : null}
-            </View>
+            ) : null}
 
-            <View style={styles.divider} />
+            {/* 3. Models & Advanced — only shown when NOT paused to On-Device */}
+            {routingMode !== 'local_only' ? (
+              <>
+                <View style={styles.divider} />
 
-            {/* 6. Storage Manager */}
-            <Pressable onPress={() => void openStorageManager()} style={styles.actionRow}>
-              <Text style={styles.actionLabel}>Manage diary media & vector storage</Text>
-              <Feather name="chevron-right" size={16} color={colors.textTertiary} />
-            </Pressable>
+                <ModelPickerRow
+                  label="Embedding model"
+                  value={embeddingModel}
+                  badge={
+                    isVoyage4
+                      ? 'Zero re-embed'
+                      : modelSupportsMultimodalEmbeddings(embeddingModel)
+                        ? 'Pixel + Text'
+                        : 'Custom space'
+                  }
+                  onPress={() => void openModelPicker('embedding')}
+                />
+                <Pressable
+                  onPress={() => void openReembedSheet(embeddingModel)}
+                  style={styles.reembedCallout}
+                >
+                  <Feather name="layers" size={14} color={colors.accent} />
+                  <Text style={styles.reembedCalloutText}>
+                    {reembed.running
+                      ? `Re-embedding (${reembed.completed}/${reembed.total})…`
+                      : isVoyage4
+                        ? 'Re-embed or inspect library vectors'
+                        : 'Re-embed libraries for this model'}
+                  </Text>
+                  <Feather name="chevron-right" size={15} color={colors.accent} />
+                </Pressable>
+
+                <View style={styles.divider} />
+                <ModelPickerRow
+                  label="Reranker model"
+                  value={rerankerModel}
+                  onPress={() => void openModelPicker('reranker')}
+                />
+                {routingMode === 'cloud_with_fallback' ? (
+                  <>
+                    <View style={styles.divider} />
+                    <ModelPickerRow
+                      label="Voice transcription"
+                      value={transcriptionModel}
+                      onPress={() => void openModelPicker('transcription')}
+                    />
+                    <View style={styles.divider} />
+                    <ModelPickerRow
+                      label="Vision / Video / OCR"
+                      value={visionModel}
+                      onPress={() => void openModelPicker('vision')}
+                    />
+                  </>
+                ) : null}
+
+                <View style={styles.divider} />
+
+                {/* 4. Collapsible Features, Privacy & Spend Drawer */}
+                <Pressable
+                  onPress={() => setAdvancedOpen((v) => !v)}
+                  style={styles.actionRow}
+                >
+                  <View style={{ flex: 1, paddingRight: spacing.sm }}>
+                    <Text style={styles.label}>Features, Privacy &amp; Spend</Text>
+                    <Text style={[styles.hint, budgetWarn && styles.errorText]}>
+                      {enabledFeaturesCount}/5 features · ZDR {zeroDataRetention ? 'on' : 'off'} ·{' '}
+                      {formatUsd(usage.monthCostUsd)}/mo
+                    </Text>
+                  </View>
+                  <Feather
+                    name={advancedOpen ? 'chevron-up' : 'chevron-down'}
+                    size={16}
+                    color={colors.textTertiary}
+                  />
+                </Pressable>
+
+                {advancedOpen ? (
+                  <View style={styles.advancedDrawer}>
+                    <View style={styles.divider} />
+                    <ToggleLine
+                      label="Cloud Embeddings"
+                      hint="Use OpenRouter for books, journal, highlights & search."
+                      value={features.embeddings}
+                      onChange={(v) => {
+                        setFeature('embeddings', v);
+                        clearLibraryVectors();
+                        clearHighlightVectors();
+                      }}
+                    />
+                    <View style={styles.divider} />
+                    <ToggleLine
+                      label="Cloud Neural Reranking"
+                      hint="Rerank top echoes via OpenRouter without the 583 MB local model."
+                      value={features.reranking}
+                      onChange={(v) => setFeature('reranking', v)}
+                    />
+                    <View style={styles.divider} />
+                    <ToggleLine
+                      label="Voice Diary & Transcription"
+                      hint={
+                        routingMode === 'cloud_with_fallback'
+                          ? 'Show Voice capture in Journal with OpenRouter speech-to-text.'
+                          : 'Switch to OpenRouter Cloud to unlock in Journal.'
+                      }
+                      value={features.voice}
+                      onChange={(v) => setFeature('voice', v)}
+                    />
+                    <View style={styles.divider} />
+                    <ToggleLine
+                      label="Photos & Videos (Life Diary)"
+                      hint={
+                        routingMode === 'cloud_with_fallback'
+                          ? 'Show Photo & Video capture, People tags, OCR & Memories.'
+                          : 'Switch to OpenRouter Cloud to unlock in Journal.'
+                      }
+                      value={features.photosAndVideos}
+                      onChange={(v) => setFeature('photosAndVideos', v)}
+                    />
+                    <View style={styles.divider} />
+                    <ToggleLine
+                      label="Scanned PDF OCR"
+                      hint="Transcribe image-only PDFs in your Personal Library."
+                      value={features.scannedPdfOcr}
+                      onChange={(v) => setFeature('scannedPdfOcr', v)}
+                    />
+                    <View style={styles.divider} />
+                    <ToggleLine
+                      label="Zero Data Retention (deny logging)"
+                      hint="Sends provider.data_collection = 'deny' on every request."
+                      value={zeroDataRetention}
+                      onChange={setZeroDataRetention}
+                    />
+                    <View style={styles.divider} />
+                    <View style={styles.block}>
+                      <Text style={styles.label}>Monthly spend alert</Text>
+                      <View style={styles.pillGroup}>
+                        {BUDGET_PRESETS.map((p) => {
+                          const active = monthlyBudgetUsd === p.value;
+                          return (
+                            <Pressable
+                              key={p.label}
+                              onPress={() => setMonthlyBudgetUsd(p.value)}
+                              style={[styles.budgetPill, active && styles.modePillActive]}
+                            >
+                              <Text
+                                style={[
+                                  styles.modePillText,
+                                  active && styles.modePillTextActive,
+                                ]}
+                              >
+                                {p.label}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                      <View style={styles.usageRow}>
+                        <Text style={[styles.hint, budgetWarn && styles.errorText]}>
+                          Month: {formatUsd(usage.monthCostUsd)} · Lifetime:{' '}
+                          {formatUsd(usage.totalCostUsd)} ({usage.requestCount} calls)
+                        </Text>
+                        {usage.requestCount > 0 ? (
+                          <Pressable onPress={() => void resetUsageLog()} hitSlop={8}>
+                            <Text style={styles.linkText}>Reset</Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
+                    </View>
+                    <View style={styles.divider} />
+                    <Pressable
+                      onPress={() => void openStorageManager()}
+                      style={styles.actionRow}
+                    >
+                      <Text style={styles.actionLabel}>Manage diary media &amp; vector storage</Text>
+                      <Feather name="chevron-right" size={16} color={colors.textTertiary} />
+                    </Pressable>
+                  </View>
+                ) : null}
+              </>
+            ) : null}
           </>
-        ) : null}
+        )}
       </View>
 
       {/* ── Live Model Picker Modal ─────────────────────────────────────── */}
@@ -1269,6 +1288,9 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.sansMedium,
     fontSize: 14,
     color: colors.accent,
+  },
+  advancedDrawer: {
+    backgroundColor: colors.background,
   },
   reembedCallout: {
     flexDirection: 'row',
